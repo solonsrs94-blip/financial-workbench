@@ -17,6 +17,7 @@ def price_chart(
     height: int = CHART_HEIGHT,
     chart_key: str = "price_chart",
     events: Optional[dict] = None,
+    interval: str = "1d",
 ) -> None:
     """Render an interactive price chart with type selector and event markers.
 
@@ -90,22 +91,34 @@ def price_chart(
             line=dict(color=CHART_COLORS["primary"], width=2),
         ))
 
-    # Add SMA overlays
-    if show_sma and len(df) > 50:
+    # Add SMA overlays — adjust window for interval
+    if show_sma:
         close = df["Close"]
-        sma50 = close.rolling(window=50).mean()
-        sma200 = close.rolling(window=200).mean()
 
-        fig.add_trace(go.Scatter(
-            x=x, y=sma50, mode="lines", name="SMA 50",
-            line=dict(color="#ff7f0e", width=1.5, dash="solid"),
-            opacity=0.7,
-        ))
+        # Convert 50/200 day SMA to equivalent periods for the interval
+        if interval == "1wk":
+            short_window, long_window = 10, 40   # ~50 and ~200 trading days
+            short_label, long_label = "SMA 10w", "SMA 40w"
+        elif interval == "1mo":
+            short_window, long_window = 3, 10    # ~3 and ~10 months
+            short_label, long_label = "SMA 3m", "SMA 10m"
+        else:
+            short_window, long_window = 50, 200
+            short_label, long_label = "SMA 50", "SMA 200"
 
-        if len(df) > 200:
+        if len(df) > short_window:
+            sma_short = close.rolling(window=short_window).mean()
             fig.add_trace(go.Scatter(
-                x=x, y=sma200, mode="lines", name="SMA 200",
-                line=dict(color="#e377c2", width=1.5, dash="solid"),
+                x=x, y=sma_short, mode="lines", name=short_label,
+                line=dict(color="#ff7f0e", width=1.5),
+                opacity=0.7,
+            ))
+
+        if len(df) > long_window:
+            sma_long = close.rolling(window=long_window).mean()
+            fig.add_trace(go.Scatter(
+                x=x, y=sma_long, mode="lines", name=long_label,
+                line=dict(color="#e377c2", width=1.5),
                 opacity=0.7,
             ))
 
@@ -137,9 +150,9 @@ def _add_event_markers(
 ) -> None:
     """Add earnings, dividend, and split markers as vertical lines on the x-axis."""
     event_configs = {
-        "earnings": {"color": "rgba(255, 127, 14, 0.3)", "dash": "dot", "icon": "▲", "hover_color": "#ff7f0e"},
-        "dividends": {"color": "rgba(44, 160, 44, 0.3)", "dash": "dash", "icon": "◆", "hover_color": "#2ca02c"},
-        "splits": {"color": "rgba(227, 119, 194, 0.4)", "dash": "solid", "icon": "★", "hover_color": "#e377c2"},
+        "earnings": {"color": "rgba(255, 127, 14, 0.2)", "dash": "dot", "icon": "▲", "hover_color": "#ff7f0e", "show_line": True},
+        "dividends": {"color": "rgba(44, 160, 44, 0.15)", "dash": "dash", "icon": "◆", "hover_color": "#2ca02c", "show_line": False},
+        "splits": {"color": "rgba(227, 119, 194, 0.3)", "dash": "solid", "icon": "★", "hover_color": "#e377c2", "show_line": True},
     }
 
     for event_type, config in event_configs.items():
@@ -155,16 +168,17 @@ def _add_event_markers(
             label = item.get("label", event_type)
             d_str = d.strftime("%Y-%m-%d")
 
-            # Subtle vertical line
-            fig.add_shape(
-                type="line",
-                x0=d_str, x1=d_str,
-                y0=0, y1=1,
-                yref="paper",
-                line=dict(color=config["color"], width=1, dash=config["dash"]),
-            )
+            # Vertical line only for earnings and splits
+            if config["show_line"]:
+                fig.add_shape(
+                    type="line",
+                    x0=d_str, x1=d_str,
+                    y0=0, y1=1,
+                    yref="paper",
+                    line=dict(color=config["color"], width=1, dash=config["dash"]),
+                )
 
-            # Small icon at bottom
+            # Icon at bottom
             fig.add_annotation(
                 x=d_str, y=-0.02, yref="paper",
                 text=config["icon"],

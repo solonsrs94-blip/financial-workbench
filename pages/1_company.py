@@ -262,7 +262,7 @@ price_df, price_status = get_price_history(
 # Fetch events for chart markers
 chart_events = _fetch_chart_events(ticker)
 
-price_chart(price_df, title="", events=chart_events)
+price_chart(price_df, title="", events=chart_events, interval=yf_interval)
 volume_chart(price_df)
 
 # === KEY METRICS ===

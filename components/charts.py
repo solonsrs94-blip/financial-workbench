@@ -18,6 +18,7 @@ def price_chart(
     chart_key: str = "price_chart",
     events: Optional[dict] = None,
     interval: str = "1d",
+    visible_period: Optional[str] = None,
 ) -> None:
     """Render an interactive price chart with type selector and event markers.
 
@@ -137,6 +138,19 @@ def price_chart(
         hovermode="x unified",
         margin=dict(l=0, r=0, t=40, b=25 if has_events else 0),
     )
+
+    # Zoom x-axis to the requested visible period (data may be longer for SMA warmup)
+    if visible_period and visible_period != "max":
+        from datetime import timedelta
+        period_days = {
+            "1mo": 30, "3mo": 90, "6mo": 180,
+            "1y": 365, "2y": 730, "5y": 1825,
+        }
+        days = period_days.get(visible_period)
+        if days:
+            x_end = date_max
+            x_start = x_end - timedelta(days=days)
+            fig.update_xaxes(range=[x_start.strftime("%Y-%m-%d"), x_end.strftime("%Y-%m-%d")])
 
     st.plotly_chart(fig, use_container_width=True)
 

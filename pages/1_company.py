@@ -255,14 +255,25 @@ with col_interval:
 interval_map = {"Daily": "1d", "Weekly": "1wk", "Monthly": "1mo"}
 yf_interval = interval_map.get(interval, "1d")
 
-price_df, price_status = get_price_history(
-    ticker, period=period, interval=yf_interval, force_refresh=force_refresh,
+# Fetch extra data so SMA lines start from the beginning of the visible chart
+# Map selected period to a longer fetch period for SMA warmup
+sma_extended_periods = {
+    "1mo": "6mo", "3mo": "1y", "6mo": "2y",
+    "1y": "5y", "2y": "5y", "5y": "max", "max": "max",
+}
+fetch_period = sma_extended_periods.get(period, period)
+
+price_df_full, price_status = get_price_history(
+    ticker, period=fetch_period, interval=yf_interval, force_refresh=force_refresh,
 )
+
+# Trim to requested period for display (but SMA is calculated on full data)
+price_df = price_df_full
 
 # Fetch events for chart markers
 chart_events = _fetch_chart_events(ticker)
 
-price_chart(price_df, title="", events=chart_events, interval=yf_interval)
+price_chart(price_df, title="", events=chart_events, interval=yf_interval, visible_period=period)
 volume_chart(price_df)
 
 # === KEY METRICS ===

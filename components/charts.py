@@ -126,22 +126,23 @@ def _add_event_markers(
                 continue
 
             label = item.get("label", config["name"])
+            d_str = d.strftime("%Y-%m-%d")
 
-            # Vertical line from bottom to top
-            fig.add_vline(
-                x=d,
-                line_dash=config["dash"],
-                line_color=config["color"],
-                line_width=1,
-                annotation_text=config["icon"],
-                annotation_position="bottom",
-                annotation=dict(
-                    font_size=9,
-                    font_color=config["color"].replace("0.4", "0.8").replace("0.6", "0.9"),
-                    bgcolor="rgba(0,0,0,0.5)",
-                    borderpad=2,
-                    hovertext=label,
-                ),
+            fig.add_shape(
+                type="line",
+                x0=d_str, x1=d_str,
+                y0=0, y1=1,
+                yref="paper",
+                line=dict(color=config["color"], width=1, dash=config["dash"]),
+            )
+            fig.add_annotation(
+                x=d_str, y=0, yref="paper",
+                text=config["icon"],
+                showarrow=False,
+                font=dict(size=9, color=config["color"].replace("0.4", "0.9").replace("0.6", "0.9")),
+                bgcolor="rgba(0,0,0,0.5)",
+                borderpad=2,
+                hovertext=label,
             )
 
 

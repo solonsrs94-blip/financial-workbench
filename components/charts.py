@@ -144,7 +144,7 @@ def _add_event_markers(
                 x=d_str, y=-0.02, yref="paper",
                 text=config["icon"],
                 showarrow=False,
-                font=dict(size=8, color=config["hover_color"]),
+                font=dict(size=13, color=config["hover_color"]),
                 hovertext=label,
                 opacity=0.8,
             )
@@ -163,13 +163,19 @@ def volume_chart(
     else:
         x = df.index
 
+    # Color bars: green if close >= open (up day), red if close < open (down day)
+    colors = [
+        CHART_COLORS["positive"] if c >= o else CHART_COLORS["negative"]
+        for c, o in zip(df["Close"], df["Open"])
+    ]
+
     fig = go.Figure()
     fig.add_trace(go.Bar(
         x=x,
         y=df["Volume"],
         name="Volume",
-        marker_color=CHART_COLORS["neutral"],
-        opacity=0.6,
+        marker_color=colors,
+        opacity=0.5,
     ))
 
     fig.update_layout(

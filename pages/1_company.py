@@ -29,8 +29,9 @@ def _fetch_peers(sector: str, industry: str, exclude_ticker: str) -> list[dict]:
     from yfinance.screener import EquityQuery, screen as yf_screen
 
     try:
-        # Extract base ticker without exchange suffix
-        base_exclude = exclude_ticker.split(".")[0] if "." in exclude_ticker else exclude_ticker
+        # Build set of names to exclude (the company itself)
+        exclude_stock = yf.Ticker(exclude_ticker)
+        exclude_name = (exclude_stock.info or {}).get("longName", "").lower()
 
         q = EquityQuery("and", [
             EquityQuery("eq", ["sector", sector]),
@@ -46,26 +47,26 @@ def _fetch_peers(sector: str, industry: str, exclude_ticker: str) -> list[dict]:
         tickers = []
         for r in result["quotes"]:
             symbol = r.get("symbol", "")
-            name = r.get("longName", r.get("shortName", ""))
+            name = r.get("longName", r.get("shortName", "")).lower()
 
-            # Extract base ticker for comparison
-            base_symbol = symbol.split(".")[0] if "." in symbol else symbol
-
-            # Skip self (any exchange variant)
-            if base_symbol == base_exclude:
+            # Skip self — match by name (catches all exchange variants)
+            if exclude_name and exclude_name in name:
                 continue
 
-            # Skip duplicates by company name
-            base_name = name.split(" ")[0].lower() if name else ""
-            if base_name in seen_names:
+            # Skip duplicates by first word of name
+            first_word = name.split(" ")[0] if name else ""
+            if first_word in seen_names:
                 continue
 
-            seen_names.add(base_name)
+            # Prefer USD-listed tickers (no dot in symbol = US exchange)
+            seen_names.add(first_word)
             tickers.append(symbol)
 
             if len(tickers) >= 10:
                 break
 
+        # Fetch key ratios and convert to USD
+        usd_rates = {}
         peers = []
         for t in tickers:
             try:
@@ -74,26 +75,32 @@ def _fetch_peers(sector: str, industry: str, exclude_ticker: str) -> list[dict]:
                 if not info or len(info) < 5:
                     continue
 
-                currency = info.get("currency", "")
+                currency = info.get("currency", "USD")
+                price = info.get("currentPrice", info.get("previousClose"))
+                mcap = info.get("marketCap")
+
+                # Convert to USD if needed
+                if currency != "USD" and price is not None:
+                    rate = _get_usd_rate(currency, usd_rates)
+                    if rate:
+                        price = price / rate
+                        if mcap is not None:
+                            mcap = mcap / rate
 
                 div_yield = info.get("dividendYield")
                 if div_yield is not None:
                     div_yield = div_yield / 100
 
-                price = info.get("currentPrice", info.get("previousClose"))
-
                 peers.append({
                     "ticker": t,
                     "name": info.get("longName", info.get("shortName", t)),
-                    "currency": currency,
                     "price": price,
-                    "market_cap": info.get("marketCap"),
+                    "market_cap": mcap,
                     "pe": info.get("trailingPE"),
                     "pb": info.get("priceToBook"),
                     "profit_margin": info.get("profitMargins"),
                     "roe": info.get("returnOnEquity"),
                     "div_yield": div_yield,
-                    "beta": info.get("beta"),
                 })
             except Exception:
                 continue
@@ -104,6 +111,24 @@ def _fetch_peers(sector: str, industry: str, exclude_ticker: str) -> list[dict]:
         return peers
     except Exception:
         return []
+
+
+def _get_usd_rate(currency: str, cache: dict) -> float:
+    """Get exchange rate: how many units of currency per 1 USD."""
+    if currency == "USD":
+        return 1.0
+    if currency in cache:
+        return cache[currency]
+    try:
+        import yfinance as yf
+        pair = yf.Ticker(f"{currency}=X")
+        rate = pair.info.get("previousClose", None)
+        if rate:
+            cache[currency] = rate
+            return rate
+    except Exception:
+        pass
+    return 0.0
 
 
 page_header("Company Overview", "Search for any publicly traded company")
@@ -353,28 +378,14 @@ with tab_peers:
         else:
             st.caption(f"Companies in **{company.info.industry}** ({company.info.sector})")
 
-            # Build comparison table
+            # Build comparison table — all values in USD
+            st.caption("All values converted to USD")
             peer_rows = []
             for p in peers:
-                ccy = p.get("currency", "USD")
-                price = p.get("price")
-                price_str = f"{ccy} {price:,.2f}" if price else "N/A"
-
-                mcap = p.get("market_cap")
-                if mcap is not None:
-                    if mcap >= 1e12:
-                        mcap_str = f"{ccy} {mcap/1e12:.2f}T"
-                    elif mcap >= 1e9:
-                        mcap_str = f"{ccy} {mcap/1e9:.2f}B"
-                    else:
-                        mcap_str = f"{ccy} {mcap/1e6:.0f}M"
-                else:
-                    mcap_str = "N/A"
-
                 peer_rows.append({
                     "Company": f"{p.get('name', '')} ({p.get('ticker', '')})",
-                    "Price": price_str,
-                    "Mkt Cap": mcap_str,
+                    "Price (USD)": f"${p.get('price', 0):,.2f}" if p.get("price") else "N/A",
+                    "Mkt Cap": format_large_number(p.get("market_cap")),
                     "P/E": format_ratio(p.get("pe")),
                     "P/B": format_ratio(p.get("pb")),
                     "Margin": format_percentage(p.get("profit_margin")),

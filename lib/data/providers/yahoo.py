@@ -154,6 +154,62 @@ def fetch_price_history(
         return None
 
 
+def fetch_events(ticker: str) -> dict:
+    """Fetch earnings dates, dividends, and splits for chart annotations."""
+    result = {"earnings": [], "dividends": [], "splits": []}
+    try:
+        stock = yf.Ticker(ticker)
+
+        # Earnings dates
+        try:
+            ed = stock.earnings_dates
+            if ed is not None and not ed.empty:
+                for date, row in ed.iterrows():
+                    eps_est = row.get("EPS Estimate", None)
+                    eps_act = row.get("Reported EPS", None)
+                    surprise = row.get("Surprise(%)", None)
+
+                    label = "Earnings"
+                    if eps_act is not None and not pd.isna(eps_act):
+                        label = f"EPS: ${eps_act:.2f}"
+                        if surprise is not None and not pd.isna(surprise):
+                            label += f" ({surprise:+.1f}%)"
+                    elif eps_est is not None and not pd.isna(eps_est):
+                        label = f"EPS Est: ${eps_est:.2f}"
+
+                    result["earnings"].append({"date": str(date), "label": label})
+        except Exception:
+            pass
+
+        # Dividends
+        try:
+            divs = stock.dividends
+            if divs is not None and not divs.empty:
+                for date, amount in divs.items():
+                    result["dividends"].append({
+                        "date": str(date),
+                        "label": f"Div: ${amount:.2f}",
+                    })
+        except Exception:
+            pass
+
+        # Splits
+        try:
+            splits = stock.splits
+            if splits is not None and not splits.empty:
+                for date, ratio in splits.items():
+                    result["splits"].append({
+                        "date": str(date),
+                        "label": f"Split {ratio:.0f}:1",
+                    })
+        except Exception:
+            pass
+
+    except Exception:
+        pass
+    return result
+
+
 def fetch_financials(ticker: str) -> Optional[dict]:
     """Fetch financial statements (income, balance sheet, cash flow)."""
     try:

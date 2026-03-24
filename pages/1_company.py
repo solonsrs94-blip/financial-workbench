@@ -131,6 +131,12 @@ def _get_usd_rate(currency: str, cache: dict) -> float:
     return 0.0
 
 
+@st.cache_data(ttl=86400, show_spinner=False)
+def _fetch_chart_events(ticker: str) -> dict:
+    """Fetch earnings, dividends, splits for chart annotations."""
+    return yahoo.fetch_events(ticker)
+
+
 # Load custom CSS
 from config.settings import ROOT_DIR
 css_path = ROOT_DIR / "assets" / "styles" / "custom.css"
@@ -253,7 +259,10 @@ price_df, price_status = get_price_history(
     ticker, period=period, interval=yf_interval, force_refresh=force_refresh,
 )
 
-price_chart(price_df, title="")
+# Fetch events for chart markers
+chart_events = _fetch_chart_events(ticker)
+
+price_chart(price_df, title="", events=chart_events)
 volume_chart(price_df)
 
 # === KEY METRICS ===

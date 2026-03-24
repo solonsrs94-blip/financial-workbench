@@ -6,6 +6,7 @@ Uses Plotly for interactive charts.
 import plotly.graph_objects as go
 import pandas as pd
 import streamlit as st
+from typing import Optional
 
 from config.constants import CHART_COLORS, CHART_HEIGHT, CHART_TEMPLATE
 
@@ -15,8 +16,15 @@ def price_chart(
     title: str = "Price History",
     height: int = CHART_HEIGHT,
     chart_key: str = "price_chart",
+    events: Optional[dict] = None,
 ) -> None:
-    """Render an interactive price chart with type selector."""
+    """Render an interactive price chart with type selector and event markers.
+
+    events: dict with optional keys:
+        - earnings: list of {"date": datetime, "label": str}
+        - dividends: list of {"date": datetime, "label": str}
+        - splits: list of {"date": datetime, "label": str}
+    """
     if df is None or df.empty:
         st.info("No price data available.")
         return
@@ -35,6 +43,11 @@ def price_chart(
         x = df["Date"]
     else:
         x = df.index
+
+    # Get date range for filtering events
+    x_dates = pd.to_datetime(x)
+    date_min = x_dates.min()
+    date_max = x_dates.max()
 
     fig = go.Figure()
 
@@ -71,6 +84,10 @@ def price_chart(
             line=dict(color=CHART_COLORS["primary"], width=2),
         ))
 
+    # Add event markers
+    if events:
+        _add_event_markers(fig, events, df, date_min, date_max)
+
     fig.update_layout(
         title=title,
         template=CHART_TEMPLATE,
@@ -82,6 +99,65 @@ def price_chart(
     )
 
     st.plotly_chart(fig, use_container_width=True)
+
+
+def _add_event_markers(
+    fig: go.Figure,
+    events: dict,
+    df: pd.DataFrame,
+    date_min: pd.Timestamp,
+    date_max: pd.Timestamp,
+) -> None:
+    """Add earnings, dividend, and split markers to chart."""
+    # Build a date→close lookup for positioning markers
+    close_lookup = df["Close"].copy()
+    if "Date" in df.columns:
+        close_lookup.index = pd.to_datetime(df["Date"])
+    else:
+        close_lookup.index = pd.to_datetime(close_lookup.index)
+
+    event_configs = {
+        "earnings": {"color": "#ff7f0e", "symbol": "triangle-up", "name": "Earnings"},
+        "dividends": {"color": "#2ca02c", "symbol": "diamond", "name": "Dividends"},
+        "splits": {"color": "#e377c2", "symbol": "star", "name": "Splits"},
+    }
+
+    for event_type, config in event_configs.items():
+        items = events.get(event_type, [])
+        if not items:
+            continue
+
+        dates = []
+        prices = []
+        labels = []
+
+        for item in items:
+            d = pd.to_datetime(item["date"]).tz_localize(None)
+            if d < date_min or d > date_max:
+                continue
+
+            # Find closest date in price data
+            idx = close_lookup.index.get_indexer([d], method="nearest")[0]
+            if idx >= 0 and idx < len(close_lookup):
+                dates.append(close_lookup.index[idx])
+                prices.append(close_lookup.iloc[idx])
+                labels.append(item.get("label", ""))
+
+        if dates:
+            fig.add_trace(go.Scatter(
+                x=dates,
+                y=prices,
+                mode="markers",
+                name=config["name"],
+                marker=dict(
+                    symbol=config["symbol"],
+                    size=10,
+                    color=config["color"],
+                    line=dict(width=1, color="white"),
+                ),
+                text=labels,
+                hovertemplate="%{text}<extra>" + config["name"] + "</extra>",
+            ))
 
 
 def volume_chart(

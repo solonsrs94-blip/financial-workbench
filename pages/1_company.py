@@ -378,8 +378,15 @@ with tab_financials:
                     return f"{x / 1e3:.1f}K"
                 return f"{x:,.0f}"
 
+            def _color_negative(val):
+                """Red for negative numbers in financial statements."""
+                if isinstance(val, str) and val.startswith("-"):
+                    return "color: #d62728"
+                return ""
+
             display_df = df.map(_fmt_financial)
-            st.dataframe(display_df, use_container_width=True, height=500)
+            styled_df = display_df.style.map(_color_negative)
+            st.dataframe(styled_df, use_container_width=True, height=500)
         else:
             st.info(f"No {fin_type.lower()} data available.")
 
@@ -415,14 +422,25 @@ with tab_ownership:
                     else f"${x/1e6:.0f}M" if pd.notna(x) else "N/A"
                 )
 
-            # Format pctChange as percentage
+            # Format pctChange as percentage with color
             if "pctChange" in inst.columns:
                 inst["Change"] = inst["pctChange"].apply(
                     lambda x: f"{x*100:+.1f}%" if pd.notna(x) else "N/A"
                 )
                 inst = inst.drop(columns=["pctChange"])
 
-            st.dataframe(inst, use_container_width=True, hide_index=True)
+            def _color_change(val):
+                """Green for positive change, red for negative."""
+                if isinstance(val, str) and val.startswith("+"):
+                    return "color: #2ca02c"
+                if isinstance(val, str) and val.startswith("-"):
+                    return "color: #d62728"
+                return ""
+
+            styled_inst = inst.style.map(
+                _color_change, subset=["Change"] if "Change" in inst.columns else []
+            )
+            st.dataframe(styled_inst, use_container_width=True, hide_index=True)
 
         if holders.get("insider_transactions") is not None:
             st.markdown("**Recent Insider Transactions**")

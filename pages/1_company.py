@@ -274,7 +274,17 @@ price_df = price_df_full
 chart_events = _fetch_chart_events(ticker)
 
 price_chart(price_df, title="", events=chart_events, interval=yf_interval, visible_period=period)
-volume_chart(price_df)
+
+# Trim data for volume chart to match visible period
+from datetime import timedelta
+_period_days = {"1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 730, "5y": 1825}
+if period in _period_days and price_df is not None and not price_df.empty:
+    cutoff = pd.Timestamp.now() - timedelta(days=_period_days[period])
+    vol_idx = pd.to_datetime(price_df.index if "Date" not in price_df.columns else price_df["Date"])
+    volume_df = price_df[vol_idx >= cutoff]
+else:
+    volume_df = price_df
+volume_chart(volume_df)
 
 # === KEY METRICS ===
 st.divider()

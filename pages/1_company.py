@@ -180,6 +180,26 @@ with col_price:
 with col_cap:
     st.metric("Market Cap", format_large_number(company.price.market_cap))
 
+# === 52-Week Range Bar ===
+if company.price.low_52w and company.price.high_52w and company.price.price:
+    low = company.price.low_52w
+    high = company.price.high_52w
+    price = company.price.price
+    if high > low:
+        pct = (price - low) / (high - low)
+        pct = max(0.0, min(1.0, pct))
+
+        st.markdown(f"""
+        <div style="display: flex; align-items: center; gap: 10px; margin: 5px 0 15px 0;">
+            <span style="color: #888; font-size: 13px;">${low:,.2f}</span>
+            <div style="flex: 1; height: 8px; background: linear-gradient(to right, #d62728, #ff7f0e, #2ca02c); border-radius: 4px; position: relative;">
+                <div style="position: absolute; left: {pct*100:.1f}%; top: -4px; width: 3px; height: 16px; background: white; border-radius: 2px; box-shadow: 0 0 3px rgba(0,0,0,0.5);"></div>
+            </div>
+            <span style="color: #888; font-size: 13px;">${high:,.2f}</span>
+        </div>
+        <div style="text-align: center; color: #888; font-size: 11px; margin-top: -10px;">52-Week Range</div>
+        """, unsafe_allow_html=True)
+
 # === CHART ===
 col_period, col_interval = st.columns([2, 1])
 
@@ -277,6 +297,56 @@ with tab_financials:
     if fin_data is None:
         st.info("Financial data not available.")
     else:
+        # Revenue & Earnings chart (visual overview)
+        income_df = fin_data.get("income_statement")
+        if income_df is not None and not income_df.empty:
+            chart_df = income_df.copy()
+            chart_df.columns = [c.strftime("%Y") if hasattr(c, "strftime") else str(c) for c in chart_df.columns]
+
+            revenue_row = None
+            net_income_row = None
+            for label in ["Total Revenue", "TotalRevenue"]:
+                if label in chart_df.index:
+                    revenue_row = chart_df.loc[label]
+                    break
+            for label in ["Net Income", "NetIncome"]:
+                if label in chart_df.index:
+                    net_income_row = chart_df.loc[label]
+                    break
+
+            if revenue_row is not None:
+                import plotly.graph_objects as go
+                from config.constants import CHART_TEMPLATE, CHART_COLORS
+
+                fig = go.Figure()
+                years = list(reversed(revenue_row.index.tolist()))
+                rev_vals = [revenue_row[y] / 1e9 for y in years]
+
+                fig.add_trace(go.Bar(
+                    x=years, y=rev_vals,
+                    name="Revenue",
+                    marker_color=CHART_COLORS["primary"],
+                ))
+
+                if net_income_row is not None:
+                    ni_vals = [net_income_row[y] / 1e9 for y in years]
+                    fig.add_trace(go.Bar(
+                        x=years, y=ni_vals,
+                        name="Net Income",
+                        marker_color=CHART_COLORS["positive"],
+                    ))
+
+                fig.update_layout(
+                    template=CHART_TEMPLATE,
+                    height=300,
+                    yaxis_title="USD (Billions)",
+                    barmode="group",
+                    margin=dict(l=0, r=0, t=10, b=0),
+                    legend=dict(orientation="h", yanchor="bottom", y=1.02),
+                )
+                st.plotly_chart(fig, use_container_width=True)
+
+        # Statement selector and table
         fin_type = st.segmented_control(
             "Statement",
             ["Income", "Balance Sheet", "Cash Flow"],
@@ -294,13 +364,9 @@ with tab_financials:
         df = stmt_map.get(fin_type)
         if df is not None and not df.empty:
             df = df.copy()
-            # Format column headers as years
             df.columns = [c.strftime("%Y") if hasattr(c, "strftime") else str(c) for c in df.columns]
-
-            # Clean row index names (remove underscores etc.)
             df.index = [str(i).replace("_", " ").title() if isinstance(i, str) else str(i) for i in df.index]
 
-            # Format large numbers for display
             def _fmt_financial(x):
                 if not isinstance(x, (int, float)) or pd.isna(x):
                     return ""
@@ -413,25 +479,45 @@ with tab_analysts:
     else:
         if len(recs) > 0:
             current = recs.iloc[0]
-            st.markdown("**Current Analyst Consensus**")
 
-            total = sum([
-                int(current.get("strongBuy", 0)),
-                int(current.get("buy", 0)),
-                int(current.get("hold", 0)),
-                int(current.get("sell", 0)),
-                int(current.get("strongSell", 0)),
-            ])
+            sb = int(current.get("strongBuy", 0))
+            b = int(current.get("buy", 0))
+            h = int(current.get("hold", 0))
+            s = int(current.get("sell", 0))
+            ss = int(current.get("strongSell", 0))
+            total = sb + b + h + s + ss
 
-            col1, col2, col3, col4, col5 = st.columns(5)
-            col1.metric("Strong Buy", int(current.get("strongBuy", 0)))
-            col2.metric("Buy", int(current.get("buy", 0)))
-            col3.metric("Hold", int(current.get("hold", 0)))
-            col4.metric("Sell", int(current.get("sell", 0)))
-            col5.metric("Strong Sell", int(current.get("strongSell", 0)))
-
+            # Visual consensus bar
             if total > 0:
+                sb_pct = sb / total * 100
+                b_pct = b / total * 100
+                h_pct = h / total * 100
+                s_pct = s / total * 100
+                ss_pct = ss / total * 100
+
+                st.markdown("**Analyst Consensus**")
+                st.markdown(f"""
+                <div style="display: flex; height: 32px; border-radius: 6px; overflow: hidden; margin: 10px 0;">
+                    <div style="width: {sb_pct}%; background: #0d6e3f; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold;">{sb if sb else ''}</div>
+                    <div style="width: {b_pct}%; background: #2ca02c; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold;">{b if b else ''}</div>
+                    <div style="width: {h_pct}%; background: #ff7f0e; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold;">{h if h else ''}</div>
+                    <div style="width: {s_pct}%; background: #d62728; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold;">{s if s else ''}</div>
+                    <div style="width: {ss_pct}%; background: #8b0000; display: flex; align-items: center; justify-content: center; color: white; font-size: 12px; font-weight: bold;">{ss if ss else ''}</div>
+                </div>
+                <div style="display: flex; justify-content: space-between; font-size: 11px; color: #888; margin-bottom: 15px;">
+                    <span>Strong Buy</span><span>Buy</span><span>Hold</span><span>Sell</span><span>Strong Sell</span>
+                </div>
+                """, unsafe_allow_html=True)
+
                 st.caption(f"Based on {total} analyst ratings")
+
+            # Metrics row
+            col1, col2, col3, col4, col5 = st.columns(5)
+            col1.metric("Strong Buy", sb)
+            col2.metric("Buy", b)
+            col3.metric("Hold", h)
+            col4.metric("Sell", s)
+            col5.metric("Strong Sell", ss)
 
             # Trend over months with readable labels
             if len(recs) > 1:

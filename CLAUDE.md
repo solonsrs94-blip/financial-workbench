@@ -79,7 +79,19 @@ tests/              → Tests for data, analysis, and cache
 ## Language
 - The user communicates in Icelandic. Respond in Icelandic unless asked otherwise.
 - Code comments and variable names should be in English.
-- UI text can be in Icelandic or English — follow what's already on the screen.
+- UI text is in English (international finance language). Icelandic language toggle planned for later.
+
+## Data Conventions — IMPORTANT
+- Yahoo Finance returns `dividendYield` as already-percent (0.41 = 0.41%). Normalize to decimal in provider: `div_yield / 100` → 0.0041.
+- All other Yahoo percentages (margins, ROE, ROA, growth) are decimal (0.27 = 27%). Do NOT double-normalize these.
+- `format_percentage()` always multiplies by 100. So ALL values passed to it must be in decimal form.
+- When comparing companies across currencies, convert to USD using `{CURRENCY}=X` Yahoo ticker.
+
+## CSS
+- Custom CSS in `assets/styles/custom.css` — loaded by both app.py and page files.
+- `max-width: 100%` on `.block-container` for full-width layout.
+- Metric cards have subtle background and border via `[data-testid="stMetric"]`.
+- Streamlit branding (header, footer, MainMenu) is hidden.
 
 ## Documentation Maintenance — AUTOMATIC
 

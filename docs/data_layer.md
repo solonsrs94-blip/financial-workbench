@@ -80,12 +80,34 @@ All providers must return a **dict** with a predictable structure. The middlewar
 }
 ```
 
+### Data Normalization (IMPORTANT)
+
+Yahoo returns percentages inconsistently:
+- `dividendYield`: 0.41 means 0.41% → normalize in provider: `/ 100` → 0.0041
+- `profitMargins`: 0.27 means 27% → already decimal, no change
+- `returnOnEquity`: 1.52 means 152% → already decimal, no change
+
+**Rule: All percentages stored as decimals. `format_percentage()` multiplies by 100.**
+
 ### Adding a New Provider
 
 1. Create `lib/data/providers/newprovider.py`
-2. Implement fetch functions that return dicts
+2. Implement fetch functions that return dicts (return None on failure, never raise)
 3. Update the relevant middleware file (market.py, fundamentals.py, or macro.py)
-4. Nothing else changes
+4. Add TTL entry in `config/constants.py` if needed
+5. Nothing else changes — pages and components are unaware of providers
+
+### Current yahoo.py Functions
+
+- `search_companies(query)` → list of matching companies
+- `fetch_company_info(ticker)` → basic info (name, sector, country)
+- `fetch_price_data(ticker)` → current price, market cap, 52w range, analyst targets
+- `fetch_ratios(ticker)` → P/E, margins, ROE, growth rates
+- `fetch_price_history(ticker, period, interval)` → OHLCV DataFrame
+- `fetch_financials(ticker)` → income statement, balance sheet, cash flow
+- `fetch_holders(ticker)` → institutional holders, insider transactions
+- `fetch_recommendations(ticker)` → analyst buy/hold/sell consensus
+- `fetch_news(ticker)` → recent news articles
 
 ---
 

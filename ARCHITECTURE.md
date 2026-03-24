@@ -360,10 +360,10 @@ Vision/
 ## Eiginleikalisti — hvað appið getur gert
 
 ### Fyrirtækjagreining
-- [ ] Fyrirtækjayfirlit (verð, lykiltölur, fréttir)
-- [ ] Ársreikningar (rekstrarreikn., efnahagsreikn., sjóðstreymi)
+- [x] Fyrirtækjayfirlit (verð, lykiltölur, fréttir)
+- [x] Ársreikningar (rekstrarreikn., efnahagsreikn., sjóðstreymi)
 - [ ] Virðismat (DCF, WACC, CAPM, comps)
-- [ ] Innherjaviðskipti (kaup/sala stjórnenda)
+- [x] Innherjaviðskipti (kaup/sala stjórnenda)
 - [ ] Arðgreiðslusaga og yield
 
 ### Markaðsgreining
@@ -375,7 +375,10 @@ Vision/
 - [ ] Afkomudagatal (hvenær fyrirtæki tilkynna)
 
 ### Leit og síun
+- [x] Nafnaleit og ticker leit
+- [x] Browse mode (screener flokkar)
 - [ ] Almenn hlutabréfasía (hvaða forsendur sem er)
+- [ ] Full browse/sía (svæði, land, geirur, kauphöll) — React
 - [ ] Hlið við hlið samanburður (2+ fyrirtæki)
 - [ ] Quant scoring / einkunnakerfi
 - [ ] Vaktlistar
@@ -445,13 +448,29 @@ Vision/
 
 ## Fasar — í hvaða röð við byggjum
 
-### Fase 1 — Grunnur (Streamlit + yfinance)
-- Möppubygging og grunnkóði
-- Data layer: yfinance provider + SQLite cache
-- Fyrirtækjayfirlit (pages/1_company.py)
-- Ársreikningar (pages/2_financials.py)
-- Leitarstika (components/ticker_search.py)
-- Almenn gröf (components/charts.py)
+### Fase 1 — Grunnur (Streamlit + yfinance) ✅ LOKIÐ
+- ✅ Möppubygging og grunnkóði
+- ✅ Data layer: yfinance provider + SQLite cache + fallback
+- ✅ Company model (CompanyInfo, CompanyPrice, CompanyRatios)
+- ✅ Fyrirtækjayfirlit (pages/1_company.py)
+  - ✅ Search + Browse tabs (nafnaleit, screener flokkar)
+  - ✅ Verðgraf (line, candlestick, area) + volume
+  - ✅ Period/interval val (1mo-max, daily/weekly/monthly)
+  - ✅ Key metrics með litum (grænt/rautt)
+  - ✅ 52-week range bar (sjónræn stika)
+  - ✅ Analyst price target bar (upside %)
+  - ✅ Tabs: Detail, Financials, Ownership, Peers, Analysts, News, About
+  - ✅ Revenue/earnings graf í Financials
+  - ✅ Margin trend graf í Detail
+  - ✅ Insider net activity samantekt
+  - ✅ Peer comparison (USD conversion)
+  - ✅ Analyst consensus litastika
+  - ✅ URL persistence (ticker í query params)
+- ✅ Custom CSS (metric cards, full width, hide branding)
+- ✅ Leitarstika (components/ticker_search.py)
+- ✅ Almenn gröf (components/charts.py)
+- ✅ config/settings.py + constants.py
+- ✅ .env.example, .gitignore, requirements.txt
 
 ### Fase 2 — Kjarnaskjáir
 - Virðismat (flytja úr gamla appi, endurskipuleggja)

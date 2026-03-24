@@ -19,6 +19,93 @@ from lib.data.market import get_price_history
 from lib.data.providers import yahoo
 
 
+# === Helper Functions (must be defined before use) ===
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _fetch_peers(sector: str, industry: str, exclude_ticker: str) -> list[dict]:
+    """Fetch peer companies in the same industry with key metrics.
+    Only includes USD-denominated stocks to ensure comparable data."""
+    import yfinance as yf
+    from yfinance.screener import EquityQuery, screen as yf_screen
+
+    try:
+        # Extract base ticker without exchange suffix
+        base_exclude = exclude_ticker.split(".")[0] if "." in exclude_ticker else exclude_ticker
+
+        q = EquityQuery("and", [
+            EquityQuery("eq", ["sector", sector]),
+            EquityQuery("eq", ["industry", industry]),
+            EquityQuery("gt", ["intradaymarketcap", 1_000_000_000]),
+        ])
+        result = yf_screen(q, count=30, sortField="intradaymarketcap", sortAsc=False)
+
+        if not result or "quotes" not in result:
+            return []
+
+        seen_names = set()
+        tickers = []
+        for r in result["quotes"]:
+            symbol = r.get("symbol", "")
+            name = r.get("longName", r.get("shortName", ""))
+
+            # Extract base ticker for comparison
+            base_symbol = symbol.split(".")[0] if "." in symbol else symbol
+
+            # Skip self (any exchange variant)
+            if base_symbol == base_exclude:
+                continue
+
+            # Skip duplicates by company name
+            base_name = name.split(" ")[0].lower() if name else ""
+            if base_name in seen_names:
+                continue
+
+            seen_names.add(base_name)
+            tickers.append(symbol)
+
+            if len(tickers) >= 10:
+                break
+
+        peers = []
+        for t in tickers:
+            try:
+                stock = yf.Ticker(t)
+                info = stock.info
+                if not info or len(info) < 5:
+                    continue
+
+                currency = info.get("currency", "")
+
+                div_yield = info.get("dividendYield")
+                if div_yield is not None:
+                    div_yield = div_yield / 100
+
+                price = info.get("currentPrice", info.get("previousClose"))
+
+                peers.append({
+                    "ticker": t,
+                    "name": info.get("longName", info.get("shortName", t)),
+                    "currency": currency,
+                    "price": price,
+                    "market_cap": info.get("marketCap"),
+                    "pe": info.get("trailingPE"),
+                    "pb": info.get("priceToBook"),
+                    "profit_margin": info.get("profitMargins"),
+                    "roe": info.get("returnOnEquity"),
+                    "div_yield": div_yield,
+                    "beta": info.get("beta"),
+                })
+            except Exception:
+                continue
+
+            if len(peers) >= 6:
+                break
+
+        return peers
+    except Exception:
+        return []
+
+
 page_header("Company Overview", "Search for any publicly traded company")
 
 # --- Ticker Search ---
@@ -269,16 +356,30 @@ with tab_peers:
             # Build comparison table
             peer_rows = []
             for p in peers:
+                ccy = p.get("currency", "USD")
+                price = p.get("price")
+                price_str = f"{ccy} {price:,.2f}" if price else "N/A"
+
+                mcap = p.get("market_cap")
+                if mcap is not None:
+                    if mcap >= 1e12:
+                        mcap_str = f"{ccy} {mcap/1e12:.2f}T"
+                    elif mcap >= 1e9:
+                        mcap_str = f"{ccy} {mcap/1e9:.2f}B"
+                    else:
+                        mcap_str = f"{ccy} {mcap/1e6:.0f}M"
+                else:
+                    mcap_str = "N/A"
+
                 peer_rows.append({
                     "Company": f"{p.get('name', '')} ({p.get('ticker', '')})",
-                    "Price": f"${p.get('price', 0):,.2f}" if p.get("price") else "N/A",
-                    "Mkt Cap": format_large_number(p.get("market_cap")),
+                    "Price": price_str,
+                    "Mkt Cap": mcap_str,
                     "P/E": format_ratio(p.get("pe")),
                     "P/B": format_ratio(p.get("pb")),
                     "Margin": format_percentage(p.get("profit_margin")),
                     "ROE": format_percentage(p.get("roe")),
                     "Div Yield": format_percentage(p.get("div_yield")),
-                    "Beta": format_ratio(p.get("beta")),
                 })
 
             peer_df = pd.DataFrame(peer_rows)
@@ -358,75 +459,3 @@ with tab_about:
             st.metric("Employees", f"{company.info.employees:,}")
     with col3:
         st.metric("Currency", company.info.currency)
-
-
-# === Helper Functions ===
-
-@st.cache_data(ttl=3600, show_spinner=False)
-def _fetch_peers(sector: str, industry: str, exclude_ticker: str) -> list[dict]:
-    """Fetch peer companies in the same industry with key metrics."""
-    import yfinance as yf
-    from yfinance.screener import EquityQuery, screen as yf_screen
-
-    try:
-        q = EquityQuery("and", [
-            EquityQuery("eq", ["sector", sector]),
-            EquityQuery("eq", ["industry", industry]),
-            EquityQuery("gt", ["intradaymarketcap", 1_000_000_000]),
-        ])
-        result = yf_screen(q, count=20, sortField="intradaymarketcap", sortAsc=False)
-
-        if not result or "quotes" not in result:
-            return []
-
-        # Filter: remove duplicates (same company on different exchanges) and self
-        seen_names = set()
-        tickers = []
-        for r in result["quotes"]:
-            symbol = r.get("symbol", "")
-            name = r.get("longName", r.get("shortName", ""))
-
-            # Skip self and duplicates
-            base_name = name.split(" ")[0].lower() if name else ""
-            if symbol == exclude_ticker or base_name in seen_names:
-                continue
-            if "." in symbol and symbol.split(".")[0] == exclude_ticker:
-                continue
-
-            seen_names.add(base_name)
-            tickers.append(symbol)
-
-            if len(tickers) >= 6:
-                break
-
-        # Fetch key ratios for each peer
-        peers = []
-        for t in tickers:
-            try:
-                stock = yf.Ticker(t)
-                info = stock.info
-                if not info or len(info) < 5:
-                    continue
-
-                div_yield = info.get("dividendYield")
-                if div_yield is not None:
-                    div_yield = div_yield / 100
-
-                peers.append({
-                    "ticker": t,
-                    "name": info.get("longName", info.get("shortName", t)),
-                    "price": info.get("currentPrice", info.get("previousClose")),
-                    "market_cap": info.get("marketCap"),
-                    "pe": info.get("trailingPE"),
-                    "pb": info.get("priceToBook"),
-                    "profit_margin": info.get("profitMargins"),
-                    "roe": info.get("returnOnEquity"),
-                    "div_yield": div_yield,
-                    "beta": info.get("beta"),
-                })
-            except Exception:
-                continue
-
-        return peers
-    except Exception:
-        return []

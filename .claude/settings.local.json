@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "WebSearch",
+      "Bash(python -m venv venv)",
+      "Bash(source venv/Scripts/activate)",
+      "Bash(pip install:*)",
+      "Bash(python -c \":*)",
+      "Bash(./venv/Scripts/pip install:*)",
+      "Bash(./venv/Scripts/pip freeze:*)",
+      "Bash(netstat -ano)",
+      "Bash(taskkill //F //PID 19412)",
+      "Bash(./venv/Scripts/python -c \":*)",
+      "mcp__Claude_Preview__preview_start",
+      "Bash(wc -l \"C:/Users/Notandi/Desktop/Vision/pages/1_company.py\" \"C:/Users/Notandi/Desktop/Vision/pages/company/\"*.py \"C:/Users/Notandi/Desktop/Vision/lib/analysis/peers.py\")"
+    ]
+  }
+}

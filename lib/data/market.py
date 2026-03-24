@@ -8,11 +8,14 @@ This layer:
 4. Returns data (or stale fallback if API fails)
 """
 
+import logging
 import pandas as pd
 from typing import Optional, Tuple
 
 from lib import cache
 from lib.data.providers import yahoo
+
+logger = logging.getLogger(__name__)
 
 
 def get_price_history(
@@ -34,7 +37,7 @@ def get_price_history(
     if not force_refresh:
         cached = cache.get(cache_key)
         if cached is not None:
-            return pd.DataFrame(cached), "fresh"
+            return _restore_dataframe(cached), "fresh"
 
     # Fetch from provider
     df = yahoo.fetch_price_history(ticker, period, interval)
@@ -52,6 +55,15 @@ def get_price_history(
     # API failed — try stale cache
     stale = cache.get_stale(cache_key)
     if stale is not None:
-        return pd.DataFrame(stale), "stale"
+        return _restore_dataframe(stale), "stale"
 
     return None, "error"
+
+
+def _restore_dataframe(cached: dict) -> pd.DataFrame:
+    """Restore a cached DataFrame with proper datetime index."""
+    df = pd.DataFrame(cached)
+    if "Date" in df.columns:
+        df["Date"] = pd.to_datetime(df["Date"])
+        df = df.set_index("Date")
+    return df

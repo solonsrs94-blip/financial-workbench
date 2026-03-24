@@ -6,6 +6,9 @@ Run with: streamlit run app.py
 import streamlit as st
 from pathlib import Path
 from config.settings import APP_NAME, APP_ICON, ROOT_DIR
+from lib.logger import setup_logging
+
+setup_logging()
 
 st.set_page_config(
     page_title=APP_NAME,

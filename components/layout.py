@@ -3,7 +3,14 @@ Shared layout component — common header and page setup.
 """
 
 import streamlit as st
-from config.settings import APP_NAME, APP_ICON
+from config.settings import APP_NAME, APP_ICON, ROOT_DIR
+
+
+def load_css() -> None:
+    """Load custom CSS. Call once at the top of each page."""
+    css_path = ROOT_DIR / "assets" / "styles" / "custom.css"
+    if css_path.exists():
+        st.markdown(f"<style>{css_path.read_text()}</style>", unsafe_allow_html=True)
 
 
 def page_header(title: str, subtitle: str = "") -> None:

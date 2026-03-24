@@ -64,3 +64,9 @@ CHART_COLORS = {
 
 CHART_HEIGHT = 500
 CHART_TEMPLATE = "plotly_dark"
+
+# --- Period to calendar days mapping ---
+PERIOD_DAYS = {
+    "1mo": 30, "3mo": 90, "6mo": 180,
+    "1y": 365, "2y": 730, "5y": 1825,
+}

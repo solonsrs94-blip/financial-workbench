@@ -9,6 +9,7 @@ This layer:
 """
 
 import logging
+import pandas as pd
 from typing import Optional, Tuple
 
 from lib import cache
@@ -103,3 +104,154 @@ def _build_company(data: dict) -> Company:
         price=company_price,
         ratios=company_ratios,
     )
+
+
+# --- Middleware for additional data types ---
+
+def get_financials(
+    ticker: str, force_refresh: bool = False,
+) -> Tuple[Optional[dict], str]:
+    """Get financial statements with cache."""
+    ticker = ticker.upper().strip()
+    cache_key = f"yahoo:{ticker}:financials"
+
+    if not force_refresh:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return _restore_df_dict(cached), "fresh"
+
+    data = yahoo.fetch_financials(ticker)
+    if data is not None:
+        cache.store(cache_key, _serialize_df_dict(data), provider="yahoo", ttl_key="financials")
+        return data, "fresh"
+
+    stale = cache.get_stale(cache_key)
+    if stale is not None:
+        return _restore_df_dict(stale), "stale"
+
+    return None, "error"
+
+
+def get_holders(
+    ticker: str, force_refresh: bool = False,
+) -> Tuple[Optional[dict], str]:
+    """Get institutional holders and insider transactions with cache."""
+    ticker = ticker.upper().strip()
+    cache_key = f"yahoo:{ticker}:holders"
+
+    if not force_refresh:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return _restore_df_dict(cached), "fresh"
+
+    data = yahoo.fetch_holders(ticker)
+    if data is not None:
+        cache.store(cache_key, _serialize_df_dict(data), provider="yahoo", ttl_key="insider")
+        return data, "fresh"
+
+    stale = cache.get_stale(cache_key)
+    if stale is not None:
+        return _restore_df_dict(stale), "stale"
+
+    return None, "error"
+
+
+def get_recommendations(
+    ticker: str, force_refresh: bool = False,
+) -> Tuple[Optional[pd.DataFrame], str]:
+    """Get analyst recommendations with cache."""
+    ticker = ticker.upper().strip()
+    cache_key = f"yahoo:{ticker}:recommendations"
+
+    if not force_refresh:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return pd.DataFrame(cached), "fresh"
+
+    data = yahoo.fetch_recommendations(ticker)
+    if data is not None:
+        cache.store(cache_key, data.to_dict(orient="list"), provider="yahoo", ttl_key="ratios")
+        return data, "fresh"
+
+    stale = cache.get_stale(cache_key)
+    if stale is not None:
+        return pd.DataFrame(stale), "stale"
+
+    return None, "error"
+
+
+def get_news(
+    ticker: str, force_refresh: bool = False,
+) -> Tuple[list[dict], str]:
+    """Get recent news with cache."""
+    ticker = ticker.upper().strip()
+    cache_key = f"yahoo:{ticker}:news"
+
+    if not force_refresh:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached, "fresh"
+
+    data = yahoo.fetch_news(ticker)
+    if data:
+        cache.store(cache_key, data, provider="yahoo", ttl_key="news")
+        return data, "fresh"
+
+    stale = cache.get_stale(cache_key)
+    if stale is not None:
+        return stale, "stale"
+
+    return [], "error"
+
+
+def get_events(
+    ticker: str, force_refresh: bool = False,
+) -> Tuple[dict, str]:
+    """Get chart events (earnings, dividends, splits) with cache."""
+    ticker = ticker.upper().strip()
+    cache_key = f"yahoo:{ticker}:events"
+
+    if not force_refresh:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached, "fresh"
+
+    data = yahoo.fetch_events(ticker)
+    if data and any(data.values()):
+        cache.store(cache_key, data, provider="yahoo", ttl_key="price_daily")
+        return data, "fresh"
+
+    stale = cache.get_stale(cache_key)
+    if stale is not None:
+        return stale, "stale"
+
+    return {"earnings": [], "dividends": [], "splits": []}, "error"
+
+
+# --- DataFrame serialization helpers ---
+
+def _serialize_df_dict(data: dict) -> dict:
+    """Convert dict containing DataFrames to JSON-serializable dict."""
+    result = {}
+    for k, v in data.items():
+        if isinstance(v, pd.DataFrame) and not v.empty:
+            # Convert column names to strings (they may be Timestamps)
+            df = v.copy()
+            df.columns = [str(c) for c in df.columns]
+            result[k] = df.reset_index().to_dict(orient="list")
+        elif isinstance(v, pd.DataFrame):
+            result[k] = None
+        else:
+            result[k] = v
+    return result
+
+
+def _restore_df_dict(data: dict) -> dict:
+    """Restore dict containing serialized DataFrames."""
+    result = {}
+    for k, v in data.items():
+        if isinstance(v, dict) and any(isinstance(val, list) for val in v.values()):
+            result[k] = pd.DataFrame(v)
+        else:
+            result[k] = v
+    return result

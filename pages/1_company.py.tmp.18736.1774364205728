@@ -9,19 +9,22 @@ from datetime import timedelta
 
 from components.ticker_search import render_ticker_search, is_force_refresh
 from components.layout import (
-    page_header, data_status_banner, load_css,
+    page_header, data_status_banner,
     format_large_number, format_percentage, format_ratio, colored_metric,
 )
 from components.charts import price_chart, volume_chart
 from lib.data.fundamentals import get_company, get_events
 from lib.data.market import get_price_history
-from config.constants import PERIOD_DAYS
 
 # Tab modules
 from pages.company import detail_tab, financials_tab, ownership_tab
 from pages.company import peers_tab, analysts_tab, news_tab, about_tab
 
-load_css()
+# Load custom CSS
+from config.settings import ROOT_DIR
+css_path = ROOT_DIR / "assets" / "styles" / "custom.css"
+if css_path.exists():
+    st.markdown(f"<style>{css_path.read_text()}</style>", unsafe_allow_html=True)
 
 page_header("Company Overview", "Search for any publicly traded company")
 
@@ -145,8 +148,9 @@ chart_events, _ = get_events(ticker)
 price_chart(price_df, title="", events=chart_events, interval=yf_interval, visible_period=period)
 
 # Volume — trimmed to visible period
-if period in PERIOD_DAYS and price_df is not None and not price_df.empty:
-    cutoff = pd.Timestamp.now() - timedelta(days=PERIOD_DAYS[period])
+period_days = {"1mo": 30, "3mo": 90, "6mo": 180, "1y": 365, "2y": 730, "5y": 1825}
+if period in period_days and price_df is not None and not price_df.empty:
+    cutoff = pd.Timestamp.now() - timedelta(days=period_days[period])
     vol_idx = pd.to_datetime(price_df.index)
     volume_df = price_df[vol_idx >= cutoff]
 else:

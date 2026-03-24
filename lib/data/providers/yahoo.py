@@ -247,10 +247,13 @@ def fetch_events(ticker: str) -> dict:
             splits = stock.splits
             if splits is not None and not splits.empty:
                 for date, ratio in splits.items():
-                    result["splits"].append({
-                        "date": str(date),
-                        "label": f"Split {ratio:.0f}:1",
-                    })
+                    if pd.isna(ratio) or ratio == 0:
+                        continue
+                    if ratio >= 1:
+                        label = f"Split {ratio:.0f}:1"
+                    else:
+                        label = f"Reverse Split 1:{1/ratio:.0f}"
+                    result["splits"].append({"date": str(date), "label": label})
         except Exception:
             pass
     except Exception as e:

@@ -8,7 +8,7 @@ import pandas as pd
 import streamlit as st
 from typing import Optional
 
-from config.constants import CHART_COLORS, CHART_HEIGHT, CHART_TEMPLATE
+from config.constants import CHART_COLORS, CHART_HEIGHT, CHART_TEMPLATE, PERIOD_DAYS
 
 
 def price_chart(
@@ -142,11 +142,7 @@ def price_chart(
     # Zoom x-axis to the requested visible period (data may be longer for SMA warmup)
     if visible_period and visible_period != "max":
         from datetime import timedelta
-        period_days = {
-            "1mo": 30, "3mo": 90, "6mo": 180,
-            "1y": 365, "2y": 730, "5y": 1825,
-        }
-        days = period_days.get(visible_period)
+        days = PERIOD_DAYS.get(visible_period)
         if days:
             x_end = date_max
             x_start = x_end - timedelta(days=days)

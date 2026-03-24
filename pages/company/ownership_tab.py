@@ -2,12 +2,12 @@
 
 import streamlit as st
 import pandas as pd
-from lib.data.providers import yahoo
+from lib.data.fundamentals import get_holders
 
 
 def render(ticker: str) -> None:
     with st.spinner("Loading ownership data..."):
-        holders = yahoo.fetch_holders(ticker)
+        holders, _ = get_holders(ticker)
 
     if holders is None:
         st.info("Ownership data not available.")

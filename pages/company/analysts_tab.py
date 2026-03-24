@@ -1,12 +1,12 @@
 """Analysts tab — consensus ratings and recommendation trend."""
 
 import streamlit as st
-from lib.data.providers import yahoo
+from lib.data.fundamentals import get_recommendations
 
 
 def render(ticker: str) -> None:
     with st.spinner("Loading analyst data..."):
-        recs = yahoo.fetch_recommendations(ticker)
+        recs, _ = get_recommendations(ticker)
 
     if recs is None:
         st.info("Analyst data not available.")

@@ -1,12 +1,12 @@
 """News tab — recent news articles for the company."""
 
 import streamlit as st
-from lib.data.providers import yahoo
+from lib.data.fundamentals import get_news
 
 
 def render(ticker: str) -> None:
     with st.spinner("Loading news..."):
-        news = yahoo.fetch_news(ticker)
+        news, _ = get_news(ticker)
 
     if not news:
         st.info("No recent news available.")

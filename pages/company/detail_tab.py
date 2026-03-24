@@ -2,7 +2,7 @@
 
 import streamlit as st
 from components.layout import format_ratio, format_price, format_percentage, format_volume, colored_metric
-from lib.data.providers import yahoo
+from lib.data.fundamentals import get_financials
 from models.company import Company
 
 
@@ -47,7 +47,7 @@ def render(company: Company, ticker: str) -> None:
 
 def _render_margin_trends(ticker: str) -> None:
     with st.spinner("Loading margin trends..."):
-        fin_data = yahoo.fetch_financials(ticker)
+        fin_data, _ = get_financials(ticker)
     if not fin_data or fin_data.get("income_statement") is None:
         return
 

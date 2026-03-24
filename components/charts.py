@@ -88,6 +88,8 @@ def price_chart(
     if events:
         _add_event_markers(fig, events, df, date_min, date_max)
 
+    has_events = events and any(events.get(k) for k in ["earnings", "dividends", "splits"])
+
     fig.update_layout(
         title=title,
         template=CHART_TEMPLATE,
@@ -95,7 +97,7 @@ def price_chart(
         xaxis_title="",
         yaxis_title="Price",
         hovermode="x unified",
-        margin=dict(l=0, r=0, t=40, b=0),
+        margin=dict(l=0, r=0, t=40, b=25 if has_events else 0),
     )
 
     st.plotly_chart(fig, use_container_width=True)
@@ -110,9 +112,9 @@ def _add_event_markers(
 ) -> None:
     """Add earnings, dividend, and split markers as vertical lines on the x-axis."""
     event_configs = {
-        "earnings": {"color": "rgba(255, 127, 14, 0.4)", "dash": "dot", "name": "Earnings", "icon": "E"},
-        "dividends": {"color": "rgba(44, 160, 44, 0.4)", "dash": "dash", "name": "Dividends", "icon": "D"},
-        "splits": {"color": "rgba(227, 119, 194, 0.6)", "dash": "solid", "name": "Splits", "icon": "S"},
+        "earnings": {"color": "rgba(255, 127, 14, 0.3)", "dash": "dot", "icon": "▲", "hover_color": "#ff7f0e"},
+        "dividends": {"color": "rgba(44, 160, 44, 0.3)", "dash": "dash", "icon": "◆", "hover_color": "#2ca02c"},
+        "splits": {"color": "rgba(227, 119, 194, 0.4)", "dash": "solid", "icon": "★", "hover_color": "#e377c2"},
     }
 
     for event_type, config in event_configs.items():
@@ -125,9 +127,10 @@ def _add_event_markers(
             if d < date_min or d > date_max:
                 continue
 
-            label = item.get("label", config["name"])
+            label = item.get("label", event_type)
             d_str = d.strftime("%Y-%m-%d")
 
+            # Subtle vertical line
             fig.add_shape(
                 type="line",
                 x0=d_str, x1=d_str,
@@ -135,14 +138,15 @@ def _add_event_markers(
                 yref="paper",
                 line=dict(color=config["color"], width=1, dash=config["dash"]),
             )
+
+            # Small icon at bottom
             fig.add_annotation(
-                x=d_str, y=0, yref="paper",
+                x=d_str, y=-0.02, yref="paper",
                 text=config["icon"],
                 showarrow=False,
-                font=dict(size=9, color=config["color"].replace("0.4", "0.9").replace("0.6", "0.9")),
-                bgcolor="rgba(0,0,0,0.5)",
-                borderpad=2,
+                font=dict(size=8, color=config["hover_color"]),
                 hovertext=label,
+                opacity=0.8,
             )
 
 

@@ -232,8 +232,15 @@ Vision/
 │   │
 │   │   ── NOTENDAAUÐKENNING ──
 │   │
-│   ├── auth/                           ← Notendaauðkenning (fase 2)
+│   ├── auth/                           ← Notendaauðkenning (fase 6)
 │   │   └── __init__.py                 ← Tómt í byrjun
+│   │
+│   │   ── SAMSKIPTI ──
+│   │
+│   ├── social/                         ← Samskipti milli notenda (fase 6)
+│   │   ├── chat.py                     ← Skilaboð milli notenda
+│   │   ├── sharing.py                  ← Deila greiningum, gröfum, vaktlistum
+│   │   └── notifications.py            ← Tilkynningar ("Anna deildi greiningu")
 │   │
 │   │   ── MENNTUN ──
 │   │
@@ -429,6 +436,11 @@ Vision/
 - [ ] Excel útflutningur
 - [ ] Sérsniðin sniðmát
 
+### Samskipti og deiling
+- [ ] Spjall milli notenda (chat)
+- [ ] Deila greiningum, gröfum, vaktlistum með öðrum
+- [ ] Tilkynningar ("Anna deildi greiningu með þér")
+
 ---
 
 ## Fasar — í hvaða röð við byggjum
@@ -483,6 +495,9 @@ Vision/
 - Cloud storage (Firebase/PostgreSQL)
 - React framendi (fallegt UI)
 - Viðvaranir og tilkynningar
+- Spjall milli notenda (chat)
+- Deiling greiningum, gröfum, vaktlistum
+- Samskiptatilkynningar
 
 ---
 

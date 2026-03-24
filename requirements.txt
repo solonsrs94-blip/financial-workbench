@@ -4,6 +4,7 @@ yfinance>=1.2.0
 plotly>=6.0.0
 pandas>=2.3.0
 numpy>=2.4.0
+python-dotenv>=1.0.0
 
 # Future (uncomment when needed)
 # fredapi>=0.5.0          # Macro data (needs FRED API key)

@@ -95,6 +95,9 @@ tests/              → Tests for data, analysis, and cache
 
 ## Self-Check After Every Feature — MANDATORY
 
+**TRIGGER: Before telling the user "búið/done/endurnýrðu" or committing, ALWAYS run this checklist.**
+The pre-commit hook catches rules 1-2 automatically. Rules 3-4 require manual verification.
+
 After completing any feature or significant change, run this checklist BEFORE committing:
 
 ### Architecture Check

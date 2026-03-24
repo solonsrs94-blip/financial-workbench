@@ -133,11 +133,18 @@ def _get_usd_rate(currency: str, cache: dict) -> float:
 
 page_header("Company Overview", "Search for any publicly traded company")
 
-# --- Ticker Search ---
-ticker = render_ticker_search()
+# --- Ticker Search (with URL persistence) ---
+params = st.query_params
+saved_ticker = params.get("ticker", "")
+
+ticker = render_ticker_search(default=saved_ticker)
 
 if not ticker:
     st.stop()
+
+# Save ticker to URL so refresh keeps it
+if ticker != saved_ticker:
+    st.query_params["ticker"] = ticker
 
 # --- Load Data ---
 force_refresh = is_force_refresh()

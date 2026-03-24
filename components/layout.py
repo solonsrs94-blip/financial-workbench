@@ -48,10 +48,15 @@ def format_large_number(value: float) -> str:
 
 
 def format_percentage(value: float) -> str:
-    """Format a decimal as percentage (e.g., 0.25 → 25.00%)."""
+    """Format a decimal as percentage. Always treats input as decimal (0.25 → 25.0%)."""
     if value is None:
         return "N/A"
-    return f"{value * 100:.2f}%" if abs(value) < 1 else f"{value:.2f}%"
+    pct = value * 100
+    if abs(pct) >= 100:
+        return f"{pct:.0f}%"
+    if abs(pct) < 1:
+        return f"{pct:.2f}%"
+    return f"{pct:.1f}%"
 
 
 def format_ratio(value: float) -> str:
@@ -59,3 +64,23 @@ def format_ratio(value: float) -> str:
     if value is None:
         return "N/A"
     return f"{value:.2f}"
+
+
+def format_volume(value: int) -> str:
+    """Format volume with suffix (e.g., 37.4M, 2.1B)."""
+    if value is None:
+        return "N/A"
+    if value >= 1_000_000_000:
+        return f"{value / 1_000_000_000:.1f}B"
+    if value >= 1_000_000:
+        return f"{value / 1_000_000:.1f}M"
+    if value >= 1_000:
+        return f"{value / 1_000:.1f}K"
+    return str(value)
+
+
+def format_price(value: float) -> str:
+    """Format a price (e.g., $288.62)."""
+    if value is None:
+        return "N/A"
+    return f"${value:,.2f}"

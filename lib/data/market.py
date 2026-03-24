@@ -18,6 +18,7 @@ from lib.data.providers import yahoo
 def get_price_history(
     ticker: str,
     period: str = "5y",
+    interval: str = "1d",
     force_refresh: bool = False,
 ) -> Tuple[Optional[pd.DataFrame], str]:
     """
@@ -27,7 +28,7 @@ def get_price_history(
         (DataFrame or None, status)
         status: "fresh", "stale", or "error"
     """
-    cache_key = f"yahoo:{ticker}:price_history:{period}"
+    cache_key = f"yahoo:{ticker}:price_history:{period}:{interval}"
 
     # Check cache first (unless forced refresh)
     if not force_refresh:
@@ -36,7 +37,7 @@ def get_price_history(
             return pd.DataFrame(cached), "fresh"
 
     # Fetch from provider
-    df = yahoo.fetch_price_history(ticker, period)
+    df = yahoo.fetch_price_history(ticker, period, interval)
 
     if df is not None:
         # Store in cache (convert to dict for JSON serialization)

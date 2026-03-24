@@ -11,6 +11,25 @@ import pandas as pd
 from typing import Optional
 
 
+def search_companies(query: str, max_results: int = 10) -> list[dict]:
+    """Search for companies by name or ticker."""
+    try:
+        s = yf.Search(query)
+        results = []
+        for q in s.quotes[:max_results]:
+            if q.get("quoteType") == "EQUITY":
+                results.append({
+                    "ticker": q.get("symbol", ""),
+                    "name": q.get("longname", q.get("shortname", "")),
+                    "exchange": q.get("exchDisp", q.get("exchange", "")),
+                    "sector": q.get("sectorDisp", q.get("sector", "")),
+                    "industry": q.get("industryDisp", q.get("industry", "")),
+                })
+        return results
+    except Exception:
+        return []
+
+
 def fetch_company_info(ticker: str) -> Optional[dict]:
     """Fetch basic company information."""
     try:
@@ -78,6 +97,13 @@ def fetch_ratios(ticker: str) -> Optional[dict]:
         if not info or len(info) < 5:
             return None
 
+        # Yahoo returns dividendYield as already-percent (0.41 = 0.41%).
+        # Other fields like profitMargins are decimal (0.27 = 27%).
+        # We normalize ALL to decimal form: 0.0041 = 0.41%.
+        div_yield = info.get("dividendYield")
+        if div_yield is not None:
+            div_yield = div_yield / 100  # 0.41 → 0.0041
+
         return {
             "pe_trailing": info.get("trailingPE"),
             "pe_forward": info.get("forwardPE"),
@@ -86,7 +112,7 @@ def fetch_ratios(ticker: str) -> Optional[dict]:
             "ps": info.get("priceToSalesTrailing12Months"),
             "ev_ebitda": info.get("enterpriseToEbitda"),
             "ev_revenue": info.get("enterpriseToRevenue"),
-            "dividend_yield": info.get("dividendYield"),
+            "dividend_yield": div_yield,
             "payout_ratio": info.get("payoutRatio"),
             "roe": info.get("returnOnEquity"),
             "roa": info.get("returnOnAssets"),
@@ -105,11 +131,13 @@ def fetch_ratios(ticker: str) -> Optional[dict]:
         return None
 
 
-def fetch_price_history(ticker: str, period: str = "5y") -> Optional[pd.DataFrame]:
+def fetch_price_history(
+    ticker: str, period: str = "5y", interval: str = "1d",
+) -> Optional[pd.DataFrame]:
     """Fetch historical price data."""
     try:
         stock = yf.Ticker(ticker)
-        hist = stock.history(period=period)
+        hist = stock.history(period=period, interval=interval)
 
         if hist.empty:
             return None
@@ -136,3 +164,55 @@ def fetch_financials(ticker: str) -> Optional[dict]:
         }
     except Exception:
         return None
+
+
+def fetch_holders(ticker: str) -> Optional[dict]:
+    """Fetch institutional and insider holder data."""
+    try:
+        stock = yf.Ticker(ticker)
+
+        institutional = stock.institutional_holders
+        insider = stock.insider_transactions
+
+        return {
+            "institutional": institutional if institutional is not None and not institutional.empty else None,
+            "insider_transactions": insider if insider is not None and not insider.empty else None,
+        }
+    except Exception:
+        return None
+
+
+def fetch_recommendations(ticker: str) -> Optional[pd.DataFrame]:
+    """Fetch analyst recommendations."""
+    try:
+        stock = yf.Ticker(ticker)
+        recs = stock.recommendations
+        if recs is not None and not recs.empty:
+            return recs
+        return None
+    except Exception:
+        return None
+
+
+def fetch_news(ticker: str) -> list[dict]:
+    """Fetch recent news for a ticker."""
+    try:
+        stock = yf.Ticker(ticker)
+        news = stock.news
+        if not news:
+            return []
+
+        results = []
+        for n in news[:10]:
+            content = n.get("content", {})
+            provider = content.get("provider", {})
+            canonical = content.get("canonicalUrl", {})
+            results.append({
+                "title": content.get("title", ""),
+                "publisher": provider.get("displayName", ""),
+                "link": canonical.get("url", ""),
+                "published": content.get("pubDate", ""),
+            })
+        return results
+    except Exception:
+        return []

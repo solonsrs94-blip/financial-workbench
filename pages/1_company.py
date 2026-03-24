@@ -174,17 +174,27 @@ with tab_financials:
 
         df = stmt_map.get(fin_type)
         if df is not None and not df.empty:
+            df = df.copy()
             # Format column headers as years
             df.columns = [c.strftime("%Y") if hasattr(c, "strftime") else str(c) for c in df.columns]
 
-            # Format large numbers
-            display_df = df.map(
-                lambda x: f"{x / 1e9:.2f}B" if isinstance(x, (int, float)) and abs(x) >= 1e9
-                else f"{x / 1e6:.1f}M" if isinstance(x, (int, float)) and abs(x) >= 1e6
-                else f"{x:,.0f}" if isinstance(x, (int, float))
-                else x
-            )
-            st.dataframe(display_df, use_container_width=True)
+            # Clean row index names (remove underscores etc.)
+            df.index = [str(i).replace("_", " ").title() if isinstance(i, str) else str(i) for i in df.index]
+
+            # Format large numbers for display
+            def _fmt_financial(x):
+                if not isinstance(x, (int, float)) or pd.isna(x):
+                    return ""
+                if abs(x) >= 1e9:
+                    return f"{x / 1e9:.2f}B"
+                if abs(x) >= 1e6:
+                    return f"{x / 1e6:.1f}M"
+                if abs(x) >= 1e3:
+                    return f"{x / 1e3:.1f}K"
+                return f"{x:,.0f}"
+
+            display_df = df.map(_fmt_financial)
+            st.dataframe(display_df, use_container_width=True, height=500)
         else:
             st.info(f"No {fin_type.lower()} data available.")
 
@@ -199,20 +209,80 @@ with tab_ownership:
         if holders.get("institutional") is not None:
             st.markdown("**Top Institutional Holders**")
             inst = holders["institutional"].head(10).copy()
+
+            # Clean up date column
+            if "Date Reported" in inst.columns:
+                inst["Date Reported"] = pd.to_datetime(inst["Date Reported"]).dt.strftime("%Y-%m-%d")
+
+            # Format percentage
             if "pctHeld" in inst.columns:
-                inst["pctHeld"] = inst["pctHeld"].apply(lambda x: f"{x*100:.2f}%" if pd.notna(x) else "N/A")
+                inst["% Held"] = inst["pctHeld"].apply(lambda x: f"{x*100:.2f}%" if pd.notna(x) else "N/A")
+                inst = inst.drop(columns=["pctHeld"])
+
+            # Format shares with commas
+            if "Shares" in inst.columns:
+                inst["Shares"] = inst["Shares"].apply(lambda x: f"{x:,.0f}" if pd.notna(x) else "N/A")
+
+            # Format value
             if "Value" in inst.columns:
-                inst["Value"] = inst["Value"].apply(lambda x: f"${x/1e9:.1f}B" if pd.notna(x) and x >= 1e9 else f"${x/1e6:.0f}M" if pd.notna(x) else "N/A")
+                inst["Value"] = inst["Value"].apply(
+                    lambda x: f"${x/1e9:.1f}B" if pd.notna(x) and abs(x) >= 1e9
+                    else f"${x/1e6:.0f}M" if pd.notna(x) else "N/A"
+                )
+
+            # Format pctChange as percentage
+            if "pctChange" in inst.columns:
+                inst["Change"] = inst["pctChange"].apply(
+                    lambda x: f"{x*100:+.1f}%" if pd.notna(x) else "N/A"
+                )
+                inst = inst.drop(columns=["pctChange"])
+
             st.dataframe(inst, use_container_width=True, hide_index=True)
 
         if holders.get("insider_transactions") is not None:
             st.markdown("**Recent Insider Transactions**")
-            insider = holders["insider_transactions"].head(10)
+            insider = holders["insider_transactions"].head(10).copy()
+
+            # Clean up date
+            for col in insider.columns:
+                if "date" in col.lower() or "start" in col.lower():
+                    try:
+                        insider[col] = pd.to_datetime(insider[col]).dt.strftime("%Y-%m-%d")
+                    except Exception:
+                        pass
+
             st.dataframe(insider, use_container_width=True, hide_index=True)
 
 # --- Peers Tab ---
 with tab_peers:
-    st.info("Peer comparison coming soon — will show how this company compares to others in its sector.")
+    if not company.info.industry:
+        st.info("Industry data not available for peer comparison.")
+    else:
+        with st.spinner("Finding peers..."):
+            peers = _fetch_peers(company.info.sector, company.info.industry, company.ticker)
+
+        if not peers:
+            st.info("Could not find peer companies.")
+        else:
+            st.caption(f"Companies in **{company.info.industry}** ({company.info.sector})")
+
+            # Build comparison table
+            peer_rows = []
+            for p in peers:
+                peer_rows.append({
+                    "Company": f"{p.get('name', '')} ({p.get('ticker', '')})",
+                    "Price": f"${p.get('price', 0):,.2f}" if p.get("price") else "N/A",
+                    "Mkt Cap": format_large_number(p.get("market_cap")),
+                    "P/E": format_ratio(p.get("pe")),
+                    "P/B": format_ratio(p.get("pb")),
+                    "Margin": format_percentage(p.get("profit_margin")),
+                    "ROE": format_percentage(p.get("roe")),
+                    "Div Yield": format_percentage(p.get("div_yield")),
+                    "Beta": format_ratio(p.get("beta")),
+                })
+
+            peer_df = pd.DataFrame(peer_rows)
+            st.dataframe(peer_df, use_container_width=True, hide_index=True)
 
 # --- Analysts Tab ---
 with tab_analysts:
@@ -222,10 +292,18 @@ with tab_analysts:
     if recs is None:
         st.info("Analyst data not available.")
     else:
-        # Current consensus
         if len(recs) > 0:
             current = recs.iloc[0]
             st.markdown("**Current Analyst Consensus**")
+
+            total = sum([
+                int(current.get("strongBuy", 0)),
+                int(current.get("buy", 0)),
+                int(current.get("hold", 0)),
+                int(current.get("sell", 0)),
+                int(current.get("strongSell", 0)),
+            ])
+
             col1, col2, col3, col4, col5 = st.columns(5)
             col1.metric("Strong Buy", int(current.get("strongBuy", 0)))
             col2.metric("Buy", int(current.get("buy", 0)))
@@ -233,10 +311,19 @@ with tab_analysts:
             col4.metric("Sell", int(current.get("sell", 0)))
             col5.metric("Strong Sell", int(current.get("strongSell", 0)))
 
-            # Trend over months
+            if total > 0:
+                st.caption(f"Based on {total} analyst ratings")
+
+            # Trend over months with readable labels
             if len(recs) > 1:
                 st.markdown("**Recommendation Trend**")
-                st.dataframe(recs.head(6), use_container_width=True, hide_index=True)
+                trend = recs.head(6).copy()
+                period_labels = ["Current", "1 mo ago", "2 mo ago", "3 mo ago", "4 mo ago", "5 mo ago"]
+                trend["Period"] = period_labels[:len(trend)]
+                trend = trend.drop(columns=["period"], errors="ignore")
+                cols = ["Period"] + [c for c in trend.columns if c != "Period"]
+                trend = trend[cols]
+                st.dataframe(trend, use_container_width=True, hide_index=True)
 
 # --- News Tab ---
 with tab_news:
@@ -271,3 +358,75 @@ with tab_about:
             st.metric("Employees", f"{company.info.employees:,}")
     with col3:
         st.metric("Currency", company.info.currency)
+
+
+# === Helper Functions ===
+
+@st.cache_data(ttl=3600, show_spinner=False)
+def _fetch_peers(sector: str, industry: str, exclude_ticker: str) -> list[dict]:
+    """Fetch peer companies in the same industry with key metrics."""
+    import yfinance as yf
+    from yfinance.screener import EquityQuery, screen as yf_screen
+
+    try:
+        q = EquityQuery("and", [
+            EquityQuery("eq", ["sector", sector]),
+            EquityQuery("eq", ["industry", industry]),
+            EquityQuery("gt", ["intradaymarketcap", 1_000_000_000]),
+        ])
+        result = yf_screen(q, count=20, sortField="intradaymarketcap", sortAsc=False)
+
+        if not result or "quotes" not in result:
+            return []
+
+        # Filter: remove duplicates (same company on different exchanges) and self
+        seen_names = set()
+        tickers = []
+        for r in result["quotes"]:
+            symbol = r.get("symbol", "")
+            name = r.get("longName", r.get("shortName", ""))
+
+            # Skip self and duplicates
+            base_name = name.split(" ")[0].lower() if name else ""
+            if symbol == exclude_ticker or base_name in seen_names:
+                continue
+            if "." in symbol and symbol.split(".")[0] == exclude_ticker:
+                continue
+
+            seen_names.add(base_name)
+            tickers.append(symbol)
+
+            if len(tickers) >= 6:
+                break
+
+        # Fetch key ratios for each peer
+        peers = []
+        for t in tickers:
+            try:
+                stock = yf.Ticker(t)
+                info = stock.info
+                if not info or len(info) < 5:
+                    continue
+
+                div_yield = info.get("dividendYield")
+                if div_yield is not None:
+                    div_yield = div_yield / 100
+
+                peers.append({
+                    "ticker": t,
+                    "name": info.get("longName", info.get("shortName", t)),
+                    "price": info.get("currentPrice", info.get("previousClose")),
+                    "market_cap": info.get("marketCap"),
+                    "pe": info.get("trailingPE"),
+                    "pb": info.get("priceToBook"),
+                    "profit_margin": info.get("profitMargins"),
+                    "roe": info.get("returnOnEquity"),
+                    "div_yield": div_yield,
+                    "beta": info.get("beta"),
+                })
+            except Exception:
+                continue
+
+        return peers
+    except Exception:
+        return []

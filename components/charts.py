@@ -29,14 +29,20 @@ def price_chart(
         st.info("No price data available.")
         return
 
-    # Chart type selector
-    chart_type = st.segmented_control(
-        "Chart Type",
-        ["Line", "Candlestick", "Area"],
-        default="Line",
-        key=f"{chart_key}_type",
-        label_visibility="collapsed",
-    )
+    # Chart controls
+    col_type, col_sma = st.columns([2, 1])
+
+    with col_type:
+        chart_type = st.segmented_control(
+            "Chart Type",
+            ["Line", "Candlestick", "Area"],
+            default="Line",
+            key=f"{chart_key}_type",
+            label_visibility="collapsed",
+        )
+
+    with col_sma:
+        show_sma = st.toggle("SMA 50/200", value=False, key=f"{chart_key}_sma")
 
     # Handle both index-based and column-based dates
     if "Date" in df.columns:
@@ -83,6 +89,25 @@ def price_chart(
             name="Close",
             line=dict(color=CHART_COLORS["primary"], width=2),
         ))
+
+    # Add SMA overlays
+    if show_sma and len(df) > 50:
+        close = df["Close"]
+        sma50 = close.rolling(window=50).mean()
+        sma200 = close.rolling(window=200).mean()
+
+        fig.add_trace(go.Scatter(
+            x=x, y=sma50, mode="lines", name="SMA 50",
+            line=dict(color="#ff7f0e", width=1.5, dash="solid"),
+            opacity=0.7,
+        ))
+
+        if len(df) > 200:
+            fig.add_trace(go.Scatter(
+                x=x, y=sma200, mode="lines", name="SMA 200",
+                line=dict(color="#e377c2", width=1.5, dash="solid"),
+                opacity=0.7,
+            ))
 
     # Add event markers
     if events:

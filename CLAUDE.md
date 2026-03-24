@@ -93,6 +93,29 @@ tests/              → Tests for data, analysis, and cache
 - Metric cards have subtle background and border via `[data-testid="stMetric"]`.
 - Streamlit branding (header, footer, MainMenu) is hidden.
 
+## Self-Check After Every Feature — MANDATORY
+
+After completing any feature or significant change, run this checklist BEFORE committing:
+
+### Architecture Check
+- [ ] Does any `lib/` file import streamlit? (MUST be zero)
+- [ ] Does any `pages/` or `pages/company/` file import from `lib.data.providers` directly? (MUST be zero — use middleware)
+- [ ] Are all new data fetches going through middleware with cache? (check fundamentals.py or market.py)
+- [ ] When new fields are added to a provider, are they passed through middleware → model → page? (trace the full chain)
+
+### Code Quality Check
+- [ ] Is any file over 200 lines? If so, split it.
+- [ ] Is there duplicated logic? (same dict, same function, same pattern in 2+ places)
+- [ ] Are all percentages normalized consistently? (decimal form in models, format_percentage multiplies by 100)
+- [ ] Are new data types being cached with appropriate TTL?
+
+### Data Chain Check (for any new data field)
+1. Provider returns it in dict ✓
+2. Middleware passes it through cache ✓
+3. Model has the field ✓
+4. Page/component displays it ✓
+If any link is missing, the data will silently disappear.
+
 ## Documentation Maintenance — AUTOMATIC
 
 Whenever you make changes to the project, you MUST check if the following documents need updating. Do this automatically without the user asking:

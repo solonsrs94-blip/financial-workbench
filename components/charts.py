@@ -108,18 +108,11 @@ def _add_event_markers(
     date_min: pd.Timestamp,
     date_max: pd.Timestamp,
 ) -> None:
-    """Add earnings, dividend, and split markers to chart."""
-    # Build a date→close lookup for positioning markers
-    close_lookup = df["Close"].copy()
-    if "Date" in df.columns:
-        close_lookup.index = pd.to_datetime(df["Date"])
-    else:
-        close_lookup.index = pd.to_datetime(close_lookup.index)
-
+    """Add earnings, dividend, and split markers as vertical lines on the x-axis."""
     event_configs = {
-        "earnings": {"color": "#ff7f0e", "symbol": "triangle-up", "name": "Earnings"},
-        "dividends": {"color": "#2ca02c", "symbol": "diamond", "name": "Dividends"},
-        "splits": {"color": "#e377c2", "symbol": "star", "name": "Splits"},
+        "earnings": {"color": "rgba(255, 127, 14, 0.4)", "dash": "dot", "name": "Earnings", "icon": "E"},
+        "dividends": {"color": "rgba(44, 160, 44, 0.4)", "dash": "dash", "name": "Dividends", "icon": "D"},
+        "splits": {"color": "rgba(227, 119, 194, 0.6)", "dash": "solid", "name": "Splits", "icon": "S"},
     }
 
     for event_type, config in event_configs.items():
@@ -127,37 +120,29 @@ def _add_event_markers(
         if not items:
             continue
 
-        dates = []
-        prices = []
-        labels = []
-
         for item in items:
             d = pd.to_datetime(item["date"]).tz_localize(None)
             if d < date_min or d > date_max:
                 continue
 
-            # Find closest date in price data
-            idx = close_lookup.index.get_indexer([d], method="nearest")[0]
-            if idx >= 0 and idx < len(close_lookup):
-                dates.append(close_lookup.index[idx])
-                prices.append(close_lookup.iloc[idx])
-                labels.append(item.get("label", ""))
+            label = item.get("label", config["name"])
 
-        if dates:
-            fig.add_trace(go.Scatter(
-                x=dates,
-                y=prices,
-                mode="markers",
-                name=config["name"],
-                marker=dict(
-                    symbol=config["symbol"],
-                    size=10,
-                    color=config["color"],
-                    line=dict(width=1, color="white"),
+            # Vertical line from bottom to top
+            fig.add_vline(
+                x=d,
+                line_dash=config["dash"],
+                line_color=config["color"],
+                line_width=1,
+                annotation_text=config["icon"],
+                annotation_position="bottom",
+                annotation=dict(
+                    font_size=9,
+                    font_color=config["color"].replace("0.4", "0.8").replace("0.6", "0.9"),
+                    bgcolor="rgba(0,0,0,0.5)",
+                    borderpad=2,
+                    hovertext=label,
                 ),
-                text=labels,
-                hovertemplate="%{text}<extra>" + config["name"] + "</extra>",
-            ))
+            )
 
 
 def volume_chart(

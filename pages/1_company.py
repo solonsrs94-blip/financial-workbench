@@ -11,7 +11,7 @@ from components.ticker_search import render_ticker_search, is_force_refresh
 from components.layout import (
     page_header, data_status_banner,
     format_large_number, format_percentage, format_ratio,
-    format_volume, format_price,
+    format_volume, format_price, colored_metric,
 )
 from components.charts import price_chart, volume_chart
 from lib.data.fundamentals import get_company
@@ -237,8 +237,8 @@ st.divider()
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("P/E (TTM)", format_ratio(company.ratios.pe_trailing))
 col2.metric("EV/EBITDA", format_ratio(company.ratios.ev_ebitda))
-col3.metric("Profit Margin", format_percentage(company.ratios.profit_margin))
-col4.metric("ROE", format_percentage(company.ratios.roe))
+colored_metric(col3, "Profit Margin", company.ratios.profit_margin)
+colored_metric(col4, "ROE", company.ratios.roe)
 
 col1, col2, col3, col4 = st.columns(4)
 col1.metric("P/B", format_ratio(company.ratios.pb))
@@ -266,14 +266,14 @@ with tab_detail:
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("EPS (TTM)", format_price(company.ratios.eps_trailing))
     col2.metric("EPS (Fwd)", format_price(company.ratios.eps_forward))
-    col3.metric("Rev Growth", format_percentage(company.ratios.revenue_growth))
-    col4.metric("Earn Growth", format_percentage(company.ratios.earnings_growth))
+    colored_metric(col3, "Rev Growth", company.ratios.revenue_growth)
+    colored_metric(col4, "Earn Growth", company.ratios.earnings_growth)
 
     st.markdown("**Margins & Returns**")
     col1, col2, col3, col4 = st.columns(4)
-    col1.metric("Gross Margin", format_percentage(company.ratios.gross_margin))
-    col2.metric("Op. Margin", format_percentage(company.ratios.operating_margin))
-    col3.metric("ROA", format_percentage(company.ratios.roa))
+    colored_metric(col1, "Gross Margin", company.ratios.gross_margin)
+    colored_metric(col2, "Op. Margin", company.ratios.operating_margin)
+    colored_metric(col3, "ROA", company.ratios.roa)
     col4.metric("Payout Ratio", format_percentage(company.ratios.payout_ratio))
 
     st.markdown("**Trading**")

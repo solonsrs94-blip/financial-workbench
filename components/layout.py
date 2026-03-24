@@ -84,3 +84,36 @@ def format_price(value: float) -> str:
     if value is None:
         return "N/A"
     return f"${value:,.2f}"
+
+
+def colored_metric(
+    container, label: str, value: float,
+    formatter: str = "percentage", positive_good: bool = True,
+) -> None:
+    """Display a metric with green/red color based on value.
+    Use for growth rates, margins, and other directional metrics.
+    formatter: 'percentage', 'ratio', or 'price'
+    """
+    if value is None:
+        container.metric(label, "N/A")
+        return
+
+    if formatter == "percentage":
+        text = format_percentage(value)
+    elif formatter == "price":
+        text = format_price(value)
+    else:
+        text = format_ratio(value)
+
+    # Determine color
+    is_positive = value > 0
+    if not positive_good:
+        is_positive = not is_positive
+
+    color = "#2ca02c" if is_positive else "#d62728" if value < 0 else "#888"
+
+    container.markdown(
+        f'<div style="font-size: 14px; color: #888; margin-bottom: -10px;">{label}</div>'
+        f'<div style="font-size: 28px; font-weight: bold; color: {color};">{text}</div>',
+        unsafe_allow_html=True,
+    )

@@ -37,6 +37,12 @@ class CompanyPrice:
     high_52w: Optional[float] = None
     low_52w: Optional[float] = None
     beta: Optional[float] = None
+    target_mean: Optional[float] = None
+    target_median: Optional[float] = None
+    target_high: Optional[float] = None
+    target_low: Optional[float] = None
+    analyst_rating: Optional[str] = None
+    analyst_count: Optional[int] = None
 
 
 @dataclass

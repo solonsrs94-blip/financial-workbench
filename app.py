@@ -4,13 +4,20 @@ Run with: streamlit run app.py
 """
 
 import streamlit as st
-from config.settings import APP_NAME, APP_ICON
+from pathlib import Path
+from config.settings import APP_NAME, APP_ICON, ROOT_DIR
 
 st.set_page_config(
     page_title=APP_NAME,
     page_icon=APP_ICON,
     layout="wide",
+    initial_sidebar_state="expanded",
 )
+
+# Load custom CSS
+css_path = ROOT_DIR / "assets" / "styles" / "custom.css"
+if css_path.exists():
+    st.markdown(f"<style>{css_path.read_text()}</style>", unsafe_allow_html=True)
 
 st.title(f"{APP_ICON} {APP_NAME}")
 st.caption("Your personal financial analysis workbench")

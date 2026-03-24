@@ -83,6 +83,12 @@ def fetch_price_data(ticker: str) -> Optional[dict]:
             "high_52w": info.get("fiftyTwoWeekHigh"),
             "low_52w": info.get("fiftyTwoWeekLow"),
             "beta": info.get("beta"),
+            "target_mean": info.get("targetMeanPrice"),
+            "target_median": info.get("targetMedianPrice"),
+            "target_high": info.get("targetHighPrice"),
+            "target_low": info.get("targetLowPrice"),
+            "analyst_rating": info.get("averageAnalystRating"),
+            "analyst_count": info.get("numberOfAnalystOpinions"),
         }
     except Exception:
         return None

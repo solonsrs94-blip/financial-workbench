@@ -131,6 +131,12 @@ def _get_usd_rate(currency: str, cache: dict) -> float:
     return 0.0
 
 
+# Load custom CSS
+from config.settings import ROOT_DIR
+css_path = ROOT_DIR / "assets" / "styles" / "custom.css"
+if css_path.exists():
+    st.markdown(f"<style>{css_path.read_text()}</style>", unsafe_allow_html=True)
+
 page_header("Company Overview", "Search for any publicly traded company")
 
 # --- Ticker Search (with URL persistence) ---
@@ -179,6 +185,25 @@ with col_price:
 
 with col_cap:
     st.metric("Market Cap", format_large_number(company.price.market_cap))
+
+# === Analyst Price Target ===
+if company.price.target_mean and company.price.price:
+    target = company.price.target_mean
+    price = company.price.price
+    upside = ((target - price) / price) * 100
+    color = "#2ca02c" if upside > 0 else "#d62728"
+    rating = company.price.analyst_rating or ""
+    count = company.price.analyst_count or 0
+
+    st.markdown(f"""
+    <div style="display: flex; align-items: center; gap: 20px; padding: 8px 16px; background: rgba(28, 131, 225, 0.04); border-radius: 8px; border: 1px solid rgba(28, 131, 225, 0.1); margin: 5px 0;">
+        <span style="color: #888; font-size: 13px;">Analyst Target</span>
+        <span style="font-size: 18px; font-weight: bold;">${target:,.2f}</span>
+        <span style="color: {color}; font-size: 15px; font-weight: bold;">{upside:+.1f}%</span>
+        <span style="color: #888; font-size: 13px;">({rating})</span>
+        <span style="color: #666; font-size: 12px; margin-left: auto;">Range: ${company.price.target_low:,.2f} — ${company.price.target_high:,.2f} · {count} analysts</span>
+    </div>
+    """, unsafe_allow_html=True)
 
 # === 52-Week Range Bar ===
 if company.price.low_52w and company.price.high_52w and company.price.price:
@@ -288,6 +313,52 @@ with tab_detail:
     col2.metric("Quick Ratio", format_ratio(company.ratios.quick_ratio))
     col3.metric("", "")
     col4.metric("", "")
+
+    # Margin trend chart
+    with st.spinner("Loading margin trends..."):
+        fin_for_margins = yahoo.fetch_financials(ticker)
+    if fin_for_margins and fin_for_margins.get("income_statement") is not None:
+        inc = fin_for_margins["income_statement"]
+        years = [c.strftime("%Y") if hasattr(c, "strftime") else str(c) for c in inc.columns]
+        years_rev = list(reversed(years))
+
+        import plotly.graph_objects as go
+        from config.constants import CHART_TEMPLATE
+
+        margin_data = {}
+        for label, num_row, den_row in [
+            ("Gross Margin", ["Gross Profit", "GrossProfit"], ["Total Revenue", "TotalRevenue"]),
+            ("Op. Margin", ["Operating Income", "OperatingIncome", "EBIT"], ["Total Revenue", "TotalRevenue"]),
+            ("Net Margin", ["Net Income", "NetIncome"], ["Total Revenue", "TotalRevenue"]),
+        ]:
+            num = den = None
+            for r in num_row:
+                if r in inc.index:
+                    num = inc.loc[r]
+                    break
+            for r in den_row:
+                if r in inc.index:
+                    den = inc.loc[r]
+                    break
+            if num is not None and den is not None:
+                margins = [(num[y] / den[y] * 100) if den[y] and den[y] != 0 else None for y in inc.columns]
+                margin_data[label] = list(reversed(margins))
+
+        if margin_data:
+            st.markdown("**Margin Trends**")
+            fig = go.Figure()
+            colors = {"Gross Margin": "#2ca02c", "Op. Margin": "#ff7f0e", "Net Margin": "#1f77b4"}
+            for name, vals in margin_data.items():
+                fig.add_trace(go.Scatter(
+                    x=years_rev, y=vals, mode="lines+markers",
+                    name=name, line=dict(color=colors.get(name, "#888"), width=2),
+                ))
+            fig.update_layout(
+                template=CHART_TEMPLATE, height=280,
+                yaxis_title="%", margin=dict(l=0, r=0, t=10, b=0),
+                legend=dict(orientation="h", yanchor="bottom", y=1.02),
+            )
+            st.plotly_chart(fig, use_container_width=True)
 
 # --- Financials Tab ---
 with tab_financials:
@@ -443,8 +514,38 @@ with tab_ownership:
             st.dataframe(styled_inst, use_container_width=True, hide_index=True)
 
         if holders.get("insider_transactions") is not None:
+            # Net insider activity summary
+            insider_all = holders["insider_transactions"].copy()
+            if "Shares" in insider_all.columns and "Text" in insider_all.columns:
+                buys = insider_all[insider_all["Text"].str.contains("Purchase|Buy|Acquisition", case=False, na=False)]
+                sells = insider_all[insider_all["Text"].str.contains("Sale|Sell|Disposition", case=False, na=False)]
+                buy_count = len(buys)
+                sell_count = len(sells)
+
+                if buy_count > 0 or sell_count > 0:
+                    net = buy_count - sell_count
+                    if net > 0:
+                        sentiment = "Net Buying"
+                        color = "#2ca02c"
+                    elif net < 0:
+                        sentiment = "Net Selling"
+                        color = "#d62728"
+                    else:
+                        sentiment = "Neutral"
+                        color = "#888"
+
+                    st.markdown(f"""
+                    <div style="display: flex; align-items: center; gap: 15px; padding: 10px 16px; background: rgba(28, 131, 225, 0.04); border-radius: 8px; border: 1px solid rgba(28, 131, 225, 0.1); margin: 10px 0;">
+                        <span style="color: #888; font-size: 13px;">Insider Activity</span>
+                        <span style="color: {color}; font-size: 16px; font-weight: bold;">{sentiment}</span>
+                        <span style="color: #2ca02c; font-size: 13px;">{buy_count} buys</span>
+                        <span style="color: #888;">·</span>
+                        <span style="color: #d62728; font-size: 13px;">{sell_count} sells</span>
+                    </div>
+                    """, unsafe_allow_html=True)
+
             st.markdown("**Recent Insider Transactions**")
-            insider = holders["insider_transactions"].head(10).copy()
+            insider = insider_all.head(10).copy()
 
             # Clean up date
             for col in insider.columns:

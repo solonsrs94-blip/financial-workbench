@@ -1,7 +1,7 @@
 """Detail tab — valuation, earnings, margins, trading metrics."""
 
 import streamlit as st
-from components.layout import format_ratio, format_price, format_percentage, format_volume, colored_metric
+from components.layout import format_ratio, format_price, format_percentage, format_volume, format_large_number, colored_metric
 from lib.data.fundamentals import get_financials
 from models.company import Company
 
@@ -28,7 +28,7 @@ def render(company: Company, ticker: str) -> None:
     colored_metric(col3, "ROA", company.ratios.roa)
     col4.metric("Payout Ratio", format_percentage(company.ratios.payout_ratio))
 
-    st.markdown("**Trading**")
+    st.markdown("**Trading & Liquidity**")
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("52W High", format_price(company.price.high_52w))
     col2.metric("52W Low", format_price(company.price.low_52w))
@@ -38,16 +38,22 @@ def render(company: Company, ticker: str) -> None:
     col1, col2, col3, col4 = st.columns(4)
     col1.metric("Current Ratio", format_ratio(company.ratios.current_ratio))
     col2.metric("Quick Ratio", format_ratio(company.ratios.quick_ratio))
-    col3.metric("", "")
-    col4.metric("", "")
+    col3.metric("Short % Float", format_percentage(company.ratios.short_pct_float))
+    col4.metric("Shares Out", format_large_number(company.ratios.shares_outstanding))
 
-    # Margin trend chart
+    # Margin trend chart — reuse cached financials from session_state
     _render_margin_trends(ticker)
 
 
 def _render_margin_trends(ticker: str) -> None:
-    with st.spinner("Loading margin trends..."):
+    # Reuse cached financials instead of fetching again
+    cache_key = f"fin_data_{ticker}"
+    if cache_key in st.session_state:
+        fin_data = st.session_state[cache_key]
+    else:
         fin_data, _ = get_financials(ticker)
+        st.session_state[cache_key] = fin_data
+
     if not fin_data or fin_data.get("income_statement") is None:
         return
 

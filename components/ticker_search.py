@@ -64,7 +64,7 @@ def _render_search(default: str, key: str) -> str:
 
     # If it looks like a ticker (all caps, short), use directly
     if query.isupper() and len(query) <= 5 and query.isalpha():
-        return query
+        return query.upper()
 
     results = _search_with_cache(query)
 
@@ -74,7 +74,7 @@ def _render_search(default: str, key: str) -> str:
     # If exact ticker match found, use it directly
     for r in results:
         if r["ticker"].upper() == query.upper():
-            return r["ticker"]
+            return r["ticker"].upper()
 
     # Show search results for user to pick
     for r in results:
@@ -97,14 +97,8 @@ def _render_browse(key: str) -> str:
         "Full filtering by region, country, sector and exchange coming soon."
     )
 
-    categories = {
-        "Most Active": "most_actives",
-        "Day Gainers": "day_gainers",
-        "Day Losers": "day_losers",
-        "Undervalued Large Caps": "undervalued_large_caps",
-        "Growth Tech": "growth_technology_stocks",
-        "Small Cap Gainers": "small_cap_gainers",
-    }
+    from config.constants import SCREENER_CATEGORIES
+    categories = SCREENER_CATEGORIES
 
     selected_cat = st.segmented_control(
         "Category",

@@ -3,109 +3,120 @@
 import streamlit as st
 import pandas as pd
 from lib.data.fundamentals import get_financials
+from components.layout import format_large_number
+from pages.company.financials_helpers import get_key_rows, render_revenue_chart
 
 
 def render(ticker: str) -> None:
-    with st.spinner("Loading financials..."):
-        fin_data, _ = get_financials(ticker)
+    cache_key = f"fin_data_{ticker}"
+    if cache_key not in st.session_state:
+        with st.spinner("Loading financials..."):
+            st.session_state[cache_key], _ = get_financials(ticker)
+
+    fin_data = st.session_state[cache_key]
 
     if fin_data is None:
         st.info("Financial data not available.")
         return
 
-    # Revenue & Earnings chart
-    _render_revenue_chart(fin_data)
+    render_revenue_chart(fin_data)
+    _render_statement_table(fin_data)
 
-    # Statement selector and table
-    fin_type = st.segmented_control(
-        "Statement",
-        ["Income", "Balance Sheet", "Cash Flow"],
-        default="Income",
-        key="fin_type",
-        label_visibility="collapsed",
-    )
 
-    stmt_map = {
-        "Income": fin_data.get("income_statement"),
-        "Balance Sheet": fin_data.get("balance_sheet"),
-        "Cash Flow": fin_data.get("cash_flow"),
-    }
+@st.fragment
+def _render_statement_table(fin_data: dict) -> None:
+    """Statement sub-tab as a fragment — switching doesn't re-render the whole page."""
+    col_type, col_view = st.columns([3, 1])
 
-    df = stmt_map.get(fin_type)
+    with col_type:
+        fin_type = st.segmented_control(
+            "Statement", ["Income", "Balance Sheet", "Cash Flow"],
+            default="Income", key="fin_type", label_visibility="collapsed",
+        )
+
+    with col_view:
+        view = st.segmented_control(
+            "View", ["Annual", "TTM"],
+            default="Annual", key="fin_view", label_visibility="collapsed",
+        )
+
+    df = _get_statement_df(fin_data, fin_type, view)
+
     if df is not None and not df.empty:
-        df = df.copy()
-        df.columns = [c.strftime("%Y") if hasattr(c, "strftime") else str(c) for c in df.columns]
-        df.index = [str(i).replace("_", " ").title() if isinstance(i, str) else str(i) for i in df.index]
+        df = _format_columns(df)
+        df = _drop_sparse_columns(df)
 
-        display_df = df.map(_fmt_financial)
+        key_rows = get_key_rows(fin_type, df.index.tolist())
+        show_all = st.toggle("Show all line items", value=False, key="fin_show_all")
 
-        def _color_negative(val):
-            if isinstance(val, str) and val.startswith("-"):
-                return "color: #d62728"
-            return ""
+        if not show_all and key_rows:
+            display_df = df.loc[[r for r in key_rows if r in df.index]]
+        else:
+            display_df = df
 
-        styled_df = display_df.style.map(_color_negative)
-        st.dataframe(styled_df, use_container_width=True, height=500)
+        display_df = display_df.map(_fmt_financial)
+
+        styled = display_df.style.map(
+            lambda val: "color: #d62728" if isinstance(val, str) and val.startswith("-") else ""
+        )
+        st.dataframe(styled, use_container_width=True, height=min(len(display_df) * 38 + 50, 600))
     else:
         st.info(f"No {fin_type.lower()} data available.")
 
 
+def _get_statement_df(fin_data: dict, fin_type: str, view: str) -> pd.DataFrame:
+    """Get the appropriate DataFrame based on type and view selection."""
+    annual = {"Income": "income_statement", "Balance Sheet": "balance_sheet", "Cash Flow": "cash_flow"}
+    quarterly = {"Income": "quarterly_income", "Balance Sheet": "quarterly_balance", "Cash Flow": "quarterly_cashflow"}
+
+    if view == "TTM" and fin_type != "Balance Sheet":
+        qdf = fin_data.get(quarterly[fin_type])
+        if qdf is not None and not qdf.empty and qdf.shape[1] >= 4:
+            ttm = qdf.iloc[:, :4].sum(axis=1).to_frame("TTM")
+            df = pd.concat([ttm, qdf.iloc[:, :4]], axis=1)
+            df.columns = ["TTM"] + [
+                c.strftime("%b %Y") if hasattr(c, "strftime") else str(c) for c in qdf.columns[:4]
+            ]
+            return df
+
+    if view == "TTM" and fin_type == "Balance Sheet":
+        qdf = fin_data.get(quarterly[fin_type])
+        if qdf is not None and not qdf.empty:
+            return qdf.iloc[:, :4]
+
+    return fin_data.get(annual[fin_type])
+
+
+def _format_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Format column headers and index labels."""
+    df = df.copy()
+    formatted_cols = []
+    for c in df.columns:
+        if hasattr(c, "strftime"):
+            formatted_cols.append(c.strftime("%Y"))
+        else:
+            s = str(c)
+            if " 00:00:00" in s:
+                s = s.split(" ")[0]
+            if len(s) == 10 and s[4] == "-":
+                s = s[:4]
+            formatted_cols.append(s)
+    df.columns = formatted_cols
+    df.index = [str(i).replace("_", " ").title() if isinstance(i, str) else str(i) for i in df.index]
+    return df
+
+
+def _drop_sparse_columns(df: pd.DataFrame) -> pd.DataFrame:
+    """Drop columns where more than 70% of values are missing."""
+    for col in list(df.columns):
+        non_null = df[col].apply(lambda x: pd.notna(x) and x != 0).sum()
+        if non_null < len(df) * 0.3:
+            df = df.drop(columns=[col])
+    return df
+
+
 def _fmt_financial(x):
+    """Format financial numbers."""
     if not isinstance(x, (int, float)) or pd.isna(x):
         return ""
-    if abs(x) >= 1e9:
-        return f"{x / 1e9:.2f}B"
-    if abs(x) >= 1e6:
-        return f"{x / 1e6:.1f}M"
-    if abs(x) >= 1e3:
-        return f"{x / 1e3:.1f}K"
-    return f"{x:,.0f}"
-
-
-def _render_revenue_chart(fin_data: dict) -> None:
-    income_df = fin_data.get("income_statement")
-    if income_df is None or income_df.empty:
-        return
-
-    chart_df = income_df.copy()
-    chart_df.columns = [c.strftime("%Y") if hasattr(c, "strftime") else str(c) for c in chart_df.columns]
-
-    revenue_row = net_income_row = None
-    for label in ["Total Revenue", "TotalRevenue"]:
-        if label in chart_df.index:
-            revenue_row = chart_df.loc[label]
-            break
-    for label in ["Net Income", "NetIncome"]:
-        if label in chart_df.index:
-            net_income_row = chart_df.loc[label]
-            break
-
-    if revenue_row is None:
-        return
-
-    import plotly.graph_objects as go
-    from config.constants import CHART_TEMPLATE, CHART_COLORS
-
-    fig = go.Figure()
-    years = list(reversed(revenue_row.index.tolist()))
-    rev_vals = [revenue_row[y] / 1e9 for y in years]
-
-    fig.add_trace(go.Bar(
-        x=years, y=rev_vals, name="Revenue",
-        marker_color=CHART_COLORS["primary"],
-    ))
-
-    if net_income_row is not None:
-        ni_vals = [net_income_row[y] / 1e9 for y in years]
-        fig.add_trace(go.Bar(
-            x=years, y=ni_vals, name="Net Income",
-            marker_color=CHART_COLORS["positive"],
-        ))
-
-    fig.update_layout(
-        template=CHART_TEMPLATE, height=300,
-        yaxis_title="USD (Billions)", barmode="group",
-        margin=dict(l=0, r=0, t=10, b=0),
-        legend=dict(orientation="h", yanchor="bottom", y=1.02),
-    )
-    st.plotly_chart(fig, use_container_width=True)
+    return format_large_number(x, prefix="")

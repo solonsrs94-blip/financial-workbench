@@ -36,22 +36,23 @@ def data_status_banner(status: str) -> None:
         )
 
 
-def format_large_number(value: float) -> str:
-    """Format large numbers with suffix (e.g., 2.8T, 150B, 45M)."""
+def format_large_number(value: float, prefix: str = "$") -> str:
+    """Format large numbers with suffix (e.g., $2.8T, $150B, $45M).
+    Use prefix="" for non-currency numbers."""
     if value is None:
         return "N/A"
 
     abs_value = abs(value)
     if abs_value >= 1_000_000_000_000:
-        return f"${value / 1_000_000_000_000:.2f}T"
+        return f"{prefix}{value / 1_000_000_000_000:.2f}T"
     elif abs_value >= 1_000_000_000:
-        return f"${value / 1_000_000_000:.2f}B"
+        return f"{prefix}{value / 1_000_000_000:.2f}B"
     elif abs_value >= 1_000_000:
-        return f"${value / 1_000_000:.2f}M"
+        return f"{prefix}{value / 1_000_000:.2f}M"
     elif abs_value >= 1_000:
-        return f"${value / 1_000:.2f}K"
+        return f"{prefix}{value / 1_000:.2f}K"
     else:
-        return f"${value:.2f}"
+        return f"{prefix}{value:.2f}"
 
 
 def format_percentage(value: float) -> str:

@@ -5,8 +5,12 @@ from lib.data.fundamentals import get_recommendations
 
 
 def render(ticker: str) -> None:
-    with st.spinner("Loading analyst data..."):
-        recs, _ = get_recommendations(ticker)
+    cache_key = f"recs_{ticker}"
+    if cache_key not in st.session_state:
+        with st.spinner("Loading analyst data..."):
+            st.session_state[cache_key], _ = get_recommendations(ticker)
+
+    recs = st.session_state[cache_key]
 
     if recs is None:
         st.info("Analyst data not available.")

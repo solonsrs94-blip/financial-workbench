@@ -14,6 +14,7 @@ from typing import Optional, Tuple
 
 from lib import cache
 from lib.data.providers import yahoo
+from lib.data.serialization import serialize_df_dict, restore_df_dict
 from models.company import Company, CompanyInfo, CompanyPrice, CompanyRatios
 
 logger = logging.getLogger(__name__)
@@ -92,6 +93,9 @@ def _build_company(data: dict) -> Company:
         target_low=price_data.get("target_low"),
         analyst_rating=price_data.get("analyst_rating"),
         analyst_count=price_data.get("analyst_count"),
+        dividend_rate=price_data.get("dividend_rate"),
+        ex_dividend_date=price_data.get("ex_dividend_date"),
+        next_earnings_date=price_data.get("next_earnings_date"),
     )
 
     company_ratios = CompanyRatios(**{
@@ -118,16 +122,16 @@ def get_financials(
     if not force_refresh:
         cached = cache.get(cache_key)
         if cached is not None:
-            return _restore_df_dict(cached), "fresh"
+            return restore_df_dict(cached), "fresh"
 
     data = yahoo.fetch_financials(ticker)
     if data is not None:
-        cache.store(cache_key, _serialize_df_dict(data), provider="yahoo", ttl_key="financials")
+        cache.store(cache_key, serialize_df_dict(data), provider="yahoo", ttl_key="financials")
         return data, "fresh"
 
     stale = cache.get_stale(cache_key)
     if stale is not None:
-        return _restore_df_dict(stale), "stale"
+        return restore_df_dict(stale), "stale"
 
     return None, "error"
 
@@ -142,16 +146,16 @@ def get_holders(
     if not force_refresh:
         cached = cache.get(cache_key)
         if cached is not None:
-            return _restore_df_dict(cached), "fresh"
+            return restore_df_dict(cached), "fresh"
 
     data = yahoo.fetch_holders(ticker)
     if data is not None:
-        cache.store(cache_key, _serialize_df_dict(data), provider="yahoo", ttl_key="insider")
+        cache.store(cache_key, serialize_df_dict(data), provider="yahoo", ttl_key="insider")
         return data, "fresh"
 
     stale = cache.get_stale(cache_key)
     if stale is not None:
-        return _restore_df_dict(stale), "stale"
+        return restore_df_dict(stale), "stale"
 
     return None, "error"
 
@@ -226,32 +230,3 @@ def get_events(
         return stale, "stale"
 
     return {"earnings": [], "dividends": [], "splits": []}, "error"
-
-
-# --- DataFrame serialization helpers ---
-
-def _serialize_df_dict(data: dict) -> dict:
-    """Convert dict containing DataFrames to JSON-serializable dict."""
-    result = {}
-    for k, v in data.items():
-        if isinstance(v, pd.DataFrame) and not v.empty:
-            # Convert column names to strings (they may be Timestamps)
-            df = v.copy()
-            df.columns = [str(c) for c in df.columns]
-            result[k] = df.reset_index().to_dict(orient="list")
-        elif isinstance(v, pd.DataFrame):
-            result[k] = None
-        else:
-            result[k] = v
-    return result
-
-
-def _restore_df_dict(data: dict) -> dict:
-    """Restore dict containing serialized DataFrames."""
-    result = {}
-    for k, v in data.items():
-        if isinstance(v, dict) and any(isinstance(val, list) for val in v.values()):
-            result[k] = pd.DataFrame(v)
-        else:
-            result[k] = v
-    return result

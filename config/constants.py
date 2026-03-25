@@ -70,3 +70,21 @@ PERIOD_DAYS = {
     "1mo": 30, "3mo": 90, "6mo": 180,
     "1y": 365, "2y": 730, "5y": 1825,
 }
+
+# --- Session state cache key prefixes ---
+# Used for clearing all cached data when ticker changes.
+# ADD NEW PREFIXES HERE when adding new cached data types.
+SESSION_CACHE_PREFIXES = (
+    "company_", "price_", "events_", "fin_data_",
+    "holders_", "recs_", "news_", "peer_medians_",
+)
+
+# --- Yahoo Screener categories for Browse ---
+SCREENER_CATEGORIES = {
+    "Most Active": "most_actives",
+    "Day Gainers": "day_gainers",
+    "Day Losers": "day_losers",
+    "Undervalued Large Caps": "undervalued_large_caps",
+    "Growth Tech": "growth_technology_stocks",
+    "Small Cap Gainers": "small_cap_gainers",
+}

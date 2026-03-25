@@ -67,6 +67,17 @@ def fetch_all_info(ticker: str) -> Optional[dict]:
     if div_yield is not None:
         div_yield = div_yield / 100
 
+    # Convert Unix timestamps to ISO date strings
+    from datetime import datetime
+
+    def _ts_to_date(ts):
+        if ts:
+            try:
+                return datetime.fromtimestamp(ts).strftime("%Y-%m-%d")
+            except (OSError, ValueError):
+                return None
+        return None
+
     return {
         "info": {
             "ticker": ticker.upper(),
@@ -96,6 +107,9 @@ def fetch_all_info(ticker: str) -> Optional[dict]:
             "target_low": info.get("targetLowPrice"),
             "analyst_rating": info.get("averageAnalystRating"),
             "analyst_count": info.get("numberOfAnalystOpinions"),
+            "dividend_rate": info.get("dividendRate"),
+            "ex_dividend_date": _ts_to_date(info.get("exDividendDate")),
+            "next_earnings_date": _ts_to_date(info.get("earningsTimestampStart")),
         },
         "ratios": {
             "pe_trailing": info.get("trailingPE"),
@@ -119,6 +133,8 @@ def fetch_all_info(ticker: str) -> Optional[dict]:
             "eps_forward": info.get("forwardEps"),
             "revenue_growth": info.get("revenueGrowth"),
             "earnings_growth": info.get("earningsGrowth"),
+            "short_pct_float": info.get("shortPercentOfFloat"),
+            "shares_outstanding": info.get("sharesOutstanding"),
         },
     }
 
@@ -140,16 +156,22 @@ def fetch_price_history(
 
 
 def fetch_financials(ticker: str) -> Optional[dict]:
-    """Fetch financial statements (income, balance sheet, cash flow)."""
+    """Fetch annual and quarterly financial statements."""
     try:
         stock = yf.Ticker(ticker)
         income = stock.income_stmt
         balance = stock.balance_sheet
         cashflow = stock.cashflow
+        q_income = stock.quarterly_income_stmt
+        q_balance = stock.quarterly_balance_sheet
+        q_cashflow = stock.quarterly_cashflow
         return {
             "income_statement": income if income is not None and not income.empty else None,
             "balance_sheet": balance if balance is not None and not balance.empty else None,
             "cash_flow": cashflow if cashflow is not None and not cashflow.empty else None,
+            "quarterly_income": q_income if q_income is not None and not q_income.empty else None,
+            "quarterly_balance": q_balance if q_balance is not None and not q_balance.empty else None,
+            "quarterly_cashflow": q_cashflow if q_cashflow is not None and not q_cashflow.empty else None,
         }
     except Exception as e:
         logger.error("Financials failed for %s: %s", ticker, e)

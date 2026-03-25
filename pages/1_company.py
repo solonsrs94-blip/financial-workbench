@@ -8,18 +8,16 @@ import pandas as pd
 from datetime import timedelta
 
 from components.ticker_search import render_ticker_search, is_force_refresh
-from components.layout import (
-    page_header, data_status_banner, load_css,
-    format_large_number, format_percentage, format_ratio, colored_metric,
-)
+from components.layout import page_header, data_status_banner, load_css
 from components.charts import price_chart, volume_chart
 from lib.data.fundamentals import get_company, get_events
 from lib.data.market import get_price_history
-from config.constants import PERIOD_DAYS
+from config.constants import PERIOD_DAYS, SESSION_CACHE_PREFIXES
 
 # Tab modules
 from pages.company import detail_tab, financials_tab, ownership_tab
 from pages.company import peers_tab, analysts_tab, news_tab, about_tab
+from pages.company.header import render_header, render_key_metrics, calc_peer_medians
 
 load_css()
 
@@ -27,12 +25,14 @@ page_header("Company Overview", "Search for any publicly traded company")
 
 # --- Ticker Search (with URL persistence) ---
 params = st.query_params
-saved_ticker = params.get("ticker", "")
+saved_ticker = params.get("ticker", "").upper()
 
 ticker = render_ticker_search(default=saved_ticker)
 
 if not ticker:
     st.stop()
+
+ticker = ticker.upper()
 
 if ticker != saved_ticker:
     st.query_params["ticker"] = ticker
@@ -40,8 +40,21 @@ if ticker != saved_ticker:
 # --- Load Data ---
 force_refresh = is_force_refresh()
 
-with st.spinner(f"Loading {ticker}..."):
-    company, status = get_company(ticker, force_refresh=force_refresh)
+# Clear session cache on force refresh or ticker change
+if force_refresh or st.session_state.get("_cached_ticker") != ticker:
+    for key in list(st.session_state.keys()):
+        if key.startswith(SESSION_CACHE_PREFIXES):
+            del st.session_state[key]
+    st.session_state["_cached_ticker"] = ticker
+
+# Cache company data in session_state
+company_key = f"company_{ticker}"
+if company_key not in st.session_state:
+    with st.spinner(f"Loading {ticker}..."):
+        st.session_state[company_key], st.session_state[f"company_status_{ticker}"] = get_company(ticker, force_refresh=force_refresh)
+
+company = st.session_state[company_key]
+status = st.session_state.get(f"company_status_{ticker}", "fresh")
 
 data_status_banner(status)
 
@@ -50,63 +63,7 @@ if company is None:
     st.stop()
 
 # === HEADER ===
-col_name, col_price, col_cap = st.columns([3, 1, 1])
-
-with col_name:
-    st.subheader(f"{company.name} ({company.ticker})")
-    if company.info.sector:
-        st.caption(
-            f"{company.info.sector} · {company.info.industry} · "
-            f"{company.info.exchange} · {company.info.country}"
-        )
-
-with col_price:
-    if company.price.price is not None:
-        st.metric(
-            "Price",
-            f"${company.price.price:.2f}",
-            delta=f"{company.price.change_pct:.2f}%" if company.price.change_pct is not None else None,
-        )
-
-with col_cap:
-    st.metric("Market Cap", format_large_number(company.price.market_cap))
-
-# === Analyst Price Target ===
-if company.price.target_mean and company.price.price:
-    target = company.price.target_mean
-    price = company.price.price
-    upside = ((target - price) / price) * 100
-    color = "#2ca02c" if upside > 0 else "#d62728"
-    rating = company.price.analyst_rating or ""
-    count = company.price.analyst_count or 0
-
-    st.markdown(f"""
-    <div style="display: flex; align-items: center; gap: 20px; padding: 8px 16px; background: rgba(28, 131, 225, 0.04); border-radius: 8px; border: 1px solid rgba(28, 131, 225, 0.1); margin: 5px 0;">
-        <span style="color: #888; font-size: 13px;">Analyst Target</span>
-        <span style="font-size: 18px; font-weight: bold;">${target:,.2f}</span>
-        <span style="color: {color}; font-size: 15px; font-weight: bold;">{upside:+.1f}%</span>
-        <span style="color: #888; font-size: 13px;">({rating})</span>
-        <span style="color: #666; font-size: 12px; margin-left: auto;">Range: ${company.price.target_low:,.2f} — ${company.price.target_high:,.2f} · {count} analysts</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-# === 52-Week Range Bar ===
-if company.price.low_52w and company.price.high_52w and company.price.price:
-    low = company.price.low_52w
-    high = company.price.high_52w
-    price = company.price.price
-    if high > low:
-        pct = max(0.0, min(1.0, (price - low) / (high - low)))
-        st.markdown(f"""
-        <div style="display: flex; align-items: center; gap: 10px; margin: 5px 0 15px 0;">
-            <span style="color: #888; font-size: 13px;">${low:,.2f}</span>
-            <div style="flex: 1; height: 8px; background: linear-gradient(to right, #d62728, #ff7f0e, #2ca02c); border-radius: 4px; position: relative;">
-                <div style="position: absolute; left: {pct*100:.1f}%; top: -4px; width: 3px; height: 16px; background: white; border-radius: 2px; box-shadow: 0 0 3px rgba(0,0,0,0.5);"></div>
-            </div>
-            <span style="color: #888; font-size: 13px;">${high:,.2f}</span>
-        </div>
-        <div style="text-align: center; color: #888; font-size: 11px; margin-top: -10px;">52-Week Range</div>
-        """, unsafe_allow_html=True)
+render_header(company)
 
 # === CHART ===
 col_period, col_interval = st.columns([2, 1])
@@ -136,11 +93,19 @@ yf_interval = interval_map.get(interval, "1d")
 sma_extended = {"1mo": "6mo", "3mo": "1y", "6mo": "2y", "1y": "5y", "2y": "5y", "5y": "max", "max": "max"}
 fetch_period = sma_extended.get(period, period)
 
-price_df, price_status = get_price_history(
-    ticker, period=fetch_period, interval=yf_interval, force_refresh=force_refresh,
-)
+# Cache price data per period+interval combo
+price_cache_key = f"price_{ticker}_{fetch_period}_{yf_interval}"
+if price_cache_key not in st.session_state:
+    st.session_state[price_cache_key], _ = get_price_history(
+        ticker, period=fetch_period, interval=yf_interval, force_refresh=force_refresh,
+    )
+price_df = st.session_state[price_cache_key]
 
-chart_events, _ = get_events(ticker)
+# Cache events
+events_key = f"events_{ticker}"
+if events_key not in st.session_state:
+    st.session_state[events_key], _ = get_events(ticker)
+chart_events = st.session_state[events_key]
 
 price_chart(price_df, title="", events=chart_events, interval=yf_interval, visible_period=period)
 
@@ -154,21 +119,13 @@ else:
 volume_chart(volume_df)
 
 # === KEY METRICS ===
-st.divider()
+_peer_med_key = f"peer_medians_{ticker}"
+if _peer_med_key not in st.session_state:
+    st.session_state[_peer_med_key] = calc_peer_medians(
+        company.info.sector or "", company.info.industry or "", ticker
+    )
 
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("P/E (TTM)", format_ratio(company.ratios.pe_trailing))
-col2.metric("EV/EBITDA", format_ratio(company.ratios.ev_ebitda))
-colored_metric(col3, "Profit Margin", company.ratios.profit_margin)
-colored_metric(col4, "ROE", company.ratios.roe)
-
-col1, col2, col3, col4 = st.columns(4)
-col1.metric("P/B", format_ratio(company.ratios.pb))
-col2.metric("D/E", format_ratio(company.ratios.debt_to_equity))
-col3.metric("Div Yield", format_percentage(company.ratios.dividend_yield))
-col4.metric("Beta", format_ratio(company.price.beta))
-
-st.divider()
+render_key_metrics(company, st.session_state[_peer_med_key])
 
 # === TABS ===
 tab_detail, tab_financials, tab_ownership, tab_peers, tab_analysts, tab_news, tab_about = st.tabs(

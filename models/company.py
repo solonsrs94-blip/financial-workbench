@@ -43,6 +43,9 @@ class CompanyPrice:
     target_low: Optional[float] = None
     analyst_rating: Optional[str] = None
     analyst_count: Optional[int] = None
+    dividend_rate: Optional[float] = None
+    ex_dividend_date: Optional[str] = None
+    next_earnings_date: Optional[str] = None
 
 
 @dataclass
@@ -69,6 +72,8 @@ class CompanyRatios:
     eps_forward: Optional[float] = None
     revenue_growth: Optional[float] = None
     earnings_growth: Optional[float] = None
+    short_pct_float: Optional[float] = None
+    shares_outstanding: Optional[float] = None
 
 
 @dataclass

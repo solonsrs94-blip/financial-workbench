@@ -43,8 +43,8 @@ def _render_statement_table(fin_data: dict) -> None:
     df = _get_statement_df(fin_data, fin_type, view)
 
     if df is not None and not df.empty:
-        df = _format_columns(df)
         df = _drop_sparse_columns(df)
+        df = _format_columns(df)
 
         key_rows = get_key_rows(fin_type, df.index.tolist())
         show_all = st.toggle("Show all line items", value=False, key="fin_show_all")
@@ -88,30 +88,55 @@ def _get_statement_df(fin_data: dict, fin_type: str, view: str) -> pd.DataFrame:
 
 
 def _format_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Format column headers and index labels."""
+    """Format column headers and index labels. Ensures unique column names."""
     df = df.copy()
     formatted_cols = []
     for c in df.columns:
         if hasattr(c, "strftime"):
-            formatted_cols.append(c.strftime("%Y"))
+            # Use YYYY-MM for quarterly, YYYY for annual (if only one per year)
+            s = c.strftime("%Y")
         else:
             s = str(c)
             if " 00:00:00" in s:
                 s = s.split(" ")[0]
+            # Only shorten to year if it won't create duplicates
             if len(s) == 10 and s[4] == "-":
                 s = s[:4]
-            formatted_cols.append(s)
+        formatted_cols.append(s)
+
+    # If duplicates exist, use YYYY-MM format instead
+    if len(formatted_cols) != len(set(formatted_cols)):
+        formatted_cols = []
+        for c in df.columns:
+            if hasattr(c, "strftime"):
+                formatted_cols.append(c.strftime("%b %Y"))
+            else:
+                s = str(c)
+                if " 00:00:00" in s:
+                    s = s.split(" ")[0]
+                formatted_cols.append(s)
+
     df.columns = formatted_cols
     df.index = [str(i).replace("_", " ").title() if isinstance(i, str) else str(i) for i in df.index]
     return df
 
 
 def _drop_sparse_columns(df: pd.DataFrame) -> pd.DataFrame:
-    """Drop columns where more than 70% of values are missing."""
-    for col in list(df.columns):
-        non_null = df[col].apply(lambda x: pd.notna(x) and x != 0).sum()
-        if non_null < len(df) * 0.3:
-            df = df.drop(columns=[col])
+    """Drop columns where more than 70% of values are missing.
+    Called BEFORE _format_columns to avoid duplicate column name issues."""
+    cols_to_drop = []
+    for i, col in enumerate(df.columns):
+        try:
+            series = df.iloc[:, i]
+            non_null = series.apply(
+                lambda x: bool(pd.notna(x) and x != 0) if not isinstance(x, (pd.Series, pd.DataFrame)) else False
+            ).sum()
+            if non_null < len(df) * 0.3:
+                cols_to_drop.append(i)
+        except Exception:
+            continue
+    if cols_to_drop:
+        df = df.drop(df.columns[cols_to_drop], axis=1)
     return df
 
 

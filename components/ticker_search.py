@@ -4,7 +4,7 @@ Also provides a browse/explore mode for discovery.
 """
 
 import streamlit as st
-from lib.data.providers.yahoo import search_companies
+from lib.data.search import search_companies
 
 
 def render_ticker_search(

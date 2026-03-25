@@ -58,11 +58,27 @@ def _render_margin_trends(ticker: str) -> None:
         return
 
     inc = fin_data["income_statement"]
-    years = [c.strftime("%Y") if hasattr(c, "strftime") else str(c) for c in inc.columns]
-    years_rev = list(reversed(years))
+    all_years = [c.strftime("%Y") if hasattr(c, "strftime") else str(c).split(" ")[0][:4] for c in inc.columns]
 
     import plotly.graph_objects as go
+    import pandas as pd
     from config.constants import CHART_TEMPLATE
+
+    # Find revenue row to determine which years have data
+    rev_row = None
+    for r in ["Total Revenue", "TotalRevenue"]:
+        if r in inc.index:
+            rev_row = inc.loc[r]
+            break
+
+    # Only include years with revenue data
+    valid_cols = [
+        (y, c) for y, c in zip(all_years, inc.columns)
+        if rev_row is not None and pd.notna(rev_row[c]) and rev_row[c] != 0
+    ]
+    valid_years = [y for y, _ in valid_cols]
+    valid_columns = [c for _, c in valid_cols]
+    years_rev = list(reversed(valid_years))
 
     margin_data = {}
     for label, num_rows, den_rows in [
@@ -80,7 +96,7 @@ def _render_margin_trends(ticker: str) -> None:
                 den = inc.loc[r]
                 break
         if num is not None and den is not None:
-            margins = [(num[y] / den[y] * 100) if den[y] and den[y] != 0 else None for y in inc.columns]
+            margins = [(num[c] / den[c] * 100) if den[c] and den[c] != 0 else None for c in valid_columns]
             margin_data[label] = list(reversed(margins))
 
     if not margin_data:
@@ -98,5 +114,6 @@ def _render_margin_trends(ticker: str) -> None:
         template=CHART_TEMPLATE, height=280,
         yaxis_title="%", margin=dict(l=0, r=0, t=10, b=0),
         legend=dict(orientation="h", yanchor="bottom", y=1.02),
+        xaxis=dict(type="category"),  # Force category axis — no date interpolation
     )
     st.plotly_chart(fig, use_container_width=True)

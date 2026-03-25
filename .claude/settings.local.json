@@ -12,7 +12,18 @@
       "Bash(taskkill //F //PID 19412)",
       "Bash(./venv/Scripts/python -c \":*)",
       "mcp__Claude_Preview__preview_start",
-      "Bash(wc -l \"C:/Users/Notandi/Desktop/Vision/pages/1_company.py\" \"C:/Users/Notandi/Desktop/Vision/pages/company/\"*.py \"C:/Users/Notandi/Desktop/Vision/lib/analysis/peers.py\")"
+      "Bash(wc -l \"C:/Users/Notandi/Desktop/Vision/pages/1_company.py\" \"C:/Users/Notandi/Desktop/Vision/pages/company/\"*.py \"C:/Users/Notandi/Desktop/Vision/lib/analysis/peers.py\")",
+      "Bash(chmod +x \"C:/Users/Notandi/Desktop/Vision/.git/hooks/pre-commit\")",
+      "Bash(bash .git/hooks/pre-commit)",
+      "Bash(./venv/Scripts/python -c \"import streamlit; print\\(streamlit.__version__\\)\")",
+      "Bash(wc -l C:UsersNotandiDesktopVision/*.py C:UsersNotandiDesktopVisioncomponents/*.py C:UsersNotandiDesktopVisionconfig/*.py C:UsersNotandiDesktopVisionlib/*.py C:UsersNotandiDesktopVisionlibdataproviders/*.py C:UsersNotandiDesktopVisionlibdata/*.py C:UsersNotandiDesktopVisionlibanalysis/*.py C:UsersNotandiDesktopVisionmodels/*.py C:UsersNotandiDesktopVisionpagescompany/*.py)",
+      "Bash(xargs wc:*)",
+      "Bash(grep -n \"st.plotly_chart\\\\|st.dataframe\" pages/1_company.py pages/company/*.py)",
+      "Bash(find pages/ components/ lib/ models/ config/ -name \"*.py\" -not -path \"*__pycache__*\" -exec wc -l {} +)",
+      "Bash(wc -l /c/Users/Notandi/Desktop/Vision/pages/*.py /c/Users/Notandi/Desktop/Vision/pages/company/*.py /c/Users/Notandi/Desktop/Vision/components/*.py /c/Users/Notandi/Desktop/Vision/lib/*.py /c/Users/Notandi/Desktop/Vision/lib/data/*.py /c/Users/Notandi/Desktop/Vision/lib/data/providers/*.py /c/Users/Notandi/Desktop/Vision/lib/analysis/*.py /c/Users/Notandi/Desktop/Vision/models/*.py /c/Users/Notandi/Desktop/Vision/config/*.py /c/Users/Notandi/Desktop/Vision/app.py)",
+      "Bash(python3 -m py_compile pages/1_company.py pages/company/header.py pages/company/detail_tab.py)",
+      "Bash(grep -n \"lambda\\\\|f\"\".*:.2f\" /c/Users/Notandi/Desktop/Vision/pages/company/*.py)",
+      "Bash(ls -la /c/Users/Notandi/Desktop/Vision/pages/company/*.tmp*)"
     ]
   }
 }

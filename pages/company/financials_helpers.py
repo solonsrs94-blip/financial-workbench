@@ -1,6 +1,7 @@
 """Financials tab helpers — key row definitions and revenue chart."""
 
 import streamlit as st
+import pandas as pd
 import plotly.graph_objects as go
 from config.constants import CHART_TEMPLATE, CHART_COLORS
 
@@ -43,7 +44,10 @@ def render_revenue_chart(fin_data: dict) -> None:
         return
 
     chart_df = income_df.copy()
-    chart_df.columns = [c.strftime("%Y") if hasattr(c, "strftime") else str(c) for c in chart_df.columns]
+    chart_df.columns = [
+        c.strftime("%Y") if hasattr(c, "strftime") else str(c).split(" ")[0][:4]
+        for c in chart_df.columns
+    ]
 
     revenue_row = _find_row(chart_df, ["Total Revenue", "TotalRevenue"])
     net_income_row = _find_row(chart_df, ["Net Income", "NetIncome"])
@@ -51,10 +55,14 @@ def render_revenue_chart(fin_data: dict) -> None:
     if revenue_row is None:
         return
 
-    fig = go.Figure()
-    years = list(reversed(revenue_row.index.tolist()))
+    # Skip years with no revenue data
+    all_years = list(reversed(revenue_row.index.tolist()))
+    years = [y for y in all_years if pd.notna(revenue_row[y]) and revenue_row[y] != 0]
+    if not years:
+        return
     rev_vals = [revenue_row[y] / 1e9 for y in years]
 
+    fig = go.Figure()
     fig.add_trace(go.Bar(
         x=years, y=rev_vals, name="Revenue",
         marker_color=CHART_COLORS["primary"],
@@ -72,6 +80,7 @@ def render_revenue_chart(fin_data: dict) -> None:
         yaxis_title="USD (Billions)", barmode="group",
         margin=dict(l=0, r=0, t=10, b=0),
         legend=dict(orientation="h", yanchor="bottom", y=1.02),
+        xaxis=dict(type="category"),  # Force category axis — no date interpolation
     )
     st.plotly_chart(fig, use_container_width=True)
 

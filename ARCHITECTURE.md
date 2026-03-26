@@ -97,10 +97,16 @@ Vision/
 │
 │   (Undirhlutar — verða til þegar skjár stækka)
 │   ├── valuation/
-│   │   ├── assumptions.py              ← Forsendur UI
-│   │   ├── dcf_panel.py                ← DCF útreikningur UI
+│   │   ├── dcf_panel.py                ← DCF routing (Simple/Complex toggle)
+│   │   ├── dcf_simple_ui.py            ← Simple DCF UI (3-phase growth)
+│   │   ├── dcf_complex_ui.py           ← Complex DCF UI (step-by-step IB-grade)
+│   │   ├── dcf_helpers.py              ← Data extraction for DCF
+│   │   ├── dcf_results.py              ← Shared results display
+│   │   ├── wacc_panel.py               ← WACC calculator (methodology choices)
+│   │   ├── wacc_helpers.py             ← WACC data extraction
 │   │   ├── comps_panel.py              ← Comps tafla UI
-│   │   └── results.py                  ← Niðurstöður og rökstuðningur
+│   │   ├── comps_helpers.py            ← Comps data helpers
+│   │   └── workspace_panel.py          ← Investment thesis notes
 │   ├── chart/
 │   │   ├── candlestick.py              ← Kertastjakagraf
 │   │   ├── indicators.py              ← RSI, MACD, Volume panels
@@ -150,7 +156,8 @@ Vision/
 │   ├── data/
 │   │   ├── providers/                  ← Einstakar gagnaveitur
 │   │   │   ├── yahoo.py                ← Verð, fjárhagur, hlutföll, arðir, options
-│   │   │   ├── damodaran.py            ← ERP, beta, CRP, spreads
+│   │   │   ├── yahoo_valuation.py      ← BS/CF/IS smáatriði + analyst estimates
+│   │   │   ├── damodaran.py            ← ERP, beta, CRP, spreads ✅
 │   │   │   ├── edgar.py                ← SEC skráningar, skuldir
 │   │   │   ├── fred.py                 ← Vextir, verðbólga, atvinnuleysi
 │   │   │   ├── news.py                 ← RSS feeds og fréttir
@@ -160,12 +167,24 @@ Vision/
 │   │   │
 │   │   ├── market.py                   ← Mellanlags-lag: verð, söguleg gögn
 │   │   ├── fundamentals.py             ← Mellanlags-lag: fjárhagur, hlutföll
+│   │   ├── valuation_data.py           ← Mellanlags-lag: virðismat (Rf, Damodaran, BS/CF)
+│   │   ├── peer_data.py                ← Mellanlags-lag: peer fjárhagsgögn
 │   │   └── macro.py                    ← Mellanlags-lag: þjóðhagsgögn
 │   │
 │   │   ── ÚTREIKNINGAR OG GREINING ──
 │   │
 │   ├── analysis/
-│   │   ├── valuation.py                ← CAPM, WACC, DCF, comps
+│   │   ├── valuation/                  ← Virðismatsundirmappa ✅
+│   │   │   ├── wacc.py                 ← WACC (CAPM, beta, cost of debt)
+│   │   │   ├── simple_dcf.py           ← Simple DCF (3-phase growth)
+│   │   │   ├── complex_dcf.py          ← Complex DCF (IB-grade)
+│   │   │   ├── three_stmt.py           ← 3-Statement model (IS/BS/CF)
+│   │   │   ├── terminal.py             ← Terminal value calculations
+│   │   │   ├── equity_bridge.py        ← EV → equity per share
+│   │   │   ├── sensitivity.py          ← Sensitivity + scenario + reverse DCF
+│   │   │   └── sanity.py               ← Implied metrics + warnings
+│   │   ├── comps.py                    ← Peer multiples + implied prices
+│   │   ├── comps_metrics.py            ← Operating metrics + football field
 │   │   ├── scoring.py                  ← Almennt scoring/einkunnakerfi
 │   │   ├── screener.py                 ← Síunarreglur og leit
 │   │   ├── technicals.py              ← RSI, SMA, EMA, MACD, Bollinger
@@ -362,7 +381,7 @@ Vision/
 ### Fyrirtækjagreining
 - [x] Fyrirtækjayfirlit (verð, lykiltölur, fréttir)
 - [x] Ársreikningar (rekstrarreikn., efnahagsreikn., sjóðstreymi)
-- [ ] Virðismat (DCF, WACC, CAPM, comps)
+- [x] Virðismat (Simple DCF, Complex DCF, 3-Statement, WACC með aðferðavalkostum, Comps, Football Field)
 - [x] Innherjaviðskipti (kaup/sala stjórnenda)
 - [ ] Arðgreiðslusaga og yield
 
@@ -473,7 +492,7 @@ Vision/
 - ✅ .env.example, .gitignore, requirements.txt
 
 ### Fase 2 — Kjarnaskjáir
-- Virðismat (flytja úr gamla appi, endurskipuleggja)
+- ✅ Virðismat — Simple DCF (3-phase), Complex DCF (12-step IB-grade), 3-Statement Model, WACC (5 beta-aðferðir, 3 Rd-aðferðir, 4 cap-structure leiðir), Comps (operating metrics + football field), Damodaran integration
 - Tæknigröf (kertastjakar, RSI, MACD)
 - Hlutabréfasía
 - Vaktlistar
@@ -532,4 +551,4 @@ BREYTIST EKKI:   lib/, models/, config/   (allur kjarninn, þ.m.t. lib/ai/)
 
 ---
 
-*Síðast uppfært: 2026-03-24*
+*Síðast uppfært: 2026-03-25*

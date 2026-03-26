@@ -77,7 +77,28 @@ PERIOD_DAYS = {
 SESSION_CACHE_PREFIXES = (
     "company_", "price_", "events_", "fin_data_",
     "holders_", "recs_", "news_", "peer_medians_",
+    "val_",
 )
+
+# --- Yahoo Screener categories for Browse ---
+# --- Valuation Defaults ---
+DEFAULT_MRP = 0.055          # Market risk premium (Damodaran long-run avg)
+DEFAULT_TAX_RATE = 0.21      # US corporate tax rate
+DEFAULT_TERMINAL_GROWTH = 0.025  # Long-run GDP growth proxy
+
+SECTOR_EXIT_MULTIPLES = {
+    "Technology": 18.0,
+    "Communication Services": 14.0,
+    "Healthcare": 14.0,
+    "Consumer Cyclical": 12.0,
+    "Consumer Defensive": 12.0,
+    "Financial Services": 10.0,
+    "Industrials": 11.0,
+    "Energy": 7.0,
+    "Utilities": 10.0,
+    "Real Estate": 15.0,
+    "Basic Materials": 8.0,
+}
 
 # --- Yahoo Screener categories for Browse ---
 SCREENER_CATEGORIES = {

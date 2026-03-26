@@ -230,3 +230,6 @@ def get_events(
         return stale, "stale"
 
     return {"earnings": [], "dividends": [], "splits": []}, "error"
+
+
+# Valuation-specific middleware will be rebuilt in lib/data/valuation_data.py

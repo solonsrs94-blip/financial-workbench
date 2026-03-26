@@ -17,6 +17,7 @@ load_dotenv(ROOT_DIR / ".env")
 # --- API Keys ---
 FRED_API_KEY = os.getenv("FRED_API_KEY", "")
 ANTHROPIC_API_KEY = os.getenv("ANTHROPIC_API_KEY", "")
+SIMFIN_API_KEY = os.getenv("SIMFIN_API_KEY", "")
 
 # --- App Settings ---
 APP_NAME = "Financial Workbench"

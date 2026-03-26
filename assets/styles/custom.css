@@ -50,3 +50,92 @@ hr {
     margin: 1rem 0 !important;
     border-color: rgba(255,255,255,0.05) !important;
 }
+
+/* Scrollable financial table — sticky first column */
+.fin-table-wrap {
+    overflow-x: auto;
+    max-width: 100%;
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    margin: 0.5rem 0 1rem 0;
+}
+
+.fin-table {
+    border-collapse: collapse;
+    font-size: 13px;
+    white-space: nowrap;
+    width: max-content;
+    min-width: 100%;
+}
+
+.fin-table th, .fin-table td {
+    padding: 6px 14px;
+    text-align: right;
+    border-bottom: 1px solid rgba(255,255,255,0.06);
+}
+
+.fin-table th {
+    background: rgba(28, 131, 225, 0.08);
+    font-weight: 600;
+    position: sticky;
+    top: 0;
+    z-index: 1;
+}
+
+/* First column (row labels) */
+.fin-table td:first-child,
+.fin-table th:first-child {
+    text-align: left;
+    font-weight: 500;
+    min-width: 180px;
+    border-right: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* Indented sub-rows */
+.fin-table .sub-row td:first-child {
+    padding-left: 24px;
+    font-weight: 400;
+    color: rgba(255,255,255,0.7);
+}
+
+/* Total/summary rows */
+.fin-table .total-row td {
+    font-weight: 600;
+    border-top: 2px solid rgba(255,255,255,0.15);
+}
+
+/* Negative values */
+.fin-table .neg {
+    color: #ff6b6b;
+}
+
+/* Source tag */
+.source-tag {
+    display: inline-block;
+    font-size: 9px;
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(28, 131, 225, 0.12);
+    color: rgba(255,255,255,0.5);
+    margin-left: 4px;
+    vertical-align: middle;
+}
+
+/* Flag severity colors */
+.flag-high {
+    background: rgba(255, 59, 48, 0.12);
+    border-left: 3px solid #ff3b30;
+    padding: 6px 12px;
+    margin: 4px 0;
+    border-radius: 4px;
+    font-size: 13px;
+}
+
+.flag-medium {
+    background: rgba(255, 204, 0, 0.10);
+    border-left: 3px solid #ffcc00;
+    padding: 6px 12px;
+    margin: 4px 0;
+    border-radius: 4px;
+    font-size: 13px;
+}

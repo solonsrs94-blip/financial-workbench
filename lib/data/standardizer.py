@@ -1,231 +1,267 @@
-"""Financial statement standardizer — 4-layer mapping system.
+"""Top-down financial statement standardizer.
 
-Layer 1: XBRL concept mapping (US-GAAP taxonomy → standardized keys)
-Layer 2: Keyword matching on labels
-Layer 3: Hierarchy inference from XBRL parent-child
-Layer 4: "Other" catch-all buckets
+Instead of bottom-up (concept -> key), this is top-down:
+"I need revenue -- where do I find it?"
 
+For each template line, tries concept match -> keyword match -> derived ->
+combination -> bs_delta, in order. First match wins.
+
+Search engine logic is in standardizer_engine.py.
 No Streamlit imports (lib/ rule).
 """
 
 import pandas as pd
 from typing import Optional
 
-from lib.data.xbrl_concept_map import (
-    IS_CONCEPT_MAP, BS_CONCEPT_MAP, CF_CONCEPT_MAP,
-    KEYWORD_FALLBACKS, CF_SUBTOTAL_CONCEPTS,
+from lib.data.template import SEARCH_RULES, TEMPLATE
+from lib.data.standardizer_engine import (
+    search_direct as _search_direct,
+    try_combination as _try_combination,
+    try_derived as _try_derived,
+    try_bs_delta as _try_bs_delta,
+    val as _val,
+    prev_year as _prev_year,
+    check_quality as _check_quality,
 )
+
+
+# Layer number mapping for backward compatibility
+_LAYER_MAP = {
+    "concept": 1, "sc": 1, "sc_subtotal": 1,
+    "keyword": 2, "derived": 0, "combination": 0,
+    "cross_statement": 0, "bs_delta": 0,
+}
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  PUBLIC API
+# ═══════════════════════════════════════════════════════════════════════
+
+def standardize_all(
+    raw_is: pd.DataFrame,
+    raw_bs: pd.DataFrame,
+    raw_cf: pd.DataFrame,
+) -> dict:
+    """Top-down standardization of all 3 statements at once.
+
+    Returns:
+        {
+            "income_audit": {year: {key: {"value", "raw_label", "source"}}},
+            "balance_audit": ...,
+            "cashflow_audit": ...,
+            "years": [sorted year strings],
+            "quality": {"critical_missing": [...], "important_missing": [...]},
+        }
+    """
+    is_parsed = _parse_df(raw_is) if raw_is is not None else {}
+    bs_parsed = _parse_df(raw_bs) if raw_bs is not None else {}
+    cf_parsed = _parse_df(raw_cf) if raw_cf is not None else {}
+
+    parsed = {"income": is_parsed, "balance": bs_parsed, "cashflow": cf_parsed}
+
+    all_years = set()
+    for p in parsed.values():
+        all_years.update(p.keys())
+    years = sorted(all_years)
+
+    results = {"income": {}, "balance": {}, "cashflow": {}}
+
+    for year in years:
+        year_data = _run_passes(year, years, parsed, results)
+
+        # Distribute to statement-level results
+        for key, info in year_data.items():
+            if key not in SEARCH_RULES:
+                continue
+            if SEARCH_RULES.get(key, {}).get("helper"):
+                continue
+            stmt = SEARCH_RULES[key]["statement"]
+            if year not in results[stmt]:
+                results[stmt][year] = {}
+            results[stmt][year][key] = {
+                "value": info["value"],
+                "raw_label": info["raw_label"],
+                "layer": _LAYER_MAP.get(info["source"], 4),
+            }
+
+    latest = years[-1] if years else None
+    quality = _check_quality(results, latest)
+
+    return {
+        "income_audit": results["income"],
+        "balance_audit": results["balance"],
+        "cashflow_audit": results["cashflow"],
+        "years": years,
+        "quality": quality,
+    }
 
 
 def standardize_statement(
     df: pd.DataFrame,
     statement_type: str,
 ) -> dict:
-    """Standardize a raw EDGAR DataFrame into {year: {key: {value, raw_label, source, layer}}}.
-
-    Args:
-        df: Raw DataFrame from EDGAR (rows=line items, cols=years)
-            Must have columns: concept, label, standard_concept, and year columns.
-            If it's a simple DataFrame (rows=labels, cols=dates), falls back to label matching.
-        statement_type: "income", "balance", or "cashflow"
-
-    Returns:
-        {year: {standardized_key: {"value": float, "raw_label": str, "layer": int}}}
-    """
+    """Backward-compatible per-statement standardization."""
     if df is None or not isinstance(df, pd.DataFrame) or df.empty:
         return {}
 
-    concept_map = {
-        "income": IS_CONCEPT_MAP,
-        "balance": BS_CONCEPT_MAP,
-        "cashflow": CF_CONCEPT_MAP,
-    }[statement_type]
+    parsed = _parse_df(df)
+    years = sorted(set(yr for yr_data in parsed.values() for yr in yr_data.keys()))
 
-    # Detect format: EDGAR XBRL (has standard_concept) vs simple (Yahoo-like)
+    results = {}
+    for year in years:
+        year_data = {}
+
+        for key, rules in SEARCH_RULES.items():
+            if rules["statement"] != statement_type or key in year_data:
+                continue
+            val, label, source = _search_direct(key, rules, parsed.get(year, {}), year)
+            if val is not None:
+                year_data[key] = {"value": val, "raw_label": label, "source": source}
+
+        for key, rules in SEARCH_RULES.items():
+            if rules["statement"] != statement_type or key in year_data:
+                continue
+            val, source = _try_combination(key, rules, year_data)
+            if val is not None:
+                year_data[key] = {"value": val, "raw_label": source, "source": "combination"}
+
+        for key, rules in SEARCH_RULES.items():
+            if rules["statement"] != statement_type or key in year_data:
+                continue
+            val, formula = _try_derived(key, rules, year_data)
+            if val is not None:
+                year_data[key] = {"value": val, "raw_label": f"Derived: {formula}", "source": "derived"}
+
+        if year not in results:
+            results[year] = {}
+        for key, info in year_data.items():
+            if SEARCH_RULES.get(key, {}).get("helper"):
+                continue
+            results[year][key] = {
+                "value": info["value"],
+                "raw_label": info["raw_label"],
+                "layer": _LAYER_MAP.get(info["source"], 4),
+            }
+
+    return results
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  INTERNAL — Multi-pass search
+# ═══════════════════════════════════════════════════════════════════════
+
+def _run_passes(year, years, parsed, results):
+    """Run all 5 search passes for one year. Returns year_data dict."""
+    year_data = {}
+
+    # Pass 1: Direct lookups
+    for key, rules in SEARCH_RULES.items():
+        stmt = rules["statement"]
+        if key in year_data:
+            continue
+        val, label, source = _search_direct(key, rules, parsed[stmt].get(year, {}), year)
+        if val is not None:
+            year_data[key] = {"value": val, "raw_label": label, "source": source}
+
+    # Pass 2: Combinations
+    for key, rules in SEARCH_RULES.items():
+        if key in year_data:
+            continue
+        val, source = _try_combination(key, rules, year_data)
+        if val is not None:
+            year_data[key] = {"value": val, "raw_label": source, "source": "combination"}
+
+    # Pass 3: Derived
+    for key, rules in SEARCH_RULES.items():
+        if key in year_data:
+            continue
+        val, formula = _try_derived(key, rules, year_data)
+        if val is not None:
+            year_data[key] = {"value": val, "raw_label": f"Derived: {formula}", "source": "derived"}
+
+    # Pass 4: Cross-statement (EBITDA)
+    if "ebitda" not in year_data:
+        ebit = _val(year_data, "ebit")
+        da = _val(year_data, "depreciation_amortization")
+        if ebit is not None and da is not None:
+            year_data["ebitda"] = {
+                "value": ebit + abs(da),
+                "raw_label": "Derived: EBIT + D&A (from CF)",
+                "source": "cross_statement",
+            }
+
+    # Pass 5: BS delta fallbacks
+    prev = _prev_year(year, years)
+    if prev:
+        prev_data = results.get("balance", {}).get(prev, {})
+        for key, rules in SEARCH_RULES.items():
+            if key in year_data:
+                continue
+            val, source = _try_bs_delta(key, rules, year_data, prev_data)
+            if val is not None:
+                year_data[key] = {"value": val, "raw_label": source, "source": "bs_delta"}
+
+    return year_data
+
+
+# ═══════════════════════════════════════════════════════════════════════
+#  PARSING
+# ═══════════════════════════════════════════════════════════════════════
+
+def _parse_df(df: pd.DataFrame) -> dict:
+    """Parse a raw DataFrame into {year: [{"concept", "sc", "label", "value"}]}."""
     has_xbrl = "standard_concept" in df.columns and "label" in df.columns
-
-    if has_xbrl:
-        return _standardize_xbrl(df, concept_map, statement_type)
-    else:
-        return _standardize_simple(df, statement_type)
+    return _parse_xbrl(df) if has_xbrl else _parse_simple(df)
 
 
-def _standardize_xbrl(
-    df: pd.DataFrame, concept_map: dict, statement_type: str,
-) -> dict:
-    """Standardize EDGAR XBRL DataFrame using 4-layer system."""
-    # Filter to consolidated only (no dimensions/segments)
+def _parse_xbrl(df: pd.DataFrame) -> dict:
     if "dimension" in df.columns:
         df = df[df["dimension"] == False].copy()
 
-    # Find year columns (dates like 2024-09-28)
     year_cols = [c for c in df.columns if len(str(c)) >= 8 and str(c)[:4].isdigit()]
     if not year_cols:
         return {}
 
     result = {}
-
     for _, row in df.iterrows():
+        if row.get("abstract", False):
+            continue
+        raw_concept = str(row.get("concept", "") or "").strip()
+        if raw_concept.startswith("us-gaap_"):
+            raw_concept = raw_concept[8:]
         sc = str(row.get("standard_concept", "") or "").strip()
+        if sc == "None":
+            sc = ""
         label = str(row.get("label", "") or "").strip()
-        parent = str(row.get("parent_concept", "") or "").strip()
-        is_abstract = row.get("abstract", False)
 
-        if is_abstract:
-            continue
-
-        # Handle CF subtotal concepts (appear multiple times — always last wins)
-        if statement_type == "cashflow" and sc in CF_SUBTOTAL_CONCEPTS:
-            subtotal_key = CF_SUBTOTAL_CONCEPTS[sc]
-            for col in year_cols:
-                year = str(col)[:4]
-                val = row.get(col)
-                if pd.isna(val):
-                    continue
-                if year not in result:
-                    result[year] = {}
-                # Always overwrite — last occurrence is sub-total
-                result[year][subtotal_key] = {
-                    "value": float(val),
-                    "raw_label": label,
-                    "layer": 1,
-                }
-            continue  # Don't process this row again below
-
-        # Layer 1: XBRL concept mapping
-        std_key = concept_map.get(sc)
-        layer = 1
-
-        # Layer 2: Keyword fallback
-        if not std_key:
-            label_lower = label.lower()
-            for kw, key, stmt in KEYWORD_FALLBACKS:
-                if stmt == statement_type and kw in label_lower:
-                    std_key = key
-                    layer = 2
-                    break
-
-        # Layer 3: Hierarchy inference from parent concept
-        if not std_key and parent:
-            parent_key = concept_map.get(
-                parent.replace("us-gaap_", "").replace("us-gaap:", "")
-            )
-            if parent_key:
-                std_key = f"{parent_key}_detail"
-                layer = 3
-
-        # Layer 4: "Other" catch-all
-        if not std_key:
-            std_key = _classify_other(label, statement_type)
-            layer = 4
-
-        if not std_key:
-            continue
-
-        # Extract values per year
         for col in year_cols:
             year = str(col)[:4]
             val = row.get(col)
             if pd.isna(val):
                 continue
-
             if year not in result:
-                result[year] = {}
-
-            # Overwrite rules:
-            # - Higher layer never overwrites lower layer
-            # - Same layer: LAST value wins (important for CF sub-totals
-            #   where NetCashFromOperatingActivities appears multiple
-            #   times — individual items first, sub-total last)
-            existing = result[year].get(std_key)
-            if existing and existing["layer"] < layer:
-                continue
-
-            result[year][std_key] = {
-                "value": float(val),
-                "raw_label": label,
-                "layer": layer,
-            }
-
+                result[year] = []
+            result[year].append({
+                "concept": raw_concept, "sc": sc,
+                "label": label, "value": float(val),
+            })
     return result
 
 
-def _standardize_simple(df: pd.DataFrame, statement_type: str) -> dict:
-    """Standardize simple DataFrame (Yahoo-like: rows=labels, cols=dates)."""
+def _parse_simple(df: pd.DataFrame) -> dict:
     result = {}
-
     for col in df.columns:
         year = str(col)[:4]
         if not year.isdigit():
             continue
-
         if year not in result:
-            result[year] = {}
-
+            result[year] = []
         for label in df.index:
             val = df.loc[label, col]
             if pd.isna(val):
                 continue
-
-            label_lower = str(label).lower().strip()
-
-            # Layer 2: Keyword matching
-            std_key = None
-            for kw, key, stmt in KEYWORD_FALLBACKS:
-                if stmt == statement_type and kw in label_lower:
-                    std_key = key
-                    break
-
-            if not std_key:
-                std_key = _classify_other(str(label), statement_type)
-
-            if not std_key:
-                continue
-
-            existing = result[year].get(std_key)
-            if existing:
-                continue  # Keep first match
-
-            result[year][std_key] = {
-                "value": float(val),
-                "raw_label": str(label),
-                "layer": 2,
-            }
-
+            result[year].append({
+                "concept": "", "sc": "",
+                "label": str(label), "value": float(val),
+            })
     return result
-
-
-def _classify_other(label: str, statement_type: str) -> Optional[str]:
-    """Layer 4: Classify unknown items into 'Other' buckets."""
-    ll = label.lower()
-
-    if statement_type == "income":
-        if any(w in ll for w in ["expense", "cost", "charge", "loss"]):
-            return "other_operating_expense"
-        if any(w in ll for w in ["income", "gain", "revenue"]):
-            return "other_operating_income"
-        return "other_is_item"
-
-    elif statement_type == "balance":
-        if any(w in ll for w in ["receivable", "prepaid", "inventory", "current asset"]):
-            return "other_current_assets"
-        if any(w in ll for w in ["payable", "accrued", "current liab", "deferred rev"]):
-            return "other_current_liabilities"
-        if any(w in ll for w in ["asset", "investment", "intangible", "property"]):
-            return "other_non_current_assets"
-        if any(w in ll for w in ["debt", "liabilit", "obligation", "lease"]):
-            return "other_non_current_liabilities"
-        if any(w in ll for w in ["equity", "stock", "capital", "retained", "treasury"]):
-            return "other_equity"
-        return "other_bs_item"
-
-    elif statement_type == "cashflow":
-        if any(w in ll for w in ["operating", "working capital", "receivable", "payable"]):
-            return "other_operating_cf"
-        if any(w in ll for w in ["investing", "purchase", "acquisition", "proceeds"]):
-            return "other_investing_cf"
-        if any(w in ll for w in ["financing", "debt", "dividend", "repurchase", "stock"]):
-            return "other_financing_cf"
-        return "other_cf_item"
-
-    return None

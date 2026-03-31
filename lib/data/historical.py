@@ -129,8 +129,8 @@ def get_standardized_history(
     if raw_data is None:
         return None
 
-    from lib.data.standardizer import standardize_statement
-    from lib.data.standardizer_utils import compute_derived_fields, run_cross_checks
+    from lib.data.standardizer import standardize_all
+    from lib.data.standardizer_utils import run_cross_checks
 
     source = raw_data.get("source", "unknown")
 
@@ -138,7 +138,7 @@ def get_standardized_history(
     xbrl_data = None
     if source == "edgar":
         try:
-            from lib.data.providers.edgar_provider import fetch_xbrl_statements
+            from lib.data.providers.edgar_xbrl import fetch_xbrl_statements
             xbrl_data = fetch_xbrl_statements(ticker)
         except Exception as e:
             logger.warning("XBRL fetch failed, falling back to label match: %s", e)
@@ -155,14 +155,13 @@ def get_standardized_history(
     bal_df = _pick_df("balance", "balance")
     cf_df = _pick_df("cashflow", "cashflow")
 
-    # Standardize each statement (returns audit-trail format)
-    income_audit = standardize_statement(inc_df, "income")
-    balance_audit = standardize_statement(bal_df, "balance")
-    cashflow_audit = standardize_statement(cf_df, "cashflow")
+    # Top-down standardization — all 3 statements at once
+    std_result = standardize_all(inc_df, bal_df, cf_df)
 
-    # Compute derived fields (modifies in place)
-    for audit in [income_audit, balance_audit, cashflow_audit]:
-        compute_derived_fields(audit)
+    income_audit = std_result["income_audit"]
+    balance_audit = std_result["balance_audit"]
+    cashflow_audit = std_result["cashflow_audit"]
+    all_years = std_result["years"]
 
     # Cross-checks
     cross_checks = []
@@ -173,10 +172,6 @@ def get_standardized_history(
     income = _flatten_audit(income_audit)
     balance = _flatten_audit(balance_audit)
     cashflow = _flatten_audit(cashflow_audit)
-
-    all_years = sorted(
-        set(income.keys()) | set(balance.keys()) | set(cashflow.keys())
-    )
 
     if not all_years:
         return None
@@ -196,6 +191,69 @@ def get_standardized_history(
     return result
 
 
+def _compute_cross_statement_fields(
+    income_audit: dict, balance_audit: dict, cashflow_audit: dict,
+) -> None:
+    """Compute derived fields that need data from multiple statements.
+
+    - EBITDA on IS: uses D&A from CF if not on IS
+    - Net Debt on BS: uses total_debt (or components) - cash - STI
+    """
+    def _v(fields, k):
+        info = fields.get(k)
+        if isinstance(info, dict) and "value" in info:
+            return info["value"]
+        return info
+
+    for year in income_audit:
+        is_fields = income_audit[year]
+        cf_fields = cashflow_audit.get(year, {})
+
+        # EBITDA = EBIT + D&A (prefer IS D&A, fallback to CF D&A)
+        ebit = _v(is_fields, "ebit")
+        da = _v(is_fields, "da") or _v(cf_fields, "depreciation_amortization")
+        if not _v(is_fields, "ebitda") and ebit and da:
+            is_fields["ebitda"] = {
+                "value": ebit + abs(da),
+                "raw_label": "Derived: EBIT + D&A (from CF)",
+                "layer": 0,
+            }
+
+    for year in balance_audit:
+        bs_fields = balance_audit[year]
+
+        # Net Debt = Total Debt - Cash - Short-term Investments
+        # total_debt from Yahoo (if available), otherwise sum components
+        total_debt = _v(bs_fields, "total_debt")
+        if not total_debt:
+            ltd = _v(bs_fields, "long_term_debt") or 0
+            std = _v(bs_fields, "short_term_debt") or 0
+            cpltd = _v(bs_fields, "current_portion_ltd") or 0
+            cd = _v(bs_fields, "current_debt") or 0
+            # current_debt includes commercial paper + current portion LTD
+            # Use current_debt if available, otherwise sum components
+            if cd and cd > std:
+                total_debt = ltd + cd
+            else:
+                total_debt = ltd + std + cpltd
+
+        cash = _v(bs_fields, "cash") or 0
+        sti = _v(bs_fields, "short_term_investments") or 0
+
+        if total_debt:
+            bs_fields["total_debt"] = {
+                "value": total_debt,
+                "raw_label": "Derived or Yahoo: Total Debt",
+                "layer": 0,
+            }
+            net_debt_val = total_debt - cash - sti
+            bs_fields["net_debt"] = {
+                "value": net_debt_val,
+                "raw_label": "Derived: Total Debt - Cash - STI",
+                "layer": 0,
+            }
+
+
 def _flatten_audit(audit: dict) -> dict:
     """Convert {year: {key: {value, raw_label, layer}}} to {year: {key: value}}."""
     flat = {}
@@ -209,54 +267,3 @@ def _flatten_audit(audit: dict) -> dict:
     return flat
 
 
-def _standardize_df(
-    df: Optional[pd.DataFrame], label_map: dict,
-) -> dict:
-    """Convert a raw DataFrame to {year: {standardized_key: value}}.
-
-    Matches row labels (case-insensitive, stripped) against label_map.
-    """
-    if df is None or not isinstance(df, pd.DataFrame) or df.empty:
-        return {}
-
-    result = {}
-    for col in df.columns:
-        year = str(col)[:4]
-        mapped = {}
-        for label in df.index:
-            val = df.loc[label, col]
-            if pd.isna(val):
-                continue
-            clean = str(label).lower().strip()
-            # Exact match first
-            if clean in label_map:
-                mapped[label_map[clean]] = float(val)
-            else:
-                # Fuzzy fallback: match on substring contains
-                for pattern, key in _FUZZY_FALLBACKS:
-                    if pattern in clean and key not in mapped:
-                        mapped[key] = float(val)
-                        break
-        if mapped:
-            result[year] = mapped
-    return result
-
-
-# Fuzzy fallback patterns — (substring, standardized_key)
-# Only used if no exact match found. More specific patterns first.
-_FUZZY_FALLBACKS = [
-    ("net income attributable to", "net_income"),
-    ("net earnings attributable to", "net_income"),
-    ("net income (loss) attributable to", "net_income"),
-    ("earnings before provision for taxes", "pretax_income"),
-    ("profit before taxes", "pretax_income"),
-    ("provision for taxes", "tax_provision"),
-    ("provision for income taxes", "tax_provision"),
-    ("stockholders' equity/(deficit)", "total_equity"),
-    ("stockholders' equity attributable to parent", "total_equity"),
-    ("shareholders' equity (deficit)", "total_equity"),
-    ("shareholders' equity", "total_equity"),
-    ("total equity (deficit)", "total_equity"),
-    ("total stockholders' equity (deficit)", "total_equity"),
-    ("retained earnings (accumulated deficit)", "retained_earnings"),
-]

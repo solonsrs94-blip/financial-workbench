@@ -29,9 +29,49 @@ def compute_derived_fields(std_data: dict) -> None:
         capex = _v("capital_expenditure")
 
         sga = _v("sga")
+        s_and_m = _v("selling_and_marketing")
         rd = _v("rd")
         interest_exp = _v("interest_expense")
         total_costs = _v("total_costs")
+
+        # SGA combination: merge S&M + G&A into sga if split
+        g_and_a = _v("general_and_administrative")
+        if s_and_m and g_and_a:
+            combined = abs(s_and_m) + abs(g_and_a)
+            fields["sga"] = {
+                "value": combined,
+                "raw_label": "Derived: S&M + G&A",
+                "layer": 0,
+            }
+            sga = combined
+        elif s_and_m and sga:
+            # S&M exists alongside something already called sga — add
+            combined = abs(s_and_m) + abs(sga)
+            fields["sga"] = {
+                "value": combined,
+                "raw_label": "Derived: S&M + SGA",
+                "layer": 0,
+            }
+            sga = combined
+        elif s_and_m and not sga:
+            fields["sga"] = {
+                "value": abs(s_and_m),
+                "raw_label": "Derived: from S&M only",
+                "layer": 0,
+            }
+            sga = abs(s_and_m)
+
+        # D&A combination: merge depreciation + amortization if split
+        dep_only = _v("depreciation")
+        amort_only = _v("amortization") or _v("amortization_intangibles")
+        if not da and (dep_only or amort_only):
+            da_val = abs(dep_only or 0) + abs(amort_only or 0)
+            fields["depreciation_amortization"] = {
+                "value": da_val,
+                "raw_label": "Derived: Depreciation + Amortization",
+                "layer": 0,
+            }
+            da = da_val
 
         # Gross Profit = Revenue - COGS
         if not gp and rev and cogs:
@@ -88,7 +128,7 @@ def compute_derived_fields(std_data: dict) -> None:
                 "layer": 0,
             }
 
-        # EBITDA = EBIT + D&A
+        # EBITDA = EBIT + D&A (within same statement — if IS has its own D&A)
         if not _v("ebitda") and ebit and da:
             fields["ebitda"] = {
                 "value": ebit + abs(da),
@@ -112,6 +152,20 @@ def compute_derived_fields(std_data: dict) -> None:
                 "layer": 0,
             }
 
+        # Total Liabilities = Total Assets - Total Equity
+        ta = _v("total_assets")
+        tl = _v("total_liabilities")
+        te = _v("total_equity")
+        tei = _v("total_equity_incl_minority")
+        if not tl and ta:
+            eq_for_calc = tei or te  # prefer incl_minority
+            if eq_for_calc:
+                fields["total_liabilities"] = {
+                    "value": ta - eq_for_calc,
+                    "raw_label": "Derived: Total Assets - Total Equity",
+                    "layer": 0,
+                }
+
         # FCF = OCF - CapEx
         if not _v("free_cash_flow") and ocf and capex:
             fields["free_cash_flow"] = {
@@ -119,16 +173,8 @@ def compute_derived_fields(std_data: dict) -> None:
                 "raw_label": "Derived: OCF - CapEx", "layer": 0,
             }
 
-        # Net Debt = Total Debt - Cash
-        total_debt = _v("total_debt") or (
-            (_v("long_term_debt") or 0) + (_v("short_term_debt") or 0)
-        )
-        cash = _v("cash")
-        if total_debt and cash:
-            fields["net_debt"] = {
-                "value": total_debt - cash,
-                "raw_label": "Derived: Total Debt - Cash", "layer": 0,
-            }
+        # Net Debt — computed in cross-statement step (historical.py)
+        # to include short_term_investments in the subtraction.
 
 
 # ============================================================
@@ -158,7 +204,7 @@ def run_cross_checks(std_data: dict, statement_type: str) -> list[dict]:
         elif statement_type == "balance":
             assets = _v("total_assets")
             liab = _v("total_liabilities")
-            eq = _v("total_equity") or _v("total_equity_incl_minority")
+            eq = _v("total_equity_incl_minority") or _v("total_equity")
             if assets and liab and eq:
                 expected = liab + eq
                 diff = abs(assets - expected)

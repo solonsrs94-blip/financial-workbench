@@ -1,8 +1,11 @@
 """
 Valuation — multi-method valuation workbench.
 
-Tabs: DCF | Comps | DDM | Historical | Summary
-Each tab is a separate valuation method. Summary combines everything.
+Flow:
+1. Ticker input
+2. Financial Preparation (standardization, flagging, classification)
+3. Valuation tabs: DCF | Comps | DDM | Historical | Summary
+   All tabs share prepared_data from step 2.
 """
 
 import streamlit as st
@@ -13,7 +16,9 @@ from lib.data.fundamentals import get_company, get_financials
 from lib.data.valuation_data import get_risk_free_rate, get_valuation_data
 from config.constants import SESSION_CACHE_PREFIXES
 
-from pages.valuation import dcf_tab, comps_tab, ddm_tab, historical_tab, summary_tab
+from pages.valuation import (
+    preparation, dcf_tab, comps_tab, ddm_tab, historical_tab, summary_tab,
+)
 
 load_css()
 
@@ -38,6 +43,10 @@ if force_refresh or st.session_state.get("_val_cached_ticker") != ticker:
     for key in list(st.session_state.keys()):
         if key.startswith(SESSION_CACHE_PREFIXES):
             del st.session_state[key]
+    # Also clear prepared data
+    for key in list(st.session_state.keys()):
+        if key.startswith("prepared_data"):
+            del st.session_state[key]
     st.session_state["_val_cached_ticker"] = ticker
 
 # --- Load Company Data ---
@@ -57,13 +66,7 @@ if company is None:
     st.error(f"Could not find data for '{ticker}'.")
     st.stop()
 
-# --- Load Financials ---
-fin_key = f"fin_data_{ticker}"
-if fin_key not in st.session_state:
-    st.session_state[fin_key], _ = get_financials(ticker, force_refresh)
-fin_data = st.session_state[fin_key]
-
-# --- Load Valuation Data ---
+# --- Load Valuation Data (risk-free rate, etc.) ---
 vd_key = f"val_data_{ticker}"
 if vd_key not in st.session_state:
     with st.spinner("Loading valuation data..."):
@@ -73,22 +76,32 @@ rf_key = "val_risk_free_rate"
 if rf_key not in st.session_state:
     st.session_state[rf_key] = get_risk_free_rate()
 
-# --- Tabs ---
-tab_dcf, tab_comps, tab_ddm, tab_hist, tab_summary = st.tabs(
-    ["DCF", "Comps", "DDM", "Historical", "Summary"]
-)
+# === FINANCIAL PREPARATION ===
+# Runs BEFORE tabs. Results stored in session_state["prepared_data"].
+preparation.render_preparation(ticker, company)
 
-with tab_dcf:
-    dcf_tab.render(company, fin_data, ticker)
+# === VALUATION TABS ===
+# Only show if preparation completed successfully.
+prepared = st.session_state.get("prepared_data")
+if prepared and not prepared.get("error"):
+    st.divider()
+    st.markdown("## Valuation")
 
-with tab_comps:
-    comps_tab.render(company, fin_data, ticker)
+    tab_dcf, tab_comps, tab_ddm, tab_hist, tab_summary = st.tabs(
+        ["DCF", "Comps", "DDM", "Historical", "Summary"]
+    )
 
-with tab_ddm:
-    ddm_tab.render(company, ticker)
+    with tab_dcf:
+        dcf_tab.render(prepared, ticker)
 
-with tab_hist:
-    historical_tab.render(company, ticker)
+    with tab_comps:
+        comps_tab.render(prepared, ticker)
 
-with tab_summary:
-    summary_tab.render(company, ticker)
+    with tab_ddm:
+        ddm_tab.render(prepared, ticker)
+
+    with tab_hist:
+        historical_tab.render(prepared, ticker)
+
+    with tab_summary:
+        summary_tab.render(prepared, ticker)

@@ -12,7 +12,7 @@ Lifandi skjal sem lýsir uppbyggingu appsins. Uppfært eftir því sem appið þ
 4. **`strategies/` eru viðbætur.** Appið virkar án þeirra — þær bæta við greiningaraðferðum.
 5. **`storage/` er abstraction.** Appið veit ekki hvort gögn eru local eða cloud.
 6. **`config/settings.py` les úr `.env`.** Engir lyklar í kóða.
-7. **Skrár fara ekki yfir ~200 línur.** Ef svo, skipta í undirhluta.
+7. **Skrár fara ekki yfir 300 línur.** (Framfylgt af pre-commit hook.) Ef svo, skipta í undirhluta.
 8. **Undirmöppur í `pages/` verða til þegar þörf er á.** Ekki fyrr.
 9. **Ný gagnaveitur** → ný skrá í `providers/`, uppfæra mellanlags-skrá.
 10. **Nýjar aðferðir** → ný skrá í `strategies/`.
@@ -97,16 +97,13 @@ Vision/
 │
 │   (Undirhlutar — verða til þegar skjár stækka)
 │   ├── valuation/
-│   │   ├── dcf_panel.py                ← DCF routing (Simple/Complex toggle)
-│   │   ├── dcf_simple_ui.py            ← Simple DCF UI (3-phase growth)
-│   │   ├── dcf_complex_ui.py           ← Complex DCF UI (step-by-step IB-grade)
-│   │   ├── dcf_helpers.py              ← Data extraction for DCF
-│   │   ├── dcf_results.py              ← Shared results display
-│   │   ├── wacc_panel.py               ← WACC calculator (methodology choices)
-│   │   ├── wacc_helpers.py             ← WACC data extraction
-│   │   ├── comps_panel.py              ← Comps tafla UI
-│   │   ├── comps_helpers.py            ← Comps data helpers
-│   │   └── workspace_panel.py          ← Investment thesis notes
+│   │   ├── preparation.py              ← Financial Preparation (runs before all tabs)
+│   │   ├── preparation_display.py      ← Charts, tables, ratios display
+│   │   ├── dcf_tab.py                  ← DCF tab (uses prepared_data)
+│   │   ├── comps_tab.py                ← Comps tab (placeholder)
+│   │   ├── ddm_tab.py                  ← DDM tab (placeholder, recommended for banks)
+│   │   ├── historical_tab.py           ← Historical tab (placeholder)
+│   │   └── summary_tab.py             ← Summary tab (placeholder)
 │   ├── chart/
 │   │   ├── candlestick.py              ← Kertastjakagraf
 │   │   ├── indicators.py              ← RSI, MACD, Volume panels
@@ -158,13 +155,28 @@ Vision/
 │   │   │   ├── yahoo.py                ← Verð, fjárhagur, hlutföll, arðir, options
 │   │   │   ├── yahoo_valuation.py      ← BS/CF/IS smáatriði + analyst estimates
 │   │   │   ├── damodaran.py            ← ERP, beta, CRP, spreads ✅
-│   │   │   ├── edgar.py                ← SEC skráningar, skuldir
+│   │   │   ├── edgar_provider.py       ← Raw EDGAR 10-K (label-based DataFrames)
+│   │   │   ├── edgar_xbrl.py           ← XBRL EDGAR (multi-filing merge, concept metadata)
+│   │   │   ├── simfin_provider.py      ← SimFin (banks, insurance, general)
+│   │   │   ├── simfin_maps.py          ← SimFin column → standard key mappings
+│   │   │   ├── simfin_utils.py         ← SimFin extraction + derived fields
 │   │   │   ├── fred.py                 ← Vextir, verðbólga, atvinnuleysi
 │   │   │   ├── news.py                 ← RSS feeds og fréttir
 │   │   │   ├── insiders.py             ← Innherjaviðskipti (SEC)
 │   │   │   ├── earnings_calendar.py    ← Afkomudagsetningar
 │   │   │   └── economic_calendar.py    ← Efnahagsdagatal (FOMC, CPI, o.fl.)
 │   │   │
+│   │   ├── standardizer.py             ← Top-down template-based standardizer
+│   │   ├── standardizer_engine.py      ← Search engine (concept/keyword/derived)
+│   │   ├── standardizer_utils.py       ← Derived fields + cross-checks
+│   │   ├── template.py                 ← 35 template lines + SEARCH_RULES hub
+│   │   ├── template_is.py              ← IS search rules
+│   │   ├── template_bs.py              ← BS search rules
+│   │   ├── template_cf.py              ← CF search rules
+│   │   ├── concept_maps.py             ← 1079 XBRL concept mappings (hub)
+│   │   ├── concept_maps_*.py           ← Split by IS/BS/CF + keywords
+│   │   ├── historical.py               ← Orchestrator: raw → standardized → audit
+│   │   ├── financial_data.py           ← Middleware for SimFin (banks/insurance)
 │   │   ├── market.py                   ← Mellanlags-lag: verð, söguleg gögn
 │   │   ├── fundamentals.py             ← Mellanlags-lag: fjárhagur, hlutföll
 │   │   ├── valuation_data.py           ← Mellanlags-lag: virðismat (Rf, Damodaran, BS/CF)
@@ -174,7 +186,15 @@ Vision/
 │   │   ── ÚTREIKNINGAR OG GREINING ──
 │   │
 │   ├── analysis/
-│   │   ├── valuation/                  ← Virðismatsundirmappa ✅
+│   │   ├── company_classifier.py       ← Flokkar: normal / financial / dividend_stable
+│   │   ├── flags.py                    ← 15-rule flagging (anomaly detection)
+│   │   ├── flags_rules.py              ← Flag rules 8-15
+│   │   ├── flags_helpers.py            ← Flag utilities + known events
+│   │   ├── historical.py               ← Build IS/BS/CF tables + ratios
+│   │   ├── historical_ratios.py        ← Ratio calculations (margins, growth, etc.)
+│   │   ├── historical_averages.py      ← 3-year averages
+│   │   ├── historical_flags.py         ← Flag orchestrator (calls flags.py)
+│   │   ├── valuation/                  ← Virðismatsundirmappa (DCF steps 2-6)
 │   │   │   ├── wacc.py                 ← WACC (CAPM, beta, cost of debt)
 │   │   │   ├── simple_dcf.py           ← Simple DCF (3-phase growth)
 │   │   │   ├── complex_dcf.py          ← Complex DCF (IB-grade)
@@ -551,4 +571,4 @@ BREYTIST EKKI:   lib/, models/, config/   (allur kjarninn, þ.m.t. lib/ai/)
 
 ---
 
-*Síðast uppfært: 2026-03-25*
+*Síðast uppfært: 2026-03-31*

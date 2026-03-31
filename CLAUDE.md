@@ -7,8 +7,9 @@ Read VISION.md for project philosophy. Read ARCHITECTURE.md for full structure, 
 - Python 3.11+
 - Streamlit (UI framework — fase 1, React later)
 - yfinance (market data — no API key needed)
+- edgartools (SEC filings — primary data source, 10+ years)
+- simfin (bank/insurance financials — free tier, 5 years)
 - fredapi (macro data — needs API key, fase 4)
-- edgartools (SEC filings)
 - Plotly (interactive charts — preferred over Matplotlib)
 - SQLite (local data cache — fase 1, cloud later)
 - Claude API / Anthropic SDK (AI features — needs API key, fase 3)
@@ -18,10 +19,20 @@ Read VISION.md for project philosophy. Read ARCHITECTURE.md for full structure, 
 ```
 app.py              → Main Streamlit entry point
 pages/              → Streamlit pages (one screen = one file)
+  pages/valuation/  → Valuation sub-pages (preparation, dcf, comps, ddm, etc.)
 components/         → Reusable UI components (ticker search, charts, tables, explainer)
 lib/                → Core logic — NO Streamlit imports allowed here
-  lib/data/         → Data fetching (providers/ + middleware)
+  lib/data/         → Data fetching + standardization
+    providers/      → Raw data sources (edgar, yahoo, simfin, damodaran)
+    standardizer.py → Top-down XBRL standardizer (template-based)
+    template.py     → 35 line items + search rules per item
+    concept_maps.py → 1079 XBRL concept mappings (IS/BS/CF)
+    historical.py   → Orchestrator: raw → standardized → audit trail
+    financial_data.py → Middleware for SimFin (banks/insurance)
   lib/analysis/     → Calculations (valuation, technicals, risk, etc.)
+    flags.py        → 15-rule flagging system (anomaly detection)
+    company_classifier.py → normal / financial / dividend_stable
+    historical.py   → Build IS/BS/CF tables + ratios
   lib/ai/           → AI features (chat, document reader, tutor, etc.)
   lib/education/    → Education system (curriculum, concepts, prompt builder)
   lib/workspace/    → Analysis sessions (data + reasoning + AI narrative)
@@ -31,11 +42,11 @@ lib/                → Core logic — NO Streamlit imports allowed here
   lib/storage/      → Storage abstraction (local SQLite now, cloud later)
   lib/auth/         → User authentication (fase 6)
 models/             → Data models (company, portfolio, experiment, etc.)
-data/               → Local storage (cache, portfolio, experiments, sessions, education)
+data/               → Local storage (cache, portfolio, simfin_cache, etc.)
 assets/             → CSS styles and educational diagrams
 config/             → Settings and constants
 docs/               → Technical documentation for each layer
-scripts/            → Maintenance (clear cache, update Damodaran, backup)
+scripts/            → Maintenance + test scripts
 tests/              → Tests for data, analysis, and cache
 ```
 
@@ -53,7 +64,8 @@ tests/              → Tests for data, analysis, and cache
 - Handle API failures gracefully — show cached data if available, clear error message if not.
 
 ### 3. File size
-- No file should exceed ~200 lines. If it does, split into submodules.
+- No file should exceed 300 lines (enforced by pre-commit hook). If it does, split into submodules.
+- Pure data files (concept maps, templates) are split by statement type (IS/BS/CF).
 - Pages that grow large get their own subfolder (e.g., pages/valuation/).
 
 ### 4. Adding new things

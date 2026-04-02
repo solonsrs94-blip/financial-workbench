@@ -24,14 +24,23 @@ pages/              → Streamlit pages (one screen = one file)
     preparation_overrides.py → Rebuild cascade after overrides
     dcf_step2_table.py → Historical + projected FCF table
     dcf_step2_output.py → Calculated FCF output section
+    dcf_step3_wacc.py → Step 3 WACC orchestrator
+    dcf_step3_ke.py → Step 3A: Cost of Equity (CAPM, 3 beta methods)
+    dcf_step3_kd.py → Step 3B: Cost of Debt (actual vs synthetic)
+    dcf_step3_structure.py → Step 3C: Capital Structure + WACC output
+    dcf_step3_peers.py → Peer Group Beta (table, add/remove, Hamada)
 components/         → Reusable UI components (ticker search, charts, tables, explainer)
 lib/                → Core logic — NO Streamlit imports allowed here
   lib/data/         → Data fetching + standardization
-    providers/      → Raw data sources (yahoo, simfin, damodaran, edgar)
+    providers/      → Raw data sources (yahoo, simfin, damodaran, edgar, peer_beta)
+      damodaran.py → ERP, CRP, spreads, industry betas (US/global/emerging)
+      peer_beta.py → Yahoo recommended peers + beta/D/E/tax per peer
+      industry_map.py → Yahoo→Damodaran industry name mapping (pure data, 109+ entries)
     yfinance_standardizer.py → PRIMARY: yfinance → prepared_data mapping
     yfinance_maps.py → yfinance key mappings (IS/BS/CF, pure data)
     override_utils.py → Apply/count user overrides on standardized data
     historical.py   → Table builders: standardized → IS/BS/CF tables
+    valuation_data.py → Middleware for WACC data (Damodaran, peers, Rf, valuation)
     financial_data.py → Middleware for SimFin (banks/insurance)
     standardizer.py → EDGAR standardizer (kept, not active)
   lib/analysis/     → Calculations (valuation, technicals, risk, etc.)
@@ -60,7 +69,7 @@ tests/              → Tests for data, analysis, and cache
 ### 1. Layer separation
 - `lib/` must NEVER import Streamlit. No `import streamlit` or `st.` anywhere in lib/.
 - `pages/` calls `components/` for UI and `lib/` for data/logic. Never the reverse.
-- `providers/` never call each other. Middleware files (market.py, fundamentals.py, macro.py) coordinate between them.
+- `providers/` never call each other. Middleware files (market.py, fundamentals.py, macro.py, valuation_data.py) coordinate between them.
 
 ### 2. Data flow
 - ALL data fetching goes through `lib/data/`, never directly from pages/.
@@ -102,6 +111,9 @@ tests/              → Tests for data, analysis, and cache
 - Yahoo Finance returns `dividendYield` as already-percent (0.41 = 0.41%). Normalize to decimal in provider: `div_yield / 100` → 0.0041.
 - All other Yahoo percentages (margins, ROE, ROA, growth) are decimal (0.27 = 27%). Do NOT double-normalize these.
 - `format_percentage()` always multiplies by 100. So ALL values passed to it must be in decimal form.
+- Yahoo `debtToEquity` is in percentage form (31.5 = 31.5%). Divide by 100 in provider: `de / 100` → 0.315.
+- Damodaran ERP, CRP, spreads are all in decimal form (0.046 = 4.6%). No conversion needed.
+- Industry name matching: `industry_map.py` handles Yahoo→Damodaran name translation. Add new entries there when mismatches are found.
 - When comparing companies across currencies, convert to USD using `{CURRENCY}=X` Yahoo ticker.
 
 ## CSS

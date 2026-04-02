@@ -47,7 +47,7 @@ def build_ratios_table(
         total_debt = bs.get("total_debt")
         capex = cf.get("capital_expenditure")
         fcf = cf.get("free_cash_flow")
-        sbc = cf.get("sbc")
+        sbc = cf.get("stock_based_compensation") or cf.get("sbc")
         cf_da = cf.get("da")
 
         if da is None:
@@ -106,8 +106,13 @@ def build_ratios_table(
         fcf_conversion = _safe_div(fcf, ni) if ni and ni > 0 else None
         fcf_yield = None  # Needs market cap — calculated at page level
 
-        # NWC / Revenue
+        # NWC / Revenue — try explicit, then derive from CA - CL
         wc = bs.get("working_capital")
+        if wc is None:
+            ca = bs.get("total_current_assets")
+            cl = bs.get("total_current_liabilities")
+            if ca is not None and cl is not None:
+                wc = ca - cl
         nwc_pct_rev = _safe_div(wc, rev)
 
         # EPS growth

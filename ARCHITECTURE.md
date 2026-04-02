@@ -38,6 +38,7 @@ lib/storage/     veit um →  ekkert annað
 
 ## Gagnaflæði
 
+### Almennt gagnaflæði
 ```
 Notandi opnar skjá
     ↓
@@ -58,6 +59,25 @@ lib/cache.py — er þetta í cache?
               Skilað til skjás
     ↓
 components/charts.py (eða tables.py, o.fl.) — sýnir gögnin
+```
+
+### Financial Preparation gagnaflæði
+```
+Normal companies:
+  yfinance (income_stmt, balance_sheet, cashflow)
+      ↓
+  lib/data/yfinance_standardizer.py  →  standardized dict
+      ↓
+  lib/analysis/historical.py         →  IS/BS/CF tables
+      ↓
+  lib/analysis/historical_ratios.py  →  ratios per year
+      ↓
+  lib/analysis/historical_flags.py   →  anomaly flags + 3yr averages
+      ↓
+  st.session_state["prepared_data"]  →  used by DCF Steps 2-5
+
+Banks/Insurance:
+  SimFin → lib/data/financial_data.py → same prepared_data format
 ```
 
 ---
@@ -99,7 +119,13 @@ Vision/
 │   ├── valuation/
 │   │   ├── preparation.py              ← Financial Preparation (runs before all tabs)
 │   │   ├── preparation_display.py      ← Charts, tables, ratios display
-│   │   ├── dcf_tab.py                  ← DCF tab (uses prepared_data)
+│   │   ├── dcf_tab.py                  ← DCF tab orchestrator (Steps 2-5)
+│   │   ├── dcf_step2_assumptions.py    ← Step 2: Assumptions + controls
+│   │   ├── dcf_step2_table.py          ← Step 2: Historical data + projection math
+│   │   ├── dcf_step2_output.py         ← Step 2: Calculated FCF output rendering
+│   │   ├── dcf_step3_wacc.py           ← Step 3: WACC (placeholder)
+│   │   ├── dcf_step4_terminal.py       ← Step 4: Terminal Value (placeholder)
+│   │   ├── dcf_step5_output.py         ← Step 5: DCF Output (placeholder)
 │   │   ├── comps_tab.py                ← Comps tab (placeholder)
 │   │   ├── ddm_tab.py                  ← DDM tab (placeholder, recommended for banks)
 │   │   ├── historical_tab.py           ← Historical tab (placeholder)
@@ -155,8 +181,8 @@ Vision/
 │   │   │   ├── yahoo.py                ← Verð, fjárhagur, hlutföll, arðir, options
 │   │   │   ├── yahoo_valuation.py      ← BS/CF/IS smáatriði + analyst estimates
 │   │   │   ├── damodaran.py            ← ERP, beta, CRP, spreads ✅
-│   │   │   ├── edgar_provider.py       ← Raw EDGAR 10-K (label-based DataFrames)
-│   │   │   ├── edgar_xbrl.py           ← XBRL EDGAR (multi-filing merge, concept metadata)
+│   │   │   ├── edgar_provider.py       ← Raw EDGAR 10-K (kept, not active)
+│   │   │   ├── edgar_xbrl.py           ← XBRL EDGAR (kept, not active)
 │   │   │   ├── simfin_provider.py      ← SimFin (banks, insurance, general)
 │   │   │   ├── simfin_maps.py          ← SimFin column → standard key mappings
 │   │   │   ├── simfin_utils.py         ← SimFin extraction + derived fields
@@ -166,16 +192,17 @@ Vision/
 │   │   │   ├── earnings_calendar.py    ← Afkomudagsetningar
 │   │   │   └── economic_calendar.py    ← Efnahagsdagatal (FOMC, CPI, o.fl.)
 │   │   │
-│   │   ├── standardizer.py             ← Top-down template-based standardizer
-│   │   ├── standardizer_engine.py      ← Search engine (concept/keyword/derived)
-│   │   ├── standardizer_utils.py       ← Derived fields + cross-checks
-│   │   ├── template.py                 ← 35 template lines + SEARCH_RULES hub
-│   │   ├── template_is.py              ← IS search rules
-│   │   ├── template_bs.py              ← BS search rules
-│   │   ├── template_cf.py              ← CF search rules
-│   │   ├── concept_maps.py             ← 1079 XBRL concept mappings (hub)
-│   │   ├── concept_maps_*.py           ← Split by IS/BS/CF + keywords
-│   │   ├── historical.py               ← Orchestrator: raw → standardized → audit
+│   │   ├── yfinance_standardizer.py    ← PRIMARY: yfinance → prepared_data mapping
+│   │   ├── standardizer.py             ← EDGAR standardizer (kept, not active)
+│   │   ├── standardizer_engine.py      ← Search engine (kept, not active)
+│   │   ├── standardizer_utils.py       ← Derived fields + cross-checks (kept)
+│   │   ├── template.py                 ← 35 template lines (kept)
+│   │   ├── template_is.py              ← IS search rules (kept)
+│   │   ├── template_bs.py              ← BS search rules (kept)
+│   │   ├── template_cf.py              ← CF search rules (kept)
+│   │   ├── concept_maps.py             ← XBRL concept mappings (kept)
+│   │   ├── concept_maps_*.py           ← Split by IS/BS/CF + keywords (kept)
+│   │   ├── historical.py               ← Table builders: standardized → IS/BS/CF tables
 │   │   ├── financial_data.py           ← Middleware for SimFin (banks/insurance)
 │   │   ├── market.py                   ← Mellanlags-lag: verð, söguleg gögn
 │   │   ├── fundamentals.py             ← Mellanlags-lag: fjárhagur, hlutföll
@@ -194,7 +221,7 @@ Vision/
 │   │   ├── historical_ratios.py        ← Ratio calculations (margins, growth, etc.)
 │   │   ├── historical_averages.py      ← 3-year averages
 │   │   ├── historical_flags.py         ← Flag orchestrator (calls flags.py)
-│   │   ├── valuation/                  ← Virðismatsundirmappa (DCF steps 2-6)
+│   │   ├── valuation/                  ← Virðismatsundirmappa (DCF steps 2-5)
 │   │   │   ├── wacc.py                 ← WACC (CAPM, beta, cost of debt)
 │   │   │   ├── simple_dcf.py           ← Simple DCF (3-phase growth)
 │   │   │   ├── complex_dcf.py          ← Complex DCF (IB-grade)

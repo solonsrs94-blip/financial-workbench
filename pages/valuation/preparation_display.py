@@ -1,4 +1,4 @@
-"""Preparation display helpers — charts, raw tables, standardized tables, ratios.
+"""Preparation display helpers — charts, financial tables, ratios.
 
 Split from preparation.py for file size compliance.
 """
@@ -6,10 +6,10 @@ Split from preparation.py for file size compliance.
 import streamlit as st
 import pandas as pd
 import plotly.graph_objects as go
-from typing import Optional
 
-from components.layout import format_large_number
 from components.financial_table import render_financial_table
+from lib.data.override_utils import count_overrides
+from pages.valuation.preparation_editor import render_editable_table
 
 
 # ── Charts ───────────────────────────────────────────────────────────
@@ -84,36 +84,7 @@ def _revenue_fcf_chart(is_table: list[dict], cf_table: list[dict]) -> None:
     st.plotly_chart(fig, use_container_width=True)
 
 
-# ── Raw Financials ───────────────────────────────────────────────────
-
-def render_raw_statements(raw: Optional[dict], ticker: str) -> None:
-    """Display raw DataFrames with formatted numbers."""
-    if raw is None:
-        return
-
-    stmt_type = st.segmented_control(
-        "Statement", ["Income", "Balance Sheet", "Cash Flow"],
-        default="Income", key=f"prep_raw_type_{ticker}",
-        label_visibility="collapsed",
-    )
-    key_map = {"Income": "income", "Balance Sheet": "balance",
-               "Cash Flow": "cashflow"}
-    df = raw.get(key_map[stmt_type])
-
-    if df is not None and isinstance(df, pd.DataFrame) and not df.empty:
-        display = df.map(
-            lambda x: format_large_number(x, prefix="")
-            if isinstance(x, (int, float)) and pd.notna(x) else ""
-        )
-        st.dataframe(
-            display, use_container_width=True,
-            height=min(len(display) * 38 + 50, 700),
-        )
-    else:
-        st.info(f"No {stmt_type.lower()} data available.")
-
-
-# ── Standardized Financials ──────────────────────────────────────────
+# ── Financial Statements ─────────────────────────────────────────────
 
 _IS_FIELDS = [
     ("revenue", "Revenue", "auto"),
@@ -131,8 +102,8 @@ _IS_FIELDS = [
     ("pretax_income", "= Pretax Income", "auto"),
     ("tax_provision", "Tax Provision", "auto", False),
     ("net_income", "= Net Income", "auto"),
-    ("diluted_shares", "Diluted Shares", "auto"),
-    ("diluted_eps", "Diluted EPS", "auto"),
+    ("diluted_shares", "Diluted Shares", "shares"),
+    ("diluted_eps", "Diluted EPS", "per_share"),
 ]
 
 _BS_FIELDS = [
@@ -153,7 +124,7 @@ _BS_FIELDS = [
     ("total_equity", "= Total Equity", "auto"),
     ("total_debt", ">> Total Debt", "auto"),
     ("net_debt", ">> Net Debt", "auto"),
-    ("shares_outstanding", "Shares Outstanding", "auto"),
+    ("shares_outstanding", "Shares Outstanding", "shares"),
 ]
 
 _CF_FIELDS = [
@@ -177,68 +148,56 @@ _CF_FIELDS = [
 ]
 
 
-def render_standardized(data: dict, ticker: str) -> None:
-    """Display standardized IS/BS/CF with audit trail."""
+_STMT_MAP = {"Income": "income", "Balance Sheet": "balance",
+             "Cash Flow": "cashflow"}
+_FIELD_MAP = {"Income": _IS_FIELDS, "Balance Sheet": _BS_FIELDS,
+              "Cash Flow": _CF_FIELDS}
+
+
+def render_standardized(
+    data: dict, ticker: str, overrides: dict | None = None,
+) -> None:
+    """Display IS/BS/CF tables with optional edit mode for overrides."""
     tables = data.get("tables", {})
-    is_t = tables.get("income")
-    bs_t = tables.get("balance")
-    cf_t = tables.get("cashflow")
-
-    if not is_t:
-        st.info("No standardized data available.")
+    if not tables.get("income"):
+        st.info("No financial data available.")
         return
 
-    # Cross-checks
-    checks = data.get("standardized", {}).get("cross_checks", [])
-    if checks:
-        failed = [c for c in checks if not c.get("ok")]
-        passed = [c for c in checks if c.get("ok")]
-        if failed:
-            for c in failed:
-                st.warning(f"**{c['year']}**: {c['check']} -- "
-                           f"off by ${c.get('diff', 0)/1e6:,.0f}M")
-        if passed:
-            st.caption(f"{len(passed)} cross-checks passed")
+    overrides = overrides or {}
+    ovr_key = f"financial_overrides_{ticker}"
+    n_ovr = count_overrides(overrides)
 
-    stmt = st.segmented_control(
-        "Statement", ["Income", "Balance Sheet", "Cash Flow"],
-        default="Income", key=f"prep_std_type_{ticker}",
-        label_visibility="collapsed",
-    )
-    if stmt == "Income":
-        render_financial_table(is_t, _IS_FIELDS)
-    elif stmt == "Balance Sheet":
-        render_financial_table(bs_t, _BS_FIELDS)
+    # ── Header row: statement selector + edit toggle + reset ──
+    h1, h2, h3 = st.columns([5, 2, 2])
+    with h1:
+        stmt = st.segmented_control(
+            "Statement", ["Income", "Balance Sheet", "Cash Flow"],
+            default="Income", key=f"prep_std_type_{ticker}",
+            label_visibility="collapsed",
+        )
+    with h2:
+        edit_mode = st.toggle(
+            "Edit values", key=f"prep_edit_mode_{ticker}",
+        )
+    with h3:
+        if n_ovr > 0:
+            if st.button(f"Reset all ({n_ovr})", key=f"prep_reset_{ticker}"):
+                st.session_state[ovr_key] = {
+                    "income": {}, "balance": {}, "cashflow": {},
+                }
+                st.rerun()
+
+    stmt_key = _STMT_MAP[stmt]
+    fields = _FIELD_MAP[stmt]
+    rows = tables.get(stmt_key, [])
+    stmt_overrides = overrides.get(stmt_key, {})
+
+    if edit_mode:
+        render_editable_table(rows, fields, stmt_key, ticker, overrides, data)
     else:
-        render_financial_table(cf_t, _CF_FIELDS)
-
-    # Audit trail
-    _render_audit(data, stmt, ticker)
-
-
-def _render_audit(data: dict, stmt: str, ticker: str) -> None:
-    """Show mapping audit trail."""
-    audit_key = {"Income": "income_audit", "Balance Sheet": "balance_audit",
-                 "Cash Flow": "cashflow_audit"}.get(stmt)
-    audit = data.get("standardized", {}).get(audit_key, {})
-    if not audit:
-        return
-
-    with st.expander("Audit Trail"):
-        latest_yr = max(audit.keys())
-        fields = audit[latest_yr]
-        layer_names = {0: "Derived", 1: "XBRL", 2: "Keyword", 3: "Hierarchy",
-                       4: "Other"}
-        layer_icons = {0: "D", 1: "X", 2: "K", 3: "H", 4: "?"}
-
-        for key, info in sorted(fields.items()):
-            if not isinstance(info, dict):
-                continue
-            raw = info.get("raw_label", "?")
-            layer = info.get("layer", "?")
-            ln = layer_names.get(layer, f"L{layer}")
-            icon = layer_icons.get(layer, "?")
-            st.caption(f"[{icon}] `{key}` <- \"{raw}\" ({ln})")
+        render_financial_table(
+            rows, fields, show_source=False, overrides=stmt_overrides,
+        )
 
 
 # ── Ratios ───────────────────────────────────────────────────────────

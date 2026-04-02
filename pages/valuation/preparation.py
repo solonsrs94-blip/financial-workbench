@@ -1,13 +1,16 @@
 """Financial Preparation — data loading, standardization, flagging, classification.
 
 Runs BEFORE any valuation tab. Results stored in st.session_state["prepared_data"].
-Reuses existing UI components from the old DCF Step 1 sub-files.
+Data sources:
+  - Normal companies: yfinance (standardized, ~4 years)
+  - Financial institutions: SimFin (banks, insurance)
 """
 
 import streamlit as st
 from typing import Optional
 
-from lib.data.historical import get_raw_statements, get_standardized_history
+from lib.data.yfinance_standardizer import standardize_yfinance
+from lib.data.override_utils import count_overrides
 from lib.analysis.historical import (
     build_income_table, build_balance_table,
     build_cashflow_table, build_ratios_table,
@@ -17,8 +20,9 @@ from lib.analysis.company_classifier import classify_company
 from lib.data.financial_data import (
     fetch_bank_financials, fetch_insurance_financials,
 )
+from pages.valuation.preparation_overrides import rebuild_with_overrides
 from pages.valuation.preparation_display import (
-    render_charts, render_raw_statements, render_standardized, render_ratios,
+    render_charts, render_standardized, render_ratios,
 )
 
 
@@ -40,14 +44,17 @@ def _load_and_prepare(ticker: str, sector: str, sub_industry: str) -> dict:
 
 
 def _load_normal(ticker: str, sector: str, sub_industry: str) -> dict:
-    """Load data for normal (non-financial) companies via EDGAR."""
-    raw = get_raw_statements(ticker)
-    if raw is None:
-        return None
+    """Load data for normal (non-financial) companies via yfinance."""
+    import yfinance as yf
 
-    std = get_standardized_history(ticker, raw_data=raw)
+    t = yf.Ticker(ticker)
+    income_stmt = t.income_stmt
+    balance_sheet = t.balance_sheet
+    cashflow = t.cashflow
+
+    std = standardize_yfinance(income_stmt, balance_sheet, cashflow)
     if std is None:
-        return {"raw_statements": raw, "error": "Standardization failed"}
+        return None
 
     years = std["years"]
     is_t = build_income_table(std, years)
@@ -64,7 +71,7 @@ def _load_normal(ticker: str, sector: str, sub_industry: str) -> dict:
     return {
         "ticker": ticker,
         "company_type": company_type,
-        "raw_statements": raw,
+        "original_standardized": std,
         "standardized": std,
         "tables": {"income": is_t, "balance": bs_t, "cashflow": cf_t},
         "ratios": ratios,
@@ -86,7 +93,7 @@ def _load_financial(
         std = fetch_bank_financials(ticker)
 
     if std is None:
-        # Fallback to EDGAR if SimFin fails
+        # Fallback to yfinance if SimFin fails
         return _load_normal(ticker, sector, sub_industry)
 
     years = std.get("years", [])
@@ -111,17 +118,12 @@ def _load_financial(
 
 def _simfin_audit_to_table(audit: dict, years: list) -> list[dict]:
     """Convert SimFin audit format to table format (list of dicts per year)."""
-    result = []
-    for yr in years:
-        yr_data = audit.get(yr, {})
-        row = {"year": yr}
-        for key, info in yr_data.items():
-            if isinstance(info, dict):
-                row[key] = info.get("value")
-            else:
-                row[key] = info
-        result.append(row)
-    return result
+    return [
+        {"year": yr, **{
+            k: (v.get("value") if isinstance(v, dict) else v)
+            for k, v in audit.get(yr, {}).items()
+        }} for yr in years
+    ]
 
 
 # ── Main render ──────────────────────────────────────────────────────
@@ -143,6 +145,18 @@ def render_preparation(ticker: str, company) -> None:
         st.session_state[cache_key] = data
 
     data = st.session_state[cache_key]
+
+    # ── Apply overrides if any ────────────────────────────────────
+    ovr_key = f"financial_overrides_{ticker}"
+    if ovr_key not in st.session_state:
+        st.session_state[ovr_key] = {
+            "income": {}, "balance": {}, "cashflow": {},
+        }
+    overrides = st.session_state[ovr_key]
+
+    if count_overrides(overrides) > 0 and data.get("original_standardized"):
+        rebuild_with_overrides(data, overrides, sector, ticker)
+
     st.session_state["prepared_data"] = data
 
     if data.get("error"):
@@ -163,13 +177,9 @@ def render_preparation(ticker: str, company) -> None:
     # ── Charts ───────────────────────────────────────────────────
     render_charts(data)
 
-    # ── Raw Financials (collapsible) ─────────────────────────────
-    with st.expander("Raw Financials (as-reported)"):
-        render_raw_statements(data["raw_statements"], ticker)
-
-    # ── Standardized Financials (collapsible) ────────────────────
-    with st.expander("Standardized Financials"):
-        render_standardized(data, ticker)
+    # ── Financial Statements (collapsible) ────────────────────
+    with st.expander("Financial Statements"):
+        render_standardized(data, ticker, overrides)
 
     # ── Key Ratios (collapsible) ─────────────────────────────────
     with st.expander("Key Ratios & Drivers"):
@@ -180,23 +190,17 @@ def render_preparation(ticker: str, company) -> None:
 
 def _render_classification(ctype: dict) -> None:
     """Show company classification banner."""
-    t = ctype["type"]
-    methods = ", ".join(m.upper() for m in ctype["recommended_methods"])
-    reason = ctype["reason"]
-
-    if t == "financial":
-        st.warning(f"**{t.title()}** — {reason}. Recommended: {methods}.")
-    elif t == "dividend_stable":
-        st.info(f"**{t.replace('_', ' ').title()}** — {reason}. "
-                f"Recommended: {methods}.")
-    else:
-        st.caption(f"Classification: **{t.title()}** — {reason}. "
-                   f"Recommended: {methods}.")
-
-    source = "EDGAR" if st.session_state.get("prepared_data", {}).get(
-        "standardized", {}).get("source") == "edgar" else "Yahoo"
-    n_years = len(st.session_state.get("prepared_data", {}).get("years", []))
-    st.caption(f"{n_years} years of data | Source: {source}")
+    t, methods = ctype["type"], ", ".join(
+        m.upper() for m in ctype["recommended_methods"])
+    msg = f"**{t.replace('_', ' ').title()}** — {ctype['reason']}. Recommended: {methods}."
+    (st.warning if t == "financial" else
+     st.info if t == "dividend_stable" else st.caption)(
+        f"Classification: {msg}" if t == "normal" else msg)
+    pd = st.session_state.get("prepared_data", {})
+    src = pd.get("standardized", {}).get("source", "yfinance")
+    src_lbl = {"yfinance": "Yahoo Finance", "simfin": "SimFin",
+               "edgar": "EDGAR"}.get(src, src)
+    st.caption(f"{len(pd.get('years', []))} years of data | Source: {src_lbl}")
 
 
 _CAT_LABELS = {
@@ -229,55 +233,42 @@ def _render_flags(flags: list[dict]) -> None:
 def _render_single_flag(flag: dict, css_class: str) -> None:
     """Render one flag card."""
     cat = _CAT_LABELS.get(flag.get("category", ""), "Other")
-    year = flag.get("year", "")
-    what = flag.get("what", "")
-    impact = flag.get("impact_mn")
+    yr, what = flag.get("year", ""), flag.get("what", "")
+    imp = flag.get("impact_mn")
+    imp_s = (f" | ${imp/1000:.1f}B" if imp and abs(imp) >= 1000
+             else f" | ${imp:.0f}M" if imp else "")
     causes = flag.get("possible_causes")
-
-    impact_s = ""
-    if impact:
-        impact_s = (f" | ${impact/1000:.1f}B" if abs(impact) >= 1000
-                    else f" | ${impact:.0f}M")
-
-    html = (
-        f'<div class="{css_class}">'
-        f'<strong>{year}</strong> '
-        f'<span class="source-tag">{cat}</span>{impact_s}<br>'
+    causes_s = ("<br><span style=\"color:rgba(255,255,255,0.5);"
+                f"font-size:12px\">Possible: {' / '.join(causes[:3])}</span>"
+                if causes else "")
+    st.markdown(
+        f'<div class="{css_class}"><strong>{yr}</strong> '
+        f'<span class="source-tag">{cat}</span>{imp_s}<br>'
         f'<span style="color:rgba(255,255,255,0.9)">{what}</span>'
+        f'{causes_s}</div>', unsafe_allow_html=True,
     )
-    if causes:
-        causes_s = " / ".join(causes[:3])
-        html += (f'<br><span style="color:rgba(255,255,255,0.5);'
-                 f'font-size:12px">Possible: {causes_s}</span>')
-    html += '</div>'
-    st.markdown(html, unsafe_allow_html=True)
+
+
+_AVG_ROWS = [
+    [("Gross Margin", "gross_margin_3yr", "pct"),
+     ("EBIT Margin", "ebit_margin_3yr", "pct"),
+     ("Rev Growth", "revenue_growth_3yr", "pct"),
+     ("CapEx/Rev", "capex_pct_3yr", "pct"),
+     ("ROIC", "roic_3yr", "pct")],
+    [("DSO", "dso_3yr", "days"), ("DIO", "dio_3yr", "days"),
+     ("DPO", "dpo_3yr", "days"), ("Int. Cov.", "interest_coverage_3yr", "ratio"),
+     ("Eff Tax", "eff_tax_3yr", "pct")],
+]
 
 
 def _render_averages(avgs: dict) -> None:
     """3yr averages dashboard."""
-    cols = st.columns(5)
-    for col, (label, key) in zip(cols, [
-        ("Gross Margin", "gross_margin_3yr"),
-        ("EBIT Margin", "ebit_margin_3yr"),
-        ("Rev Growth", "revenue_growth_3yr"),
-        ("CapEx/Rev", "capex_pct_3yr"),
-        ("ROIC", "roic_3yr"),
-    ]):
-        val = avgs.get(key)
-        col.metric(f"3yr {label}", f"{val*100:.1f}%" if val else "---")
-
-    cols2 = st.columns(5)
-    for col, (label, key, fmt) in zip(cols2, [
-        ("DSO", "dso_3yr", "days"),
-        ("DIO", "dio_3yr", "days"),
-        ("DPO", "dpo_3yr", "days"),
-        ("Int. Cov.", "interest_coverage_3yr", "ratio"),
-        ("Eff Tax", "eff_tax_3yr", "pct"),
-    ]):
-        val = avgs.get(key)
-        if val is not None:
-            s = (f"{val:.0f} days" if fmt == "days" else
-                 f"{val:.1f}x" if fmt == "ratio" else f"{val*100:.1f}%")
-        else:
+    for row_def in _AVG_ROWS:
+        cols = st.columns(len(row_def))
+        for col, (label, key, fmt) in zip(cols, row_def):
+            v = avgs.get(key)
             s = "---"
-        col.metric(f"3yr {label}", s)
+            if v is not None:
+                s = (f"{v:.0f} days" if fmt == "days" else
+                     f"{v:.1f}x" if fmt == "ratio" else f"{v*100:.1f}%")
+            col.metric(f"3yr {label}", s)

@@ -36,6 +36,22 @@ def _fmt_number(val, scale: str = "auto", red_negative: bool = True) -> str:
         if v == 0:
             return "&mdash;"
         return f'{v:.2f}x'
+    elif scale == "shares":
+        if v == 0:
+            return "&mdash;"
+        av = abs(v)
+        if av >= 1e9:
+            s = f"{av/1e9:,.1f}B"
+        elif av >= 1e6:
+            s = f"{av/1e6:,.0f}M"
+        else:
+            s = f"{av:,.0f}"
+        return s
+    elif scale == "per_share":
+        if v == 0:
+            return "&mdash;"
+        neg = ' class="neg"' if (v < 0 and red_negative) else ""
+        return f'<span{neg}>${abs(v):,.2f}</span>'
 
     # Auto scale for dollar amounts
     av = abs(v)
@@ -67,6 +83,7 @@ def render_financial_table(
     fields: list[tuple],
     title: str = "",
     show_source: bool = True,
+    overrides: dict | None = None,
 ) -> None:
     """Render a financial table.
 
@@ -77,10 +94,13 @@ def render_financial_table(
             scale: "auto", "pct", "days", "ratio"
         title: Optional title above table
         show_source: Show source tag in header
+        overrides: Optional {year: {field: value}} to highlight overridden cells
     """
     if not rows:
         st.info("No data available.")
         return
+
+    overrides = overrides or {}
 
     # Build HTML
     html = '<div class="fin-table-wrap"><table class="fin-table">'
@@ -118,7 +138,10 @@ def render_financial_table(
         html += f"<tr{row_cls}><td>{clean_label}</td>"
         for r in rows:
             val = r.get(key)
-            html += f"<td>{_fmt_number(val, scale, red_neg)}</td>"
+            yr = r.get("year", "")
+            is_overridden = key in overrides.get(yr, {})
+            td_cls = ' class="override"' if is_overridden else ""
+            html += f"<td{td_cls}>{_fmt_number(val, scale, red_neg)}</td>"
         html += "</tr>"
     html += "</tbody></table></div>"
 

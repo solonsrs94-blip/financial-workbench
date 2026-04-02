@@ -6,8 +6,8 @@ Read VISION.md for project philosophy. Read ARCHITECTURE.md for full structure, 
 ## Tech Stack
 - Python 3.11+
 - Streamlit (UI framework — fase 1, React later)
-- yfinance (market data — no API key needed)
-- edgartools (SEC filings — primary data source, 10+ years)
+- yfinance (PRIMARY: financial statements + market data — no API key needed)
+- edgartools (SEC filings — kept in repo, not active for Financial Preparation)
 - simfin (bank/insurance financials — free tier, 5 years)
 - fredapi (macro data — needs API key, fase 4)
 - Plotly (interactive charts — preferred over Matplotlib)
@@ -19,16 +19,21 @@ Read VISION.md for project philosophy. Read ARCHITECTURE.md for full structure, 
 ```
 app.py              → Main Streamlit entry point
 pages/              → Streamlit pages (one screen = one file)
-  pages/valuation/  → Valuation sub-pages (preparation, dcf, comps, ddm, etc.)
+  pages/valuation/  → Valuation sub-pages (preparation, dcf steps 2-5, comps, ddm)
+    preparation_editor.py → Editable data_editor for override values
+    preparation_overrides.py → Rebuild cascade after overrides
+    dcf_step2_table.py → Historical + projected FCF table
+    dcf_step2_output.py → Calculated FCF output section
 components/         → Reusable UI components (ticker search, charts, tables, explainer)
 lib/                → Core logic — NO Streamlit imports allowed here
   lib/data/         → Data fetching + standardization
-    providers/      → Raw data sources (edgar, yahoo, simfin, damodaran)
-    standardizer.py → Top-down XBRL standardizer (template-based)
-    template.py     → 35 line items + search rules per item
-    concept_maps.py → 1079 XBRL concept mappings (IS/BS/CF)
-    historical.py   → Orchestrator: raw → standardized → audit trail
+    providers/      → Raw data sources (yahoo, simfin, damodaran, edgar)
+    yfinance_standardizer.py → PRIMARY: yfinance → prepared_data mapping
+    yfinance_maps.py → yfinance key mappings (IS/BS/CF, pure data)
+    override_utils.py → Apply/count user overrides on standardized data
+    historical.py   → Table builders: standardized → IS/BS/CF tables
     financial_data.py → Middleware for SimFin (banks/insurance)
+    standardizer.py → EDGAR standardizer (kept, not active)
   lib/analysis/     → Calculations (valuation, technicals, risk, etc.)
     flags.py        → 15-rule flagging system (anomaly detection)
     company_classifier.py → normal / financial / dividend_stable

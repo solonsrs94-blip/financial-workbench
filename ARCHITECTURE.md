@@ -66,7 +66,9 @@ components/charts.py (eða tables.py, o.fl.) — sýnir gögnin
 Normal companies:
   yfinance (income_stmt, balance_sheet, cashflow)
       ↓
-  lib/data/yfinance_standardizer.py  →  standardized dict
+  lib/data/yfinance_standardizer.py  →  standardized dict (original)
+      ↓
+  lib/data/override_utils.py         →  apply user overrides (if any)
       ↓
   lib/analysis/historical.py         →  IS/BS/CF tables
       ↓
@@ -75,6 +77,9 @@ Normal companies:
   lib/analysis/historical_flags.py   →  anomaly flags + 3yr averages
       ↓
   st.session_state["prepared_data"]  →  used by DCF Steps 2-5
+
+Override cascade: user edits value → override_utils merges with original
+  → tables/ratios/flags/averages all rebuilt → charts + DCF update
 
 Banks/Insurance:
   SimFin → lib/data/financial_data.py → same prepared_data format
@@ -119,6 +124,8 @@ Vision/
 │   ├── valuation/
 │   │   ├── preparation.py              ← Financial Preparation (runs before all tabs)
 │   │   ├── preparation_display.py      ← Charts, tables, ratios display
+│   │   ├── preparation_editor.py       ← Editable data_editor for override values
+│   │   ├── preparation_overrides.py    ← Rebuild cascade after overrides
 │   │   ├── dcf_tab.py                  ← DCF tab orchestrator (Steps 2-5)
 │   │   ├── dcf_step2_assumptions.py    ← Step 2: Assumptions + controls
 │   │   ├── dcf_step2_table.py          ← Step 2: Historical data + projection math
@@ -193,6 +200,8 @@ Vision/
 │   │   │   └── economic_calendar.py    ← Efnahagsdagatal (FOMC, CPI, o.fl.)
 │   │   │
 │   │   ├── yfinance_standardizer.py    ← PRIMARY: yfinance → prepared_data mapping
+│   │   ├── yfinance_maps.py            ← yfinance IS/BS/CF key mappings (pure data)
+│   │   ├── override_utils.py           ← Apply/count user overrides (no Streamlit)
 │   │   ├── standardizer.py             ← EDGAR standardizer (kept, not active)
 │   │   ├── standardizer_engine.py      ← Search engine (kept, not active)
 │   │   ├── standardizer_utils.py       ← Derived fields + cross-checks (kept)

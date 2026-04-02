@@ -4,7 +4,7 @@
     {
       "name": "streamlit",
       "runtimeExecutable": "C:\\Users\\Notandi\\Desktop\\Vision\\venv\\Scripts\\streamlit",
-      "runtimeArgs": ["run", "app.py"],
+      "runtimeArgs": ["run", "app.py", "--server.port", "8501"],
       "port": 8501
     }
   ]

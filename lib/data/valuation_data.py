@@ -9,6 +9,8 @@ from typing import Optional, Tuple
 from lib import cache
 from lib.data.providers import yahoo
 from lib.data.providers import yahoo_valuation
+from lib.data.providers import damodaran as dam_provider
+from lib.data.providers import peer_beta as peer_provider
 
 logger = logging.getLogger(__name__)
 
@@ -76,3 +78,39 @@ def get_analyst_estimates(
     if stale is not None:
         return stale, "stale"
     return None, "error"
+
+
+# ── Damodaran middleware ──────────────────────────────────────────
+
+
+def get_erp() -> Optional[float]:
+    """Implied Equity Risk Premium from Damodaran (cached 30d)."""
+    return dam_provider.fetch_erp()
+
+
+def get_crp(country: str) -> Optional[float]:
+    """Country Risk Premium from Damodaran (cached 30d)."""
+    return dam_provider.fetch_crp(country)
+
+
+def get_spread(icr: float, firm_type: str = "small"):
+    """Default spread lookup from Damodaran (cached 30d)."""
+    return dam_provider.fetch_spread(icr, firm_type)
+
+
+def get_industry_beta(industry: str, region: str = "us"):
+    """Industry beta from Damodaran (cached 30d)."""
+    return dam_provider.fetch_industry_beta(industry, region)
+
+
+# ── Peer beta middleware ─────────────────────────────────────────
+
+
+def get_suggested_peers(ticker: str, max_peers: int = 8) -> list[str]:
+    """Yahoo recommended peers for a ticker."""
+    return peer_provider.fetch_suggested_peers(ticker, max_peers)
+
+
+def get_peer_data(tickers: list[str]) -> list[dict]:
+    """Beta, D/E, tax rate for a list of peer tickers."""
+    return peer_provider.fetch_peer_data(tickers)

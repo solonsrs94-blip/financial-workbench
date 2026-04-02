@@ -20,14 +20,20 @@ class WACCResult:
     size_premium: float = 0.0
     crp: float = 0.0
     cost_of_equity: float = 0.10
+    beta_method: str = "blume"  # "blume" / "industry" / "peer"
     # Cost of debt
     cost_of_debt_pretax: float = 0.05
     tax_rate: float = 0.21
     cost_of_debt_aftertax: float = 0.04
-    rd_method: str = "interest_debt"  # for display: how was Rd determined
+    rd_method: str = "interest_debt"  # "interest_debt" / "synthetic" / "estimated"
+    synthetic_rating: str = ""
+    synthetic_spread: float = 0.0
+    kd_pretax_actual: float = 0.0  # for comparison display
+    kd_pretax_synthetic: float = 0.0  # for comparison display
     # Capital structure
     equity_weight: float = 1.0
     debt_weight: float = 0.0
+    cap_structure_method: str = "market"  # "market" / "industry" / "target"
     # Result
     wacc: float = 0.10
 

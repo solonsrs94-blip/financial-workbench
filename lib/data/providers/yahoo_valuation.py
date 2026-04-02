@@ -27,6 +27,20 @@ def _safe_val(df, row_name, col_idx=0):
     return None
 
 
+def _safe_val_fallback(df, row_name):
+    """Extract value, trying each year column until a non-nan is found.
+
+    Used for fields like Interest Expense that may be nan in recent years.
+    """
+    if df is None or df.empty or row_name not in df.index:
+        return None
+    for col_idx in range(min(4, len(df.columns))):
+        val = _safe_val(df, row_name, col_idx)
+        if val is not None:
+            return val
+    return None
+
+
 def _safe_div(num, den):
     """Safe division, returns None on failure."""
     if num and den and den != 0:
@@ -59,8 +73,12 @@ def fetch_valuation_data(ticker: str) -> Optional[dict]:
     gross_profit = _safe_val(inc, "Gross Profit")
     sga = _safe_val(inc, "Selling General And Administration")
     ebitda = _safe_val(inc, "EBITDA") or _safe_val(inc, "Normalized EBITDA")
-    ebit = _safe_val(inc, "EBIT") or _safe_val(inc, "Operating Income")
-    interest_expense = _safe_val(inc, "Interest Expense")
+    ebit = (_safe_val(inc, "EBIT") or _safe_val(inc, "Operating Income")
+            or _safe_val_fallback(inc, "EBIT")
+            or _safe_val_fallback(inc, "Operating Income"))
+    interest_expense = (_safe_val(inc, "Interest Expense")
+                        or _safe_val_fallback(inc, "Interest Expense")
+                        or _safe_val_fallback(inc, "Interest Expense Non Operating"))
     pretax = _safe_val(inc, "Pretax Income")
     tax_provision = _safe_val(inc, "Tax Provision")
     net_income = _safe_val(inc, "Net Income")

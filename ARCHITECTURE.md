@@ -130,7 +130,11 @@ Vision/
 │   │   ├── dcf_step2_assumptions.py    ← Step 2: Assumptions + controls
 │   │   ├── dcf_step2_table.py          ← Step 2: Historical data + projection math
 │   │   ├── dcf_step2_output.py         ← Step 2: Calculated FCF output rendering
-│   │   ├── dcf_step3_wacc.py           ← Step 3: WACC (placeholder)
+│   │   ├── dcf_step3_wacc.py           ← Step 3: WACC orchestrator
+│   │   ├── dcf_step3_ke.py            ← Step 3A: Cost of Equity (Ke)
+│   │   ├── dcf_step3_kd.py            ← Step 3B: Cost of Debt (Kd)
+│   │   ├── dcf_step3_structure.py     ← Step 3C: Capital Structure + WACC output
+│   │   ├── dcf_step3_peers.py        ← Step 3: Peer Group Beta (table + add/remove)
 │   │   ├── dcf_step4_terminal.py       ← Step 4: Terminal Value (placeholder)
 │   │   ├── dcf_step5_output.py         ← Step 5: DCF Output (placeholder)
 │   │   ├── comps_tab.py                ← Comps tab (placeholder)
@@ -188,6 +192,8 @@ Vision/
 │   │   │   ├── yahoo.py                ← Verð, fjárhagur, hlutföll, arðir, options
 │   │   │   ├── yahoo_valuation.py      ← BS/CF/IS smáatriði + analyst estimates
 │   │   │   ├── damodaran.py            ← ERP, beta, CRP, spreads ✅
+│   │   │   ├── peer_beta.py           ← Peer suggestions + beta/D/E/tax data
+│   │   │   ├── industry_map.py        ← Yahoo→Damodaran industry name mapping (pure data)
 │   │   │   ├── edgar_provider.py       ← Raw EDGAR 10-K (kept, not active)
 │   │   │   ├── edgar_xbrl.py           ← XBRL EDGAR (kept, not active)
 │   │   │   ├── simfin_provider.py      ← SimFin (banks, insurance, general)

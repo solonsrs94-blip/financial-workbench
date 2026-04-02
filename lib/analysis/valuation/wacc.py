@@ -8,9 +8,35 @@ from models.valuation import WACCResult
 from config.constants import DEFAULT_MRP, DEFAULT_TAX_RATE
 
 
+# ── Beta ──────────────────────────────────────────────────────────
+
+
 def adjusted_beta(raw_beta: float) -> float:
     """Blume adjustment: 2/3 * raw + 1/3 * 1.0."""
     return (2 / 3) * raw_beta + (1 / 3) * 1.0
+
+
+def unlever_beta(
+    levered_beta: float, de_ratio: float, tax_rate: float,
+) -> float:
+    """Hamada: strip leverage from a levered (equity) beta.
+
+    β_U = β_L / (1 + (1 - t) × D/E)
+    """
+    return levered_beta / (1 + (1 - tax_rate) * de_ratio)
+
+
+def relever_beta(
+    unlevered_beta: float, de_ratio: float, tax_rate: float,
+) -> float:
+    """Relever an unlevered (asset) beta with company D/E and tax.
+
+    β_L = β_U × (1 + (1 - t) × D/E)
+    """
+    return unlevered_beta * (1 + (1 - tax_rate) * de_ratio)
+
+
+# ── Cost of Equity ────────────────────────────────────────────────
 
 
 def calc_capm(rf: float, beta: float, erp: float,
@@ -19,11 +45,44 @@ def calc_capm(rf: float, beta: float, erp: float,
     return rf + beta * erp + size_premium + crp
 
 
+def size_premium_bracket(market_cap: float) -> tuple[float, str]:
+    """Size premium based on market cap bracket.
+
+    Returns (premium_decimal, label).
+    """
+    if market_cap and market_cap > 20e9:
+        return 0.0, "Large/Mega Cap (>$20B)"
+    if market_cap and market_cap > 2e9:
+        return 0.01, "Mid Cap ($2–20B)"
+    if market_cap and market_cap > 300e6:
+        return 0.02, "Small Cap ($300M–$2B)"
+    return 0.035, "Micro Cap (<$300M)"
+
+
+# ── Cost of Debt ──────────────────────────────────────────────────
+
+
 def cost_of_debt_from_interest(interest_expense: float, total_debt: float) -> float:
     """Method A: Interest Expense / Total Debt."""
     if total_debt and total_debt > 0 and interest_expense:
         return interest_expense / total_debt
     return 0.05  # fallback
+
+
+def synthetic_kd(rf: float, spread: float) -> float:
+    """Method B: Kd = Rf + default spread from Damodaran ratings."""
+    return rf + spread
+
+
+# ── WACC ──────────────────────────────────────────────────────────
+
+
+def calc_wacc(
+    ke: float, kd_pretax: float, tax_rate: float,
+    e_weight: float, d_weight: float,
+) -> float:
+    """WACC = Ke × (E/V) + Kd×(1-t) × (D/V)."""
+    return ke * e_weight + kd_pretax * (1 - tax_rate) * d_weight
 
 
 def auto_wacc(rf: float, raw_beta: float, market_cap: float,

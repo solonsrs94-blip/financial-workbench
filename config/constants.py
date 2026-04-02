@@ -34,9 +34,9 @@ DAMODARAN_URLS = {
     "erp_monthly": "https://pages.stern.nyu.edu/~adamodar/pc/implprem/ERPbymonth.xlsx",
     "spreads": "https://pages.stern.nyu.edu/~adamodar/pc/ratings.xlsx",
     "crp": "https://pages.stern.nyu.edu/~adamodar/pc/datasets/ctryprem.xlsx",
-    "betas_us": "https://pages.stern.nyu.edu/~adamodar/pc/datasets/betaUS.xlsx",
-    "betas_global": "https://pages.stern.nyu.edu/~adamodar/pc/datasets/betaGlobal.xlsx",
-    "betas_emerging": "https://pages.stern.nyu.edu/~adamodar/pc/datasets/betaemerg.xlsx",
+    "betas_us": "https://pages.stern.nyu.edu/~adamodar/pc/datasets/betas.xls",
+    "betas_global": "https://pages.stern.nyu.edu/~adamodar/pc/datasets/betaGlobal.xls",
+    "betas_emerging": "https://pages.stern.nyu.edu/~adamodar/pc/datasets/betaemerg.xls",
     "wacc": "https://pages.stern.nyu.edu/~adamodar/pc/datasets/wacc.xlsx",
 }
 

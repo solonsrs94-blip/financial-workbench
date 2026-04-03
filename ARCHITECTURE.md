@@ -143,10 +143,10 @@ Vision/
 │   │   ├── comps_tab.py                ← Comps tab orchestrator (3 steps)
 │   │   ├── comps_step1_peers.py       ← Step 1: Peer Selection (candidate gen + picks)
 │   │   ├── comps_step1_table.py       ← Step 1: Candidate table rendering
-│   │   ├── comps_step2_table.py       ← Step 2: Comps Table (data + summary logic)
-│   │   ├── comps_step2_render.py      ← Step 2: HTML table renderer
-│   │   ├── comps_step3_valuation.py   ← Step 3: Implied Valuation (EV bridge + implied prices)
-│   │   ├── comps_step3_football.py   ← Step 3: Football Field chart (Plotly horizontal bars)
+│   │   ├── comps_step2_table.py       ← Step 2: Comps Table (data + summary, normal + financial)
+│   │   ├── comps_step2_render.py      ← Step 2: HTML table renderer (dual column sets)
+│   │   ├── comps_step3_valuation.py   ← Step 3: Implied Valuation (EV bridge + equity-based)
+│   │   ├── comps_step3_football.py   ← Step 3: Football Field chart (Plotly, all multiple types)
 │   │   ├── ddm_tab.py                  ← DDM tab (placeholder, recommended for banks)
 │   │   ├── historical_tab.py           ← Historical tab (placeholder)
 │   │   └── summary_tab.py             ← Summary tab (placeholder)

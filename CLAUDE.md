@@ -121,6 +121,10 @@ tests/              → Tests for data, analysis, and cache
 - Industry name matching: `industry_map.py` handles Yahoo→Damodaran name translation. Add new entries there when mismatches are found.
 - When comparing companies across currencies, convert to USD using `{CURRENCY}=X` Yahoo ticker.
 - Yahoo `sharesOutstanding` may only report one share class (e.g. GOOGL Class A). Always prefer `impliedSharesOutstanding` (includes all classes) with `sharesOutstanding` as fallback. This is enforced in both `yahoo.py` and `yahoo_valuation.py`.
+- GICS ↔ yfinance industry mapping: `gics_yf_map.py` handles Yahoo industry→GICS Sub-Industry translation for peer universe filtering. 111 yfinance industries mapped to 127 GICS Sub-Industries.
+- Comps peer universe: `peer_universe.py` fetches 6 indices (S&P 500, Euro STOXX 50, CAC 40, FTSE 100, TSX 60, Hang Seng = ~823 companies). Cached 30 days via `get_peer_universe()`.
+- Financial company detection: Company model lacks `sector` attribute, so `_is_financial()` in comps uses 3-tier fallback: prepared company_type → target industry keywords → yfinance candidate info sector.
+- Comps financial multiples: Banks/insurance use P/E, P/Book, P/TBV, Div Yield instead of EV-based multiples. `comps_data.py` fetches `bookValue` (per share), tangible book from `balance_sheet["Tangible Book Value"]`, and `dividendYield / 100`.
 
 ## CSS
 - Custom CSS in `assets/styles/custom.css` — loaded by both app.py and page files.

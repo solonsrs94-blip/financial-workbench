@@ -29,6 +29,11 @@ pages/              → Streamlit pages (one screen = one file)
     dcf_step3_kd.py → Step 3B: Cost of Debt (actual vs synthetic)
     dcf_step3_structure.py → Step 3C: Capital Structure + WACC output
     dcf_step3_peers.py → Peer Group Beta (table, add/remove, Hamada)
+    dcf_step4_terminal.py → Step 4 TV orchestrator (method selector, cross-checks, warnings)
+    dcf_step4_methods.py → Step 4 Gordon Growth + Exit Multiple renderers
+    dcf_step5_output.py → Step 5 DCF Output orchestrator (EV, implied price, summary)
+    dcf_step5_bridge.py → Step 5 Equity Bridge (EV → equity value, overridable)
+    dcf_step5_sensitivity.py → Step 5 Sensitivity tables (WACC×growth, WACC×multiple)
 components/         → Reusable UI components (ticker search, charts, tables, explainer)
 lib/                → Core logic — NO Streamlit imports allowed here
   lib/data/         → Data fetching + standardization

@@ -135,8 +135,11 @@ Vision/
 │   │   ├── dcf_step3_kd.py            ← Step 3B: Cost of Debt (Kd)
 │   │   ├── dcf_step3_structure.py     ← Step 3C: Capital Structure + WACC output
 │   │   ├── dcf_step3_peers.py        ← Step 3: Peer Group Beta (table + add/remove)
-│   │   ├── dcf_step4_terminal.py       ← Step 4: Terminal Value (placeholder)
-│   │   ├── dcf_step5_output.py         ← Step 5: DCF Output (placeholder)
+│   │   ├── dcf_step4_terminal.py       ← Step 4: Terminal Value orchestrator
+│   │   ├── dcf_step4_methods.py       ← Step 4: Gordon Growth + Exit Multiple renderers
+│   │   ├── dcf_step5_output.py         ← Step 5: DCF Output orchestrator (EV, bridge, price)
+│   │   ├── dcf_step5_bridge.py        ← Step 5: Equity Bridge with overrides
+│   │   ├── dcf_step5_sensitivity.py   ← Step 5: Sensitivity tables (WACC×g, WACC×multiple)
 │   │   ├── comps_tab.py                ← Comps tab (placeholder)
 │   │   ├── ddm_tab.py                  ← DDM tab (placeholder, recommended for banks)
 │   │   ├── historical_tab.py           ← Historical tab (placeholder)

@@ -34,6 +34,10 @@ pages/              → Streamlit pages (one screen = one file)
     dcf_step5_output.py → Step 5 DCF Output orchestrator (EV, implied price, summary)
     dcf_step5_bridge.py → Step 5 Equity Bridge (EV → equity value, overridable)
     dcf_step5_sensitivity.py → Step 5 Sensitivity tables (WACC×growth, WACC×multiple)
+    historical_tab.py → Historical Multiples orchestrator (period/multiple controls)
+    historical_chart.py → Historical Multiples time series charts (Plotly, ±1σ bands)
+    historical_summary.py → Summary statistics + implied value tables
+    historical_football.py → Football field chart (10th-90th percentile range)
 components/         → Reusable UI components (ticker search, charts, tables, explainer)
 lib/                → Core logic — NO Streamlit imports allowed here
   lib/data/         → Data fetching + standardization
@@ -41,6 +45,11 @@ lib/                → Core logic — NO Streamlit imports allowed here
       damodaran.py → ERP, CRP, spreads, industry betas (US/global/emerging)
       peer_beta.py → Yahoo recommended peers + beta/D/E/tax per peer
       industry_map.py → Yahoo→Damodaran industry name mapping (pure data, 109+ entries)
+      historical_multiples.py → EDGAR + yfinance router, module caches
+      historical_multiples_yf.py → yfinance quarterly/annual extraction helpers
+      historical_multiples_calc.py → Daily TTM builder, summary stats, implied values
+      edgar_quarterly.py → SEC EDGAR Company Facts API (10+ year quarterly data)
+      edgar_concept_map.py → XBRL concept mappings (49 concepts, 55 companies tested)
     yfinance_standardizer.py → PRIMARY: yfinance → prepared_data mapping
     yfinance_maps.py → yfinance key mappings (IS/BS/CF, pure data)
     override_utils.py → Apply/count user overrides on standardized data

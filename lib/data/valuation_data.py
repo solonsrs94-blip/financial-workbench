@@ -14,6 +14,7 @@ from lib.data.providers import peer_beta as peer_provider
 from lib.data.providers import comps_peers as comps_provider
 from lib.data.providers import comps_data as comps_data_provider
 from lib.data.providers import peer_universe as universe_provider
+from lib.data.providers import historical_multiples as hist_mult_provider
 
 logger = logging.getLogger(__name__)
 
@@ -213,3 +214,19 @@ def get_comps_row(ticker: str, force_refresh: bool = False) -> dict | None:
     if stale is not None:
         return stale
     return None
+
+
+# ── Historical multiples middleware ───────────────────────────
+
+
+def get_historical_multiples(
+    ticker: str, period_years: int = 3, is_financial: bool = False,
+) -> dict:
+    """Fetch historical TTM multiples (yfinance only). No caching here
+    — provider is fast enough and data includes a large DataFrame that
+    doesn't serialize well to SQLite. Session-state caching is done
+    at the page level instead.
+    """
+    return hist_mult_provider.get_historical_multiples(
+        ticker, period_years, is_financial,
+    )

@@ -148,7 +148,10 @@ Vision/
 │   │   ├── comps_step3_valuation.py   ← Step 3: Implied Valuation (EV bridge + equity-based)
 │   │   ├── comps_step3_football.py   ← Step 3: Football Field chart (Plotly, all multiple types)
 │   │   ├── ddm_tab.py                  ← DDM tab (placeholder, recommended for banks)
-│   │   ├── historical_tab.py           ← Historical tab (placeholder)
+│   │   ├── historical_tab.py           ← Historical Multiples orchestrator (period/multiple controls)
+│   │   ├── historical_chart.py        ← Historical Multiples time series charts (Plotly, ±1σ bands)
+│   │   ├── historical_summary.py      ← Historical Multiples summary stats + implied value tables
+│   │   ├── historical_football.py     ← Historical Multiples football field chart (10th-90th range)
 │   │   └── summary_tab.py             ← Summary tab (placeholder)
 │   ├── chart/
 │   │   ├── candlestick.py              ← Kertastjakagraf
@@ -204,6 +207,11 @@ Vision/
 │   │   │   ├── peer_beta.py           ← Peer suggestions + beta/D/E/tax data
 │   │   │   ├── comps_peers.py         ← Finnhub peers + S&P 500 universe + candidate info
 │   │   │   ├── comps_data.py          ← Comps multiples data (trailing + forward + EBIT)
+│   │   │   ├── historical_multiples.py ← EDGAR + yfinance router, module caches, EDGAR→DF conversion
+│   │   │   ├── historical_multiples_yf.py ← yfinance quarterly/annual extraction helpers
+│   │   │   ├── historical_multiples_calc.py ← Daily TTM builder, summary stats, implied values
+│   │   │   ├── edgar_quarterly.py       ← SEC EDGAR Company Facts API (10+ year quarterly data)
+│   │   │   ├── edgar_concept_map.py     ← XBRL concept mappings (49 concepts, 55 companies tested)
 │   │   │   ├── peer_universe.py       ← Global peer universe (S&P 500 + Euro STOXX 50 + CAC 40 + FTSE 100 + TSX 60 + Hang Seng)
 │   │   │   ├── industry_map.py        ← Yahoo→Damodaran industry name mapping (pure data)
 │   │   │   ├── gics_yf_map.py         ← GICS Sub-Industry ↔ yfinance industry mapping (111 industries)
@@ -567,7 +575,7 @@ Vision/
 - ✅ .env.example, .gitignore, requirements.txt
 
 ### Fase 2 — Kjarnaskjáir
-- ✅ Virðismat — Simple DCF (3-phase), Complex DCF (12-step IB-grade), 3-Statement Model, WACC (5 beta-aðferðir, 3 Rd-aðferðir, 4 cap-structure leiðir), Comps (operating metrics + football field), Damodaran integration
+- ✅ Virðismat — Simple DCF (3-phase), Complex DCF (12-step IB-grade), 3-Statement Model, WACC (5 beta-aðferðir, 3 Rd-aðferðir, 4 cap-structure leiðir), Comps (operating metrics + football field), Historical Multiples (daily TTM, EDGAR 10Y + yfinance fallback, football field), Damodaran integration
 - Tæknigröf (kertastjakar, RSI, MACD)
 - Hlutabréfasía
 - Vaktlistar

@@ -120,6 +120,7 @@ tests/              → Tests for data, analysis, and cache
 - Damodaran ERP, CRP, spreads are all in decimal form (0.046 = 4.6%). No conversion needed.
 - Industry name matching: `industry_map.py` handles Yahoo→Damodaran name translation. Add new entries there when mismatches are found.
 - When comparing companies across currencies, convert to USD using `{CURRENCY}=X` Yahoo ticker.
+- Yahoo `sharesOutstanding` may only report one share class (e.g. GOOGL Class A). Always prefer `impliedSharesOutstanding` (includes all classes) with `sharesOutstanding` as fallback. This is enforced in both `yahoo.py` and `yahoo_valuation.py`.
 
 ## CSS
 - Custom CSS in `assets/styles/custom.css` — loaded by both app.py and page files.

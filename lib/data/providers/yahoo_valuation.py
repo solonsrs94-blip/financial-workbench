@@ -141,7 +141,9 @@ def fetch_valuation_data(ticker: str) -> Optional[dict]:
     sbc_pct = abs(sbc) / revenue if sbc and revenue and revenue > 0 else None
 
     # --- Shares ---
-    shares = info.get("sharesOutstanding") or info.get("impliedSharesOutstanding")
+    # impliedSharesOutstanding includes all share classes (A, B, C)
+    # sharesOutstanding may only report one class (e.g. GOOGL Class A)
+    shares = info.get("impliedSharesOutstanding") or info.get("sharesOutstanding")
 
     return {
         "income_detail": income_detail,

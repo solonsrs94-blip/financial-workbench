@@ -134,7 +134,8 @@ def fetch_all_info(ticker: str) -> Optional[dict]:
             "revenue_growth": info.get("revenueGrowth"),
             "earnings_growth": info.get("earningsGrowth"),
             "short_pct_float": info.get("shortPercentOfFloat"),
-            "shares_outstanding": info.get("sharesOutstanding"),
+            "shares_outstanding": (info.get("impliedSharesOutstanding")
+                                    or info.get("sharesOutstanding")),
         },
     }
 

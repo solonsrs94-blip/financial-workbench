@@ -15,8 +15,8 @@ from pages.valuation.comps_step3_football import render_football_field
 # ── Multiple definitions ───────────────────────────────────────
 
 # (key, label, target_metric_key, basis)
-# basis: "ev" = EV-based, "equity" = direct price
-_MULTIPLES = [
+# basis: "ev" = EV-based, "equity" = direct price (P/E, P/B)
+_MULTIPLES_NORMAL = [
     ("ev_revenue", "EV / Revenue", "revenue", "ev"),
     ("ev_ebitda", "EV / EBITDA", "ebitda", "ev"),
     ("ev_ebit", "EV / EBIT", "ebit", "ev"),
@@ -24,6 +24,13 @@ _MULTIPLES = [
     ("forward_pe", "Fwd P / E", "fwd_eps", "equity"),
     ("fwd_ev_revenue", "Fwd EV / Rev", "fwd_revenue", "ev"),
     ("fwd_ev_ebitda", "Fwd EV / EBITDA*", "fwd_ebitda", "ev"),
+]
+
+_MULTIPLES_FINANCIAL = [
+    ("trailing_pe", "P / E", "eps", "equity"),
+    ("forward_pe", "Fwd P / E", "fwd_eps", "equity"),
+    ("price_to_book", "P / Book", "book_value_ps", "equity"),
+    ("price_to_tbv", "P / TBV", "tangible_book_ps", "equity"),
 ]
 
 
@@ -41,6 +48,10 @@ def render(prepared: dict, ticker: str) -> None:
 
     target = comps["target"]
     summary = comps["summary"]
+    is_fin = comps.get("is_financial", False)
+
+    # Select correct multiples set
+    multiples = _MULTIPLES_FINANCIAL if is_fin else _MULTIPLES_NORMAL
 
     # Extract bridge inputs from target
     net_debt = _net_debt(target)
@@ -51,7 +62,7 @@ def render(prepared: dict, ticker: str) -> None:
         st.error("Missing shares outstanding or current price for target.")
         return
 
-    # Add forward EPS to target (from info["forwardEps"] via forwardPE)
+    # Add forward EPS to target (from forwardPE)
     _enrich_forward_eps(target)
 
     # Method selector
@@ -65,7 +76,7 @@ def render(prepared: dict, ticker: str) -> None:
 
     # Compute implied prices
     implied = _compute_all_implied(
-        summary, target, net_debt, shares, current_price,
+        summary, target, net_debt, shares, current_price, multiples,
     )
 
     # Store in session state
@@ -77,7 +88,7 @@ def render(prepared: dict, ticker: str) -> None:
 
     # Render implied valuation table
     _render_implied_table(
-        implied, summary, method_key, current_price, target,
+        implied, summary, method_key, current_price, target, multiples,
     )
 
     # Football field chart
@@ -85,12 +96,7 @@ def render(prepared: dict, ticker: str) -> None:
     st.markdown("#### Comps Football Field")
     render_football_field(implied, current_price)
 
-    # Summary box
     _render_summary_box(implied, method_key, current_price)
-
-
-# ── Implied price calculations ─────────────────────────────────
-
 
 def _compute_all_implied(
     summary: dict,
@@ -98,10 +104,13 @@ def _compute_all_implied(
     net_debt: float,
     shares: float,
     current_price: float,
+    multiples: list | None = None,
 ) -> dict:
     """Compute implied prices for all multiples at low/median/mean/high."""
+    if multiples is None:
+        multiples = _MULTIPLES_NORMAL
     result = {}
-    for mult_key, label, metric_key, basis in _MULTIPLES:
+    for mult_key, label, metric_key, basis in multiples:
         target_metric = target.get(metric_key)
         if target_metric is None or target_metric <= 0:
             result[mult_key] = None
@@ -138,14 +147,12 @@ def _compute_all_implied(
 
 
 def _net_debt(target: dict) -> float:
-    """Calculate net debt = Total Debt - Cash."""
     debt = target.get("total_debt") or 0
     cash = target.get("cash") or 0
     return debt - cash
 
 
 def _enrich_forward_eps(target: dict) -> None:
-    """Add forward EPS to target dict from forward P/E and price."""
     if target.get("fwd_eps"):
         return
     fwd_pe = target.get("forward_pe")
@@ -153,21 +160,23 @@ def _enrich_forward_eps(target: dict) -> None:
     if fwd_pe and price and fwd_pe > 0:
         target["fwd_eps"] = price / fwd_pe
 
-
-# ── Implied valuation table ───────────────────────────────────
-
-
 def _render_implied_table(
     implied: dict, summary: dict, method_key: str,
     current_price: float, target: dict,
+    multiples: list | None = None,
 ) -> None:
     """Render implied valuation table as HTML."""
+    if multiples is None:
+        multiples = _MULTIPLES_NORMAL
+
+    # Detect if any EV-based multiples exist
+    has_ev = any(basis == "ev" for _, _, _, basis in multiples)
+
     html = _TBL_CSS + '<table class="impl-tbl"><thead><tr>'
-    headers = [
-        "Multiple", "Peer " + method_key.capitalize(),
-        "Target Metric", "Implied EV", "Implied Equity",
-        "Implied Price", "Current", "Premium / Discount",
-    ]
+    headers = ["Multiple", "Peer " + method_key.capitalize(), "Target Metric"]
+    if has_ev:
+        headers += ["Implied EV", "Implied Equity"]
+    headers += ["Implied Price", "Current", "Premium / Discount"]
     for h in headers:
         html += f"<th>{h}</th>"
     html += "</tr></thead><tbody>"
@@ -175,36 +184,34 @@ def _render_implied_table(
     shares = target.get("shares_outstanding", 1)
     net_debt = _net_debt(target)
 
-    for mult_key, label, metric_key, basis in _MULTIPLES:
+    na_cols = len(headers) - 1  # minus the label column
+
+    for mult_key, label, metric_key, basis in multiples:
         data = implied.get(mult_key)
         if data is None:
             html += (
                 f'<tr><td>{label}</td>'
-                + "<td>N/A</td>" * 7 + "</tr>"
+                + "<td>N/A</td>" * na_cols + "</tr>"
             )
             continue
 
-        # Get the RAW multiple from summary (e.g. 23.3x), NOT implied price
         peer_mult = summary.get(method_key, {}).get(mult_key)
         target_metric = data.get("target_metric")
-        impl_price = data.get(method_key)  # already-computed implied price
+        impl_price = data.get(method_key)
 
         if peer_mult is None or target_metric is None:
             html += (
                 f'<tr><td>{label}</td>'
-                + "<td>N/A</td>" * 7 + "</tr>"
+                + "<td>N/A</td>" * na_cols + "</tr>"
             )
             continue
 
         # Calculate implied EV/equity for display (EV-based only)
+        impl_ev = impl_eq = None
         if basis == "ev":
             impl_ev = peer_mult * target_metric
             impl_eq = impl_ev - net_debt
-        else:
-            impl_ev = None
-            impl_eq = None
 
-        prem = None
         prem_html = "N/A"
         if impl_price and current_price:
             prem = (impl_price / current_price - 1)
@@ -219,8 +226,9 @@ def _render_implied_table(
         html += f"<td>{label}</td>"
         html += f'<td class="r">{peer_mult:.1f}x</td>'
         html += f'<td class="r">{_fmt_metric(target_metric, basis)}</td>'
-        html += f'<td class="r">{_fmt_ev(impl_ev)}</td>'
-        html += f'<td class="r">{_fmt_ev(impl_eq)}</td>'
+        if has_ev:
+            html += f'<td class="r">{_fmt_ev(impl_ev)}</td>'
+            html += f'<td class="r">{_fmt_ev(impl_eq)}</td>'
         html += f'<td class="r b">{_fmt_price(impl_price)}</td>'
         html += f'<td class="r">${current_price:,.0f}</td>'
         html += f'<td class="r">{prem_html}</td>'

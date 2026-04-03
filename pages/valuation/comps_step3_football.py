@@ -23,11 +23,17 @@ _MULT_LABELS = {
     "forward_pe": "Fwd P / E",
     "fwd_ev_revenue": "Fwd EV / Rev",
     "fwd_ev_ebitda": "Fwd EV / EBITDA*",
+    "price_to_book": "P / Book",
+    "price_to_tbv": "P / TBV",
+    "dividend_yield": "Div Yield",
 }
 
-# Preferred display order (bottom to top on chart)
+# Preferred display order (bottom to top on chart).
+# Keys not present in `implied` are silently skipped,
+# so both normal and financial sets work with one list.
 _ORDER = [
-    "fwd_ev_ebitda", "fwd_ev_revenue", "forward_pe",
+    "fwd_ev_ebitda", "fwd_ev_revenue", "dividend_yield",
+    "forward_pe", "price_to_tbv", "price_to_book",
     "trailing_pe", "ev_ebit", "ev_ebitda", "ev_revenue",
 ]
 

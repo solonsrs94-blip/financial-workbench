@@ -53,6 +53,17 @@ def fetch_comps_row(ticker: str) -> Optional[dict]:
         fwd_ev_rev = _safe_multiple(ev, fwd_revenue)
         fwd_ev_ebitda = _safe_multiple(ev, fwd_ebitda)
 
+        # Financial company fields (book value, tangible book, div yield)
+        book_val_ps = info.get("bookValue")  # per share
+        tbv_ps = _get_tangible_book_ps(stock, info)
+        div_yield = info.get("dividendYield")
+        # Yahoo dividendYield is already-percent (2.04 = 2.04%)
+        if div_yield is not None:
+            div_yield = div_yield / 100  # normalize to decimal
+        p_book = info.get("priceToBook")
+        price = info.get("currentPrice") or info.get("regularMarketPrice")
+        p_tbv = (price / tbv_ps) if price and tbv_ps and tbv_ps > 0 else None
+
         return {
             "ticker": ticker.upper(),
             "name": info.get("shortName") or info.get("longName") or ticker,
@@ -85,6 +96,13 @@ def fetch_comps_row(ticker: str) -> Optional[dict]:
             "fwd_ebitda": fwd_ebitda,
             "fwd_ev_revenue": fwd_ev_rev,
             "fwd_ev_ebitda": fwd_ev_ebitda,
+            # Financial company fields
+            "book_value_ps": book_val_ps,
+            "tangible_book_ps": tbv_ps,
+            "price_to_book": p_book,
+            "price_to_tbv": p_tbv,
+            "dividend_yield": div_yield,
+            "dividend_rate": info.get("dividendRate"),
         }
     except Exception as exc:
         logger.warning("Comps row fetch failed for %s: %s", ticker, exc)
@@ -154,6 +172,24 @@ def _get_fmp_forward_ebitda(ticker: str) -> Optional[float]:
             val = data[0].get("estimatedEbitdaAvg")
             if val and val > 0:
                 return float(val)
+    except Exception:
+        pass
+    return None
+
+
+# ── Tangible book value ────────────────────────────────────────
+
+
+def _get_tangible_book_ps(stock, info: dict) -> Optional[float]:
+    """Get tangible book value per share from balance sheet."""
+    shares = info.get("sharesOutstanding") or 1
+    try:
+        bs = stock.balance_sheet
+        if bs is not None and not bs.empty:
+            if "Tangible Book Value" in bs.index:
+                tbv = float(bs.loc["Tangible Book Value"].iloc[0])
+                if tbv and shares:
+                    return tbv / shares
     except Exception:
         pass
     return None

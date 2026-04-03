@@ -15,6 +15,7 @@ from lib.data.providers import comps_peers as comps_provider
 from lib.data.providers import comps_data as comps_data_provider
 from lib.data.providers import peer_universe as universe_provider
 from lib.data.providers import historical_multiples as hist_mult_provider
+from lib.data.providers import ddm_provider
 
 logger = logging.getLogger(__name__)
 
@@ -206,6 +207,32 @@ def get_comps_row(ticker: str, force_refresh: bool = False) -> dict | None:
             return cached
 
     data = comps_data_provider.fetch_comps_row(ticker)
+    if data:
+        cache.store(cache_key, data, provider="yahoo", ttl_key="ratios")
+        return data
+
+    stale = cache.get_stale(cache_key)
+    if stale is not None:
+        return stale
+    return None
+
+
+# ── Historical multiples middleware ───────────────────────────
+
+
+# ── DDM middleware ───────────────────────────────────────────
+
+
+def get_ddm_data(ticker: str, force_refresh: bool = False) -> dict | None:
+    """Fetch dividend data for DDM (DPS history, CAGR, streaks)."""
+    cache_key = f"yahoo:{ticker}:ddm_data"
+
+    if not force_refresh:
+        cached = cache.get(cache_key)
+        if cached is not None:
+            return cached
+
+    data = ddm_provider.fetch_dividend_data(ticker)
     if data:
         cache.store(cache_key, data, provider="yahoo", ttl_key="ratios")
         return data

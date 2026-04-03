@@ -38,6 +38,12 @@ pages/              → Streamlit pages (one screen = one file)
     historical_chart.py → Historical Multiples time series charts (Plotly, ±1σ bands)
     historical_summary.py → Summary statistics + implied value tables
     historical_football.py → Football field chart (10th-90th percentile range)
+    ddm_tab.py → DDM orchestrator (Gordon Growth + 2-Stage)
+    ddm_step1_ke.py → DDM Step 1: Cost of Equity (independent CAPM)
+    ddm_step1_peers.py → DDM Step 1: Peer Group Beta (ddm_ session keys)
+    ddm_step2_assumptions.py → DDM Step 2: Model selection + dividend projections
+    ddm_step2_reference.py → DDM Step 2: Reference data, warnings, history
+    ddm_step3_output.py → DDM Step 3: Implied price, sensitivity, football field
 components/         → Reusable UI components (ticker search, charts, tables, explainer)
 lib/                → Core logic — NO Streamlit imports allowed here
   lib/data/         → Data fetching + standardization
@@ -50,11 +56,12 @@ lib/                → Core logic — NO Streamlit imports allowed here
       historical_multiples_calc.py → Daily TTM builder, summary stats, implied values
       edgar_quarterly.py → SEC EDGAR Company Facts API (10+ year quarterly data)
       edgar_concept_map.py → XBRL concept mappings (49 concepts, 55 companies tested)
+      ddm_provider.py → DDM dividend data (DPS history, CAGR, streaks, cuts)
     yfinance_standardizer.py → PRIMARY: yfinance → prepared_data mapping
     yfinance_maps.py → yfinance key mappings (IS/BS/CF, pure data)
     override_utils.py → Apply/count user overrides on standardized data
     historical.py   → Table builders: standardized → IS/BS/CF tables
-    valuation_data.py → Middleware for WACC data (Damodaran, peers, Rf, valuation)
+    valuation_data.py → Middleware for WACC data (Damodaran, peers, Rf, valuation, DDM)
     financial_data.py → Middleware for SimFin (banks/insurance)
     standardizer.py → EDGAR standardizer (kept, not active)
   lib/analysis/     → Calculations (valuation, technicals, risk, etc.)

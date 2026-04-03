@@ -147,7 +147,12 @@ Vision/
 │   │   ├── comps_step2_render.py      ← Step 2: HTML table renderer (dual column sets)
 │   │   ├── comps_step3_valuation.py   ← Step 3: Implied Valuation (EV bridge + equity-based)
 │   │   ├── comps_step3_football.py   ← Step 3: Football Field chart (Plotly, all multiple types)
-│   │   ├── ddm_tab.py                  ← DDM tab (placeholder, recommended for banks)
+│   │   ├── ddm_tab.py                  ← DDM orchestrator (Gordon Growth + 2-Stage)
+│   │   ├── ddm_step1_ke.py            ← DDM Step 1: Cost of Equity (independent CAPM)
+│   │   ├── ddm_step1_peers.py         ← DDM Step 1: Peer Group Beta (ddm_ keys)
+│   │   ├── ddm_step2_assumptions.py   ← DDM Step 2: Model selection + dividend projections
+│   │   ├── ddm_step2_reference.py     ← DDM Step 2: Reference data, warnings, history
+│   │   ├── ddm_step3_output.py        ← DDM Step 3: Implied price, sensitivity, football field
 │   │   ├── historical_tab.py           ← Historical Multiples orchestrator (period/multiple controls)
 │   │   ├── historical_chart.py        ← Historical Multiples time series charts (Plotly, ±1σ bands)
 │   │   ├── historical_summary.py      ← Historical Multiples summary stats + implied value tables
@@ -214,6 +219,7 @@ Vision/
 │   │   │   ├── edgar_concept_map.py     ← XBRL concept mappings (49 concepts, 55 companies tested)
 │   │   │   ├── peer_universe.py       ← Global peer universe (S&P 500 + Euro STOXX 50 + CAC 40 + FTSE 100 + TSX 60 + Hang Seng)
 │   │   │   ├── industry_map.py        ← Yahoo→Damodaran industry name mapping (pure data)
+│   │   │   ├── ddm_provider.py         ← DDM dividend data (DPS history, CAGR, streaks, cuts)
 │   │   │   ├── gics_yf_map.py         ← GICS Sub-Industry ↔ yfinance industry mapping (111 industries)
 │   │   │   ├── edgar_provider.py       ← Raw EDGAR 10-K (kept, not active)
 │   │   │   ├── edgar_xbrl.py           ← XBRL EDGAR (kept, not active)
@@ -265,6 +271,7 @@ Vision/
 │   │   │   ├── terminal.py             ← Terminal value calculations
 │   │   │   ├── equity_bridge.py        ← EV → equity per share
 │   │   │   ├── sensitivity.py          ← Sensitivity + scenario + reverse DCF
+│   │   │   ├── ddm.py                  ← DDM engine (Gordon Growth + 2-Stage)
 │   │   │   └── sanity.py               ← Implied metrics + warnings
 │   │   ├── comps.py                    ← Peer multiples + implied prices
 │   │   ├── comps_metrics.py            ← Operating metrics + football field

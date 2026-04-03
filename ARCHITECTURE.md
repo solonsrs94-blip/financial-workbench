@@ -140,7 +140,13 @@ Vision/
 │   │   ├── dcf_step5_output.py         ← Step 5: DCF Output orchestrator (EV, bridge, price)
 │   │   ├── dcf_step5_bridge.py        ← Step 5: Equity Bridge with overrides
 │   │   ├── dcf_step5_sensitivity.py   ← Step 5: Sensitivity tables (WACC×g, WACC×multiple)
-│   │   ├── comps_tab.py                ← Comps tab (placeholder)
+│   │   ├── comps_tab.py                ← Comps tab orchestrator (3 steps)
+│   │   ├── comps_step1_peers.py       ← Step 1: Peer Selection (candidate gen + picks)
+│   │   ├── comps_step1_table.py       ← Step 1: Candidate table rendering
+│   │   ├── comps_step2_table.py       ← Step 2: Comps Table (data + summary logic)
+│   │   ├── comps_step2_render.py      ← Step 2: HTML table renderer
+│   │   ├── comps_step3_valuation.py   ← Step 3: Implied Valuation (EV bridge + implied prices)
+│   │   ├── comps_step3_football.py   ← Step 3: Football Field chart (Plotly horizontal bars)
 │   │   ├── ddm_tab.py                  ← DDM tab (placeholder, recommended for banks)
 │   │   ├── historical_tab.py           ← Historical tab (placeholder)
 │   │   └── summary_tab.py             ← Summary tab (placeholder)
@@ -196,7 +202,11 @@ Vision/
 │   │   │   ├── yahoo_valuation.py      ← BS/CF/IS smáatriði + analyst estimates
 │   │   │   ├── damodaran.py            ← ERP, beta, CRP, spreads ✅
 │   │   │   ├── peer_beta.py           ← Peer suggestions + beta/D/E/tax data
+│   │   │   ├── comps_peers.py         ← Finnhub peers + S&P 500 universe + candidate info
+│   │   │   ├── comps_data.py          ← Comps multiples data (trailing + forward + EBIT)
+│   │   │   ├── peer_universe.py       ← Global peer universe (S&P 500 + Euro STOXX 50 + CAC 40 + FTSE 100 + TSX 60 + Hang Seng)
 │   │   │   ├── industry_map.py        ← Yahoo→Damodaran industry name mapping (pure data)
+│   │   │   ├── gics_yf_map.py         ← GICS Sub-Industry ↔ yfinance industry mapping (111 industries)
 │   │   │   ├── edgar_provider.py       ← Raw EDGAR 10-K (kept, not active)
 │   │   │   ├── edgar_xbrl.py           ← XBRL EDGAR (kept, not active)
 │   │   │   ├── simfin_provider.py      ← SimFin (banks, insurance, general)

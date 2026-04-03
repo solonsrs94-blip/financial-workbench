@@ -77,7 +77,7 @@ PERIOD_DAYS = {
 SESSION_CACHE_PREFIXES = (
     "company_", "price_", "events_", "fin_data_",
     "holders_", "recs_", "news_", "peer_medians_",
-    "val_",
+    "val_", "comps_",
 )
 
 # --- Yahoo Screener categories for Browse ---

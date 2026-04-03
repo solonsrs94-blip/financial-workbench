@@ -1,0 +1,171 @@
+"""
+Comps data provider — fetches multiples-relevant data for comps table.
+
+Per ticker: info (market data + trailing), quarterly_financials (EBIT),
+revenue_estimate (forward revenue), FMP (forward EBITDA, optional).
+
+No Streamlit imports. Returns raw data only.
+"""
+
+import logging
+from typing import Optional
+
+import requests
+import yfinance as yf
+
+logger = logging.getLogger(__name__)
+
+_FMP_KEY = "nhFksOQCl83oEeFQgrjaNL99Hubzbb0z"
+_TIMEOUT = 8
+
+
+def fetch_comps_row(ticker: str) -> Optional[dict]:
+    """Fetch all comps-relevant data for a single ticker.
+
+    Returns dict with market data, trailing financials, pre-computed
+    multiples, and forward estimates. Returns None if critical data missing.
+    """
+    try:
+        stock = yf.Ticker(ticker)
+        info = stock.info
+        if not info or len(info) < 5:
+            return None
+
+        mcap = info.get("marketCap")
+        if not mcap:
+            return None
+
+        ev = info.get("enterpriseValue")
+        revenue = info.get("totalRevenue")
+        ebitda = info.get("ebitda")
+
+        # EBIT: try quarterly_financials, fallback to rev * margin
+        ebit = _get_ttm_ebit(stock, info)
+
+        # Forward revenue from analyst estimates
+        fwd_revenue = _get_forward_revenue(stock)
+
+        # Forward EBITDA from FMP (best-effort)
+        fwd_ebitda = _get_fmp_forward_ebitda(ticker)
+
+        # Compute derived multiples
+        ev_ebit = _safe_multiple(ev, ebit)
+        fwd_ev_rev = _safe_multiple(ev, fwd_revenue)
+        fwd_ev_ebitda = _safe_multiple(ev, fwd_ebitda)
+
+        return {
+            "ticker": ticker.upper(),
+            "name": info.get("shortName") or info.get("longName") or ticker,
+            "country": info.get("country", ""),
+            "industry": info.get("industry", ""),
+            "currency": info.get("currency", "USD"),
+            # Market data
+            "price": info.get("currentPrice") or info.get("regularMarketPrice"),
+            "shares_outstanding": info.get("sharesOutstanding"),
+            "market_cap": mcap,
+            "enterprise_value": ev,
+            # Trailing financials (TTM)
+            "revenue": revenue,
+            "ebitda": ebitda,
+            "ebit": ebit,
+            "net_income": info.get("netIncomeToCommon"),
+            "eps": info.get("trailingEps"),
+            # Debt / cash
+            "total_debt": info.get("totalDebt"),
+            "cash": info.get("totalCash"),
+            # Pre-computed trailing multiples from Yahoo
+            "trailing_pe": info.get("trailingPE"),
+            "forward_pe": info.get("forwardPE"),
+            "ev_revenue": info.get("enterpriseToRevenue"),
+            "ev_ebitda": info.get("enterpriseToEbitda"),
+            # Calculated multiples
+            "ev_ebit": ev_ebit,
+            # Forward estimates
+            "fwd_revenue": fwd_revenue,
+            "fwd_ebitda": fwd_ebitda,
+            "fwd_ev_revenue": fwd_ev_rev,
+            "fwd_ev_ebitda": fwd_ev_ebitda,
+        }
+    except Exception as exc:
+        logger.warning("Comps row fetch failed for %s: %s", ticker, exc)
+    return None
+
+
+# ── EBIT (TTM from quarterly financials) ───────────────────────
+
+
+def _get_ttm_ebit(stock, info: dict) -> Optional[float]:
+    """Get TTM EBIT from quarterly financials, fallback to margin calc."""
+    try:
+        qf = stock.quarterly_financials
+        if qf is not None and not qf.empty and "Operating Income" in qf.index:
+            vals = qf.loc["Operating Income"].head(4).dropna()
+            if len(vals) >= 4:
+                return float(vals.sum())
+    except Exception:
+        pass
+
+    # Fallback: revenue * operating margin
+    rev = info.get("totalRevenue")
+    margin = info.get("operatingMargins")
+    if rev and margin:
+        return rev * margin
+    return None
+
+
+# ── Forward revenue ────────────────────────────────────────────
+
+
+def _get_forward_revenue(stock) -> Optional[float]:
+    """Get next-year consensus revenue estimate from yfinance."""
+    try:
+        rev_est = getattr(stock, "revenue_estimate", None)
+        if rev_est is None or rev_est.empty:
+            return None
+        if "avg" not in rev_est.columns:
+            return None
+        # Find the +1Y row (second row, or first with year > current)
+        if len(rev_est) >= 2:
+            val = rev_est.iloc[1]["avg"]
+        else:
+            val = rev_est.iloc[0]["avg"]
+        if val is not None and str(val) != "nan":
+            return float(val)
+    except Exception:
+        pass
+    return None
+
+
+# ── FMP forward EBITDA (optional) ──────────────────────────────
+
+
+def _get_fmp_forward_ebitda(ticker: str) -> Optional[float]:
+    """Best-effort forward EBITDA from FMP free tier."""
+    url = (
+        f"https://financialmodelingprep.com/stable/analyst-estimates"
+        f"?symbol={ticker}&limit=2&apikey={_FMP_KEY}"
+    )
+    try:
+        resp = requests.get(url, timeout=_TIMEOUT)
+        if resp.status_code != 200:
+            return None
+        data = resp.json()
+        if data and len(data) > 0:
+            val = data[0].get("estimatedEbitdaAvg")
+            if val and val > 0:
+                return float(val)
+    except Exception:
+        pass
+    return None
+
+
+# ── Helpers ────────────────────────────────────────────────────
+
+
+def _safe_multiple(numerator, denominator) -> Optional[float]:
+    """Compute multiple, returning None if invalid."""
+    if numerator is None or denominator is None:
+        return None
+    if denominator <= 0:
+        return None
+    return numerator / denominator

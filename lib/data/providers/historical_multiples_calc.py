@@ -1,21 +1,11 @@
-"""
-Historical multiples calculations — hybrid daily TTM builder,
-summary stats, and implied values.
-
-Hybrid: uses quarterly TTM (sum 4Q) when available, falls back to
-annual data (already TTM) for older periods. This extends the
-lookback from ~1 year to ~4-5 years.
-
-No Streamlit imports. Pure calculation functions.
+"""Historical multiples calculations — daily TTM builder,
+summary stats, and implied values. No Streamlit imports.
 """
 
 from typing import Optional
 
 import numpy as np
 import pandas as pd
-
-
-# ── Multiple keys by company type ─────────────────────────────
 
 
 def get_mult_keys(is_financial: bool) -> list[str]:
@@ -25,21 +15,17 @@ def get_mult_keys(is_financial: bool) -> list[str]:
     return ["pe", "ev_ebitda", "ev_revenue"]
 
 
-# ── Daily TTM multiples (hybrid) ─────────────────────────────
-
-
 def build_daily_multiples(
     prices: pd.DataFrame,
     df_q_inc: Optional[pd.DataFrame],
     df_a_inc: Optional[pd.DataFrame],
     df_bs: pd.DataFrame,
     is_financial: bool,
+    price_factor: float = 1.0,
 ) -> pd.DataFrame:
-    """For each trading day, compute TTM multiples.
+    """Compute TTM multiples for each trading day.
 
-    Uses quarterly TTM (sum last 4Q) when 4+ quarterly reports are
-    available as of that date. Falls back to most recent annual
-    report (already 12-month totals) for older dates.
+    price_factor converts listing-currency prices to financial currency.
     """
     q_dates = (
         df_q_inc["date"].values
@@ -90,7 +76,7 @@ def build_daily_multiples(
 
         row = _calc_row(
             ts, close, ttm_rev, ttm_ni, ttm_ebitda,
-            shares, latest_bs, is_financial,
+            shares, latest_bs, is_financial, price_factor,
         )
         if row:
             results.append(row)
@@ -113,16 +99,19 @@ def _get_shares(latest_bs, inc_row) -> Optional[float]:
 
 def _calc_row(
     ts, close, ttm_rev, ttm_ni, ttm_ebitda,
-    shares, latest_bs, is_financial,
+    shares, latest_bs, is_financial, price_factor=1.0,
 ):
-    """Calculate one day's multiples from pre-computed TTM values."""
+    """Calculate one day's multiples. price_factor aligns currencies."""
+    # Convert price to financial currency (e.g. GBp → USD)
+    close_fin = close * price_factor
+
     debt = latest_bs["total_debt"] or 0
     cash = latest_bs["cash"] or 0
     minority = latest_bs["minority_interest"] or 0
     equity_bv = latest_bs["equity"]
     tangible_bv = latest_bs["tangible_equity"]
 
-    mcap = close * shares
+    mcap = close_fin * shares
     ev = mcap + debt - cash + minority
     eps = ttm_ni / shares if ttm_ni else None
     bvps = equity_bv / shares if equity_bv else None
@@ -130,15 +119,15 @@ def _calc_row(
 
     row = {"date": ts}
     if is_financial:
-        row["pe"] = (close / eps) if eps and eps > 0 else np.nan
+        row["pe"] = (close_fin / eps) if eps and eps > 0 else np.nan
         row["p_book"] = (
-            (close / bvps) if bvps and bvps > 0 else np.nan
+            (close_fin / bvps) if bvps and bvps > 0 else np.nan
         )
         row["p_tbv"] = (
-            (close / tbvps) if tbvps and tbvps > 0 else np.nan
+            (close_fin / tbvps) if tbvps and tbvps > 0 else np.nan
         )
     else:
-        row["pe"] = (close / eps) if eps and eps > 0 else np.nan
+        row["pe"] = (close_fin / eps) if eps and eps > 0 else np.nan
         row["ev_ebitda"] = (
             (ev / ttm_ebitda) if ttm_ebitda and ttm_ebitda > 0
             else np.nan
@@ -148,9 +137,6 @@ def _calc_row(
             else np.nan
         )
     return row
-
-
-# ── Summary statistics ────────────────────────────────────────
 
 
 def compute_summary(daily: pd.DataFrame, keys: list[str]) -> dict:
@@ -182,26 +168,28 @@ def compute_summary(daily: pd.DataFrame, keys: list[str]) -> dict:
     return summary
 
 
-# ── Implied values ────────────────────────────────────────────
-
-
 def compute_implied_values(
     summary: dict,
     df_inc: pd.DataFrame,
     df_bs: pd.DataFrame,
     current_price: float,
     is_financial: bool,
+    is_quarterly: bool = True,
+    price_factor: float = 1.0,
 ) -> dict:
-    """Compute implied share price at historical mean/median/-1s.
+    """Implied share price at historical mean/median/-1σ.
 
-    Uses most recent TTM data from df_inc (quarterly preferred).
+    is_quarterly=False uses last 1 row (annual = already TTM).
+    price_factor: implied prices converted back to listing currency.
     """
     if not current_price:
         return {}
 
-    # Use last 4 rows if quarterly (sum), or last 1 row if annual
-    n = min(4, len(df_inc))
-    last_n = df_inc.tail(n)
+    if is_quarterly:
+        n = min(4, len(df_inc))
+        last_n = df_inc.tail(n)
+    else:
+        last_n = df_inc.tail(1)
     shares = last_n.iloc[-1]["shares"]
     if not shares or shares <= 0:
         # Try BS shares as fallback
@@ -210,9 +198,14 @@ def compute_implied_values(
             return {}
         shares = bs_shares
 
-    ttm_revenue = last_n["revenue"].sum()
-    ttm_ebitda = last_n["ebitda"].sum()
-    ttm_ni = last_n["net_income"].sum()
+    if is_quarterly:
+        ttm_revenue = last_n["revenue"].sum()
+        ttm_ebitda = last_n["ebitda"].sum()
+        ttm_ni = last_n["net_income"].sum()
+    else:
+        ttm_revenue = last_n.iloc[0]["revenue"]
+        ttm_ebitda = last_n.iloc[0]["ebitda"]
+        ttm_ni = last_n.iloc[0]["net_income"]
     eps = ttm_ni / shares if ttm_ni else None
 
     # Use latest BS with valid equity (not just latest date, which
@@ -228,34 +221,50 @@ def compute_implied_values(
     tbvps = tangible_bv / shares if tangible_bv else None
     net_debt_ps = (debt - cash + minority) / shares
 
+    # Implied prices are computed in financial currency (per-share metric
+    # × multiple), then converted back to listing currency via inv_factor.
+    inv_factor = 1.0 / price_factor if price_factor and price_factor != 0 else 1.0
+
     implied = {}
     for key, stats in summary.items():
         if key == "pe" and eps and eps > 0:
-            implied[key] = _implied_equity(eps, stats, current_price)
+            implied[key] = _implied_equity(
+                eps, stats, current_price, inv_factor,
+            )
         elif key == "p_book" and bvps and bvps > 0:
-            implied[key] = _implied_equity(bvps, stats, current_price)
+            implied[key] = _implied_equity(
+                bvps, stats, current_price, inv_factor,
+            )
         elif key == "p_tbv" and tbvps and tbvps > 0:
-            implied[key] = _implied_equity(tbvps, stats, current_price)
+            implied[key] = _implied_equity(
+                tbvps, stats, current_price, inv_factor,
+            )
         elif key == "ev_ebitda" and ttm_ebitda and ttm_ebitda > 0:
             metric_ps = ttm_ebitda / shares
             implied[key] = _implied_ev(
                 metric_ps, net_debt_ps, stats, current_price,
+                inv_factor,
             )
         elif key == "ev_revenue" and ttm_revenue and ttm_revenue > 0:
             metric_ps = ttm_revenue / shares
             implied[key] = _implied_ev(
                 metric_ps, net_debt_ps, stats, current_price,
+                inv_factor,
             )
     return implied
 
 
-def _implied_equity(per_share_metric, stats, current_price):
-    """Implied price for equity-based multiples (P/E, P/Book)."""
-    at_mean = per_share_metric * stats["mean"]
-    at_median = per_share_metric * stats["median"]
-    at_m1s = per_share_metric * stats["minus_1std"]
-    at_p10 = per_share_metric * stats["p10"]
-    at_p90 = per_share_metric * stats["p90"]
+def _implied_equity(per_share_metric, stats, current_price, inv=1.0):
+    """Implied price for equity-based multiples (P/E, P/Book).
+
+    per_share_metric is in financial currency. Result is converted
+    to listing currency via inv (= 1/price_factor).
+    """
+    at_mean = per_share_metric * stats["mean"] * inv
+    at_median = per_share_metric * stats["median"] * inv
+    at_m1s = per_share_metric * stats["minus_1std"] * inv
+    at_p10 = per_share_metric * stats["p10"] * inv
+    at_p90 = per_share_metric * stats["p90"] * inv
     upside = (at_mean - current_price) / current_price
     return {
         "at_mean": round(at_mean, 2),
@@ -267,13 +276,17 @@ def _implied_equity(per_share_metric, stats, current_price):
     }
 
 
-def _implied_ev(metric_ps, net_debt_ps, stats, current_price):
-    """Implied price for EV-based multiples (EV/EBITDA, EV/Revenue)."""
-    at_mean = metric_ps * stats["mean"] - net_debt_ps
-    at_median = metric_ps * stats["median"] - net_debt_ps
-    at_m1s = metric_ps * stats["minus_1std"] - net_debt_ps
-    at_p10 = metric_ps * stats["p10"] - net_debt_ps
-    at_p90 = metric_ps * stats["p90"] - net_debt_ps
+def _implied_ev(metric_ps, net_debt_ps, stats, current_price, inv=1.0):
+    """Implied price for EV-based multiples (EV/EBITDA, EV/Revenue).
+
+    metric_ps and net_debt_ps are in financial currency. Result is
+    converted to listing currency via inv (= 1/price_factor).
+    """
+    at_mean = (metric_ps * stats["mean"] - net_debt_ps) * inv
+    at_median = (metric_ps * stats["median"] - net_debt_ps) * inv
+    at_m1s = (metric_ps * stats["minus_1std"] - net_debt_ps) * inv
+    at_p10 = (metric_ps * stats["p10"] - net_debt_ps) * inv
+    at_p90 = (metric_ps * stats["p90"] - net_debt_ps) * inv
     upside = (at_mean - current_price) / current_price
     return {
         "at_mean": round(at_mean, 2),

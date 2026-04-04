@@ -44,6 +44,9 @@ pages/              → Streamlit pages (one screen = one file)
     ddm_step2_assumptions.py → DDM Step 2: Model selection + dividend projections
     ddm_step2_reference.py → DDM Step 2: Reference data, warnings, history
     ddm_step3_output.py → DDM Step 3: Implied price, sensitivity, football field
+    summary_tab.py → Summary tab orchestrator (reads all model outputs)
+    summary_table.py → Summary: Valuation overview table
+    summary_football.py → Summary: Combined football field chart (all models)
 components/         → Reusable UI components (ticker search, charts, tables, explainer)
 lib/                → Core logic — NO Streamlit imports allowed here
   lib/data/         → Data fetching + standardization
@@ -140,6 +143,10 @@ tests/              → Tests for data, analysis, and cache
 - Damodaran ERP, CRP, spreads are all in decimal form (0.046 = 4.6%). No conversion needed.
 - Industry name matching: `industry_map.py` handles Yahoo→Damodaran name translation. Add new entries there when mismatches are found.
 - When comparing companies across currencies, convert to USD using `{CURRENCY}=X` Yahoo ticker.
+- **Currency alignment (price_factor):** yfinance returns `currency` (listing, e.g. GBp) and `financialCurrency` (reporting, e.g. USD) which can differ. When they differ, compute `price_factor = marketCap / (currentPrice * shares)` to convert listing→financial currency. Historical multiples use price_factor in `_calc_row()`. DCF/DDM implied prices are converted back to listing currency via `/ price_factor` before display. Providers (`yahoo_valuation.py`, `ddm_provider.py`) return both `currency` and `financial_currency` fields.
+- **GBp (pence sterling):** yfinance `.history()` and `currentPrice` are in GBp but `.info` financials (marketCap, revenue, EPS) and `.income_stmt/.balance_sheet` are in `financialCurrency` (USD for Shell). price_factor handles this automatically.
+- **Annual-only stocks:** `compute_implied_values()` uses `is_quarterly` flag. When only annual data exists, uses last 1 row (not sum of 4) since annual data is already 12-month totals.
+- **Risk-free rate:** `get_risk_free_rate()` always uses ^TNX (US 10Y Treasury) for all companies. Country risk is handled via CRP (Damodaran). Analyst can override Rf in the WACC UI.
 - Yahoo `sharesOutstanding` may only report one share class (e.g. GOOGL Class A). Always prefer `impliedSharesOutstanding` (includes all classes) with `sharesOutstanding` as fallback. This is enforced in both `yahoo.py` and `yahoo_valuation.py`.
 - GICS ↔ yfinance industry mapping: `gics_yf_map.py` handles Yahoo industry→GICS Sub-Industry translation for peer universe filtering. 111 yfinance industries mapped to 127 GICS Sub-Industries.
 - Comps peer universe: `peer_universe.py` fetches 6 indices (S&P 500, Euro STOXX 50, CAC 40, FTSE 100, TSX 60, Hang Seng = ~823 companies). Cached 30 days via `get_peer_universe()`.
@@ -148,6 +155,22 @@ tests/              → Tests for data, analysis, and cache
 - DDM dividend data: `ddm_provider.py` normalizes `dividendYield / 100` (same convention as Comps). DPS CAGR computed from `ticker.dividends` aggregated to annual. Dividend cuts detected as year-over-year decreases.
 - DDM is independent from DCF: DDM has its own Ke calculation (same CAPM providers but separate UI/session keys). DDM does NOT require DCF WACC step to have been run.
 - DDM session keys use `ddm_` prefix: `ddm_ke`, `ddm_assumptions`, `ddm_output`, `ddm_data_{ticker}`, `ddm_ke_peers`. Never collides with `dcf_`/`wacc_` keys.
+- Summary tab reads from: `dcf_output` (implied_price, sensitivity_min/max, wacc, terminal_growth), `comps_valuation` (implied_prices with low/median/high per multiple), `historical_result` (implied_values with at_p10/at_median/at_p90 per multiple), `ddm_output` (implied_price, sensitivity_min/max, ke, g). Summary never writes to session_state — pure read-only.
+
+## Sensitivity Rules
+- Floor: Cells where g >= Ke (DDM) or implied price <= 0 (DCF) → NaN, displayed as "—" in UI.
+- Cap: Implied price > 100x current price → NaN (excludes asymptotic Gordon values near g=Ke).
+- Ranges (min/max): Exclude NaN cells. Football field and Summary use only valid positive values.
+
+## Comps Peer Selection
+- `filter_peer_universe()` uses GICS mapping for industry-matched peers — correct for valuation.
+- `get_suggested_peers()` returns Yahoo "recommended" tickers (often wrong sector) — use only as fallback.
+
+## Testing
+- Main test: `scripts/test_all_valuations.py` — 12 companies (US/Europe/Asia), all modules.
+- Reports: `test_results/valuation_test_report_v1.md`, `v2.md`, `v3.md` (v3 is current).
+- Verification scripts: `scripts/test_currency_fix.py`, `test_sensitivity_fix.py`, `test_prompt3.py`.
+- v3 result: 12/12 PASS, 0 critical errors. All modules working across currencies.
 
 ## CSS
 - Custom CSS in `assets/styles/custom.css` — loaded by both app.py and page files.

@@ -24,8 +24,11 @@ def render_sensitivity(
     terminal: dict,
     bridge_inputs: dict,
     current_price: float,
-) -> None:
-    """Render two sensitivity tables side by side."""
+) -> dict:
+    """Render two sensitivity tables side by side.
+
+    Returns dict with sensitivity range: {"min": float, "max": float}.
+    """
     st.markdown("#### Sensitivity Analysis")
     st.caption(
         "How implied share price changes with different assumptions. "
@@ -36,6 +39,7 @@ def render_sensitivity(
     shares = bridge_inputs["shares"]
     minority = bridge_inputs["minority"]
     preferred = bridge_inputs["preferred"]
+    pf = bridge_inputs.get("price_factor", 1.0)
     g = terminal["terminal_growth"]
     mult = terminal["exit_multiple"]
 
@@ -49,6 +53,9 @@ def render_sensitivity(
             fcf_table, wacc_result, g, terminal["method"], mult,
             net_debt, shares, current_price, minority, preferred,
         )
+        # Convert from financial currency to listing currency
+        if pf != 1.0:
+            df_g = df_g / pf
         _render_table(df_g, current_price, "Terminal Growth Rate")
 
     with tab2:
@@ -56,15 +63,31 @@ def render_sensitivity(
             fcf_table, wacc_result, g, mult,
             net_debt, shares, current_price, minority, preferred,
         )
+        if pf != 1.0:
+            df_m = df_m / pf
         _render_table(df_m, current_price, "Exit Multiple (EV/EBITDA)")
+
+    # Collect sensitivity range for Summary tab (skip NaN/invalid)
+    import math
+    all_vals = df_g.values.flatten().tolist() + df_m.values.flatten().tolist()
+    valid = [v for v in all_vals if isinstance(v, (int, float))
+             and not math.isnan(v) and v > 0]
+    return {
+        "min": min(valid) if valid else 0,
+        "max": max(valid) if valid else 0,
+    }
 
 
 def _render_table(
     df: pd.DataFrame, current_price: float, col_label: str,
 ) -> None:
     """Render a sensitivity DataFrame with color coding."""
-    # Format as price strings
-    formatted = df.map(lambda x: f"${x:,.2f}" if x else "—")
+    # Format as price strings (NaN → dash)
+    import math
+    formatted = df.map(
+        lambda x: f"${x:,.2f}" if isinstance(x, (int, float))
+        and not math.isnan(x) and x > 0 else "—"
+    )
 
     # Build color styling
     def _style(val):

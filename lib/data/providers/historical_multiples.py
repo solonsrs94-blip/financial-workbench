@@ -15,6 +15,10 @@ from lib.data.providers.historical_multiples_calc import (
     compute_summary,
     get_mult_keys,
 )
+from lib.data.providers.historical_multiples_yf import (
+    normalize_shares,
+    fill_shares_from_bs,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -35,11 +39,12 @@ def get_historical_multiples(
     For US tickers: tries EDGAR (10+ years), falls back to yfinance.
     For non-US tickers: uses yfinance hybrid (~3.5 years).
     """
-    prices, currency, current_price = _get_prices(ticker)
+    prices, currency, current_price, fin_currency = _get_prices(ticker)
     if prices is None:
         return {"error": "No price history available"}
 
-    df_q, df_a, df_bs, source = _get_financials(ticker)
+    df_q, df_a, df_bs, source, currency_info = _get_financials(ticker)
+    price_factor = _compute_price_factor(currency_info)
 
     n_q = len(df_q) if df_q is not None else 0
     n_a = len(df_a) if df_a is not None else 0
@@ -53,6 +58,7 @@ def get_historical_multiples(
     if daily_key not in _daily_cache:
         _daily_cache[daily_key] = build_daily_multiples(
             prices, df_q, df_a, df_bs, is_financial,
+            price_factor=price_factor,
         )
     daily = _daily_cache[daily_key]
 
@@ -68,8 +74,11 @@ def get_historical_multiples(
     summary = compute_summary(daily, mult_keys)
 
     impl_inc = df_q if n_q >= 4 else df_a
+    is_quarterly = n_q >= 4
     implied = compute_implied_values(
         summary, impl_inc, df_bs, current_price, is_financial,
+        is_quarterly=is_quarterly,
+        price_factor=price_factor,
     )
 
     return {
@@ -78,6 +87,7 @@ def get_historical_multiples(
         "implied_values": implied,
         "current_price": current_price,
         "currency": currency,
+        "financial_currency": fin_currency,
         "data_start": str(daily.index.min().date()),
         "data_end": str(daily.index.max().date()),
         "quarters_available": n_q,
@@ -91,7 +101,10 @@ def get_historical_multiples(
 
 
 def _get_prices(ticker: str) -> tuple:
-    """Fetch and cache price data. Returns (prices_df, currency, price)."""
+    """Fetch and cache price data.
+
+    Returns (prices_df, currency, price, financial_currency).
+    """
     if ticker in _price_cache:
         return _price_cache[ticker]
 
@@ -99,19 +112,20 @@ def _get_prices(ticker: str) -> tuple:
     hist = stock.history(period="max")
 
     if hist.empty:
-        _price_cache[ticker] = (None, "USD", None)
-        return None, "USD", None
+        _price_cache[ticker] = (None, "USD", None, "USD")
+        return None, "USD", None, "USD"
 
     info = stock.info or {}
     currency = info.get("currency", "USD")
+    fin_currency = info.get("financialCurrency", currency)
     current_price = info.get("currentPrice") or info.get(
         "regularMarketPrice",
     )
 
     prices = hist[["Close"]].copy()
     prices.index = prices.index.tz_localize(None)
-    _price_cache[ticker] = (prices, currency, current_price)
-    return prices, currency, current_price
+    _price_cache[ticker] = (prices, currency, current_price, fin_currency)
+    return prices, currency, current_price, fin_currency
 
 
 # ── Financial data routing ────────────────────────────────────
@@ -120,7 +134,7 @@ def _get_prices(ticker: str) -> tuple:
 def _get_financials(ticker: str) -> tuple:
     """Try EDGAR for US tickers, fall back to yfinance.
 
-    Returns (df_q_inc, df_a_inc, df_bs, source_name).
+    Returns (df_q_inc, df_a_inc, df_bs, source_name, currency_info).
     """
     if ticker in _financial_cache:
         return _financial_cache[ticker]
@@ -138,7 +152,7 @@ def _get_financials(ticker: str) -> tuple:
 
 
 def _try_edgar(ticker: str) -> Optional[tuple]:
-    """Attempt EDGAR fetch. Returns tuple or None."""
+    """Attempt EDGAR fetch. Returns 5-tuple or None."""
     try:
         from lib.data.providers.edgar_quarterly import (
             get_cik,
@@ -157,29 +171,46 @@ def _try_edgar(ticker: str) -> Optional[tuple]:
         if len(rev) < 8 and len(ni) < 8:
             return None
 
-        # Normalize EDGAR shares to match yfinance split-adjusted prices.
-        # EDGAR mixes original (pre-split) and restated (post-split)
-        # values, so we normalize to current level instead of using
-        # yfinance split factors (which would double-adjust restated).
         if "shares" in edgar:
-            edgar["shares"] = _normalize_shares(edgar["shares"])
+            edgar["shares"] = normalize_shares(edgar["shares"])
 
         df_q, df_bs = _edgar_to_dfs(edgar)
         if df_q is None or len(df_q) < 8:
             return None
-        return (df_q, None, df_bs, "SEC EDGAR")
+        # EDGAR is US-only → always USD, price_factor = 1.0
+        return (df_q, None, df_bs, "SEC EDGAR", {})
     except Exception as exc:
         logger.warning("EDGAR failed for %s: %s", ticker, exc)
         return None
 
 
 def _try_yfinance(ticker: str) -> tuple:
-    """yfinance hybrid (quarterly + annual). Always returns tuple."""
+    """yfinance hybrid (quarterly + annual). Always returns 5-tuple."""
     from lib.data.providers.historical_multiples_yf import (
         get_yfinance_data,
     )
-    df_q, df_a, df_bs = get_yfinance_data(ticker)
-    return (df_q, df_a, df_bs, "Yahoo Finance")
+    df_q, df_a, df_bs, currency_info = get_yfinance_data(ticker)
+    return (df_q, df_a, df_bs, "Yahoo Finance", currency_info)
+
+
+def _compute_price_factor(currency_info: dict) -> float:
+    """Factor to convert listing-currency prices to financial currency.
+
+    Returns 1.0 when currencies match or data is missing.
+    Example: SHEL.L (GBp/USD) → ~0.01.
+    """
+    if not currency_info:
+        return 1.0
+    cur = currency_info.get("currency", "USD")
+    fin_cur = currency_info.get("financialCurrency", cur)
+    if cur == fin_cur:
+        return 1.0
+    price = currency_info.get("currentPrice")
+    mcap = currency_info.get("marketCap")
+    shares = currency_info.get("sharesOutstanding")
+    if not all([price, mcap, shares]) or price <= 0 or shares <= 0:
+        return 1.0
+    return mcap / (price * shares)
 
 
 def _edgar_to_dfs(
@@ -242,7 +273,7 @@ def _edgar_to_dfs(
 
     # Fill shares in income from BS
     if not df_q.empty and not df_bs.empty:
-        _fill_shares_from_bs(df_q, df_bs)
+        fill_shares_from_bs(df_q, df_bs)
 
     return (
         df_q if not df_q.empty else None,
@@ -250,50 +281,3 @@ def _edgar_to_dfs(
     )
 
 
-def _normalize_shares(shares: pd.Series) -> pd.Series:
-    """Normalize EDGAR shares to match yfinance split-adjusted prices.
-
-    EDGAR filings mix pre-split (original) and post-split (restated)
-    share counts. yfinance prices are always split-adjusted to current
-    level. We normalize all shares to the current level by detecting
-    values that are ~Nx smaller than recent values (N = split factor).
-    """
-    valid = shares.dropna()
-    if len(valid) < 2:
-        return shares
-
-    # Reference: median of last 4 values (robust to single outliers)
-    ref = valid.tail(4).median()
-    if ref <= 0:
-        return shares
-
-    adjusted = shares.copy()
-    for i in range(len(adjusted)):
-        val = adjusted.iloc[i]
-        if pd.isna(val) or val <= 0:
-            continue
-        ratio = ref / val
-        if ratio < 1.5:
-            continue  # already at current level
-        # Find closest integer factor (common: 2,3,4,5,6,7,8,10,14,28)
-        factor = round(ratio)
-        if factor >= 2 and abs(ratio - factor) / factor < 0.20:
-            adjusted.iloc[i] = val * factor
-    return adjusted
-
-
-def _fill_shares_from_bs(df_inc: pd.DataFrame, df_bs: pd.DataFrame):
-    """Fill missing shares in income df from balance sheet."""
-    bs_valid = df_bs.dropna(subset=["shares"])
-    if bs_valid.empty:
-        return
-    for i, row in df_inc.iterrows():
-        if row.get("shares") is not None and row["shares"] > 0:
-            continue
-        mask = bs_valid["date"] <= row["date"]
-        if mask.any():
-            df_inc.at[i, "shares"] = float(
-                bs_valid.loc[mask].iloc[-1]["shares"],
-            )
-        elif not bs_valid.empty:
-            df_inc.at[i, "shares"] = float(bs_valid.iloc[0]["shares"])

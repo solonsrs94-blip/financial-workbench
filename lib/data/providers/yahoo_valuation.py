@@ -145,6 +145,10 @@ def fetch_valuation_data(ticker: str) -> Optional[dict]:
     # sharesOutstanding may only report one class (e.g. GOOGL Class A)
     shares = info.get("impliedSharesOutstanding") or info.get("sharesOutstanding")
 
+    # Currency metadata for downstream conversion
+    currency = info.get("currency", "USD")
+    fin_currency = info.get("financialCurrency", currency)
+
     return {
         "income_detail": income_detail,
         "balance_sheet": balance_sheet,
@@ -157,6 +161,8 @@ def fetch_valuation_data(ticker: str) -> Optional[dict]:
         "enterprise_value": info.get("enterpriseValue"),
         "beta": info.get("beta"),
         "dividend_yield": info.get("dividendYield"),
+        "currency": currency,
+        "financial_currency": fin_currency,
     }
 
 

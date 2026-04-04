@@ -21,7 +21,11 @@ logger = logging.getLogger(__name__)
 
 
 def get_risk_free_rate(force_refresh: bool = False) -> float:
-    """Get 10-year Treasury yield as decimal (e.g. 0.045 = 4.5%)."""
+    """Get 10-year US Treasury yield as decimal (e.g. 0.045 = 4.5%).
+
+    Always uses ^TNX (US 10Y). Country risk is handled via CRP.
+    Analyst can override in the WACC UI.
+    """
     cache_key = "yahoo:^TNX:yield"
 
     if not force_refresh:

@@ -198,7 +198,8 @@ def _compute_summary(
     for field in mult_fields:
         vals = [
             p[field] for p in included
-            if p.get(field) is not None and p[field] > 0
+            if p.get(field) is not None
+            and isinstance(p[field], (int, float)) and p[field] > 0
         ]
 
         if vals:

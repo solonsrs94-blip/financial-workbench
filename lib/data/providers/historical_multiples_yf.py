@@ -17,9 +17,10 @@ import yfinance as yf
 def get_yfinance_data(ticker: str) -> tuple:
     """Fetch quarterly + annual data from yfinance.
 
-    Returns (df_q_inc, df_a_inc, df_bs) or (None, None, None) on failure.
+    Returns (df_q_inc, df_a_inc, df_bs, currency_info).
     df_q_inc/df_a_inc: [date, revenue, net_income, ebitda, shares]
     df_bs: [date, total_debt, cash, equity, tangible_equity, minority_interest, shares]
+    currency_info: dict with currency, financialCurrency, currentPrice, marketCap, shares
     """
     stock = yf.Ticker(ticker)
 
@@ -36,7 +37,25 @@ def get_yfinance_data(ticker: str) -> tuple:
     if df_q_inc is not None and df_bs is not None:
         _fill_shares(df_q_inc, df_bs)
 
-    return df_q_inc, df_a_inc, df_bs
+    # Currency metadata for price_factor calculation
+    info = stock.info or {}
+    currency_info = {
+        "currency": info.get("currency", "USD"),
+        "financialCurrency": info.get(
+            "financialCurrency", info.get("currency", "USD"),
+        ),
+        "currentPrice": (
+            info.get("currentPrice")
+            or info.get("regularMarketPrice")
+        ),
+        "marketCap": info.get("marketCap"),
+        "sharesOutstanding": (
+            info.get("impliedSharesOutstanding")
+            or info.get("sharesOutstanding")
+        ),
+    }
+
+    return df_q_inc, df_a_inc, df_bs, currency_info
 
 
 # ── Record extractors ─────────────────────────────────────────
@@ -155,6 +174,53 @@ def _get_item(df: pd.DataFrame, *names) -> Optional[pd.Series]:
             if not series.isna().all():
                 return series
     return None
+
+
+def normalize_shares(shares: pd.Series) -> pd.Series:
+    """Normalize EDGAR shares to match yfinance split-adjusted prices.
+
+    EDGAR filings mix pre-split (original) and post-split (restated)
+    share counts. yfinance prices are always split-adjusted to current
+    level. We normalize all shares to the current level by detecting
+    values that are ~Nx smaller than recent values (N = split factor).
+    """
+    valid = shares.dropna()
+    if len(valid) < 2:
+        return shares
+
+    ref = valid.tail(4).median()
+    if ref <= 0:
+        return shares
+
+    adjusted = shares.copy()
+    for i in range(len(adjusted)):
+        val = adjusted.iloc[i]
+        if pd.isna(val) or val <= 0:
+            continue
+        ratio = ref / val
+        if ratio < 1.5:
+            continue
+        factor = round(ratio)
+        if factor >= 2 and abs(ratio - factor) / factor < 0.20:
+            adjusted.iloc[i] = val * factor
+    return adjusted
+
+
+def fill_shares_from_bs(df_inc: pd.DataFrame, df_bs: pd.DataFrame):
+    """Fill missing shares in income df from balance sheet."""
+    bs_valid = df_bs.dropna(subset=["shares"])
+    if bs_valid.empty:
+        return
+    for i, row in df_inc.iterrows():
+        if row.get("shares") is not None and row["shares"] > 0:
+            continue
+        mask = bs_valid["date"] <= row["date"]
+        if mask.any():
+            df_inc.at[i, "shares"] = float(
+                bs_valid.loc[mask].iloc[-1]["shares"],
+            )
+        elif not bs_valid.empty:
+            df_inc.at[i, "shares"] = float(bs_valid.iloc[0]["shares"])
 
 
 def _safe_val(series: Optional[pd.Series], key) -> Optional[float]:

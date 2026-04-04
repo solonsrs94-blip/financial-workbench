@@ -180,7 +180,11 @@ def ddm_sensitivity(
                     use_eps_method=use_eps_method,
                 )
             price = r.get("implied_price", 0.0)
-            col.append(max(price, 0.0))
+            # Mark invalid cells (g >= Ke, errors) as NaN
+            if r.get("error") or not price or price <= 0:
+                col.append(np.nan)
+            else:
+                col.append(price)
         data[f"g={g:.1%}"] = col
 
     return pd.DataFrame(data, index=[f"{ke:.1%}" for ke in ke_range])

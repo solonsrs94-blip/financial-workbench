@@ -64,6 +64,11 @@ def fetch_dividend_data(ticker: str) -> dict:
             for y, d in sorted(annual_dps.items())
         ]
 
+        # Currency metadata — dividendRate and EPS are in financialCurrency,
+        # but t.dividends history is in listing currency.
+        currency = info.get("currency", "USD")
+        fin_currency = info.get("financialCurrency", currency)
+
         return {
             "current_dps": current_dps,
             "dividend_yield": dividend_yield,
@@ -77,6 +82,8 @@ def fetch_dividend_data(ticker: str) -> dict:
             "years_increasing": years_increasing,
             "dividend_cuts": cuts,
             "has_dividend": has_dividend,
+            "currency": currency,
+            "financial_currency": fin_currency,
         }
 
     except Exception as e:

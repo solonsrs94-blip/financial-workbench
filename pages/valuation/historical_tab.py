@@ -156,3 +156,13 @@ def render(prepared: dict, ticker: str) -> None:
         data["summary"], data["implied_values"],
         data["current_price"], data["currency"],
     )
+
+    # ── Store result for Summary tab ─────────────────────────
+    st.session_state["historical_result"] = {
+        "summary": data["summary"],
+        "implied_values": data["implied_values"],
+        "current_price": data["current_price"],
+        "currency": data["currency"],
+        "period": period,
+        "is_financial": is_fin,
+    }

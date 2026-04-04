@@ -36,7 +36,8 @@ def sensitivity_table(
             wr = WACCResult(**{**wacc_result.__dict__, "wacc": w})
             r = run_dcf(fcf_table, wr, g, terminal_method, exit_multiple,
                         net_debt, shares, current_price, minority, preferred)
-            col.append(r.implied_price)
+            # NaN for invalid cells (negative price, WACC <= g)
+            col.append(r.implied_price if r.implied_price > 0 else np.nan)
         data[f"g={g:.1%}"] = col
 
     return pd.DataFrame(data, index=[f"{w:.1%}" for w in wacc_range])
@@ -67,7 +68,7 @@ def exit_sensitivity_table(
             wr = WACCResult(**{**wacc_result.__dict__, "wacc": w})
             r = run_dcf(fcf_table, wr, terminal_growth, "exit_multiple", m,
                         net_debt, shares, current_price, minority, preferred)
-            col.append(r.implied_price)
+            col.append(r.implied_price if r.implied_price > 0 else np.nan)
         data[f"{m:.1f}x"] = col
 
     return pd.DataFrame(data, index=[f"{w:.1%}" for w in wacc_range])

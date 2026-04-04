@@ -50,10 +50,10 @@ def render(prepared: dict, ticker: str) -> dict | None:
             min_value=0.0, max_value=15.0,
             value=rf * 100, step=0.05, format="%.2f",
             key="ddm_rf",
-            help="10-Year US Treasury yield (auto-fetched)",
+            help="10-Year US Treasury yield (auto-fetched, editable)",
         )
         st.markdown(
-            f'<div style="{_LABEL}">Source: 10Y UST</div>',
+            f'<div style="{_LABEL}">Source: US 10Y Treasury</div>',
             unsafe_allow_html=True,
         )
     rf_val = rf_input / 100

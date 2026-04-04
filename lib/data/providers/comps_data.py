@@ -19,6 +19,24 @@ _FMP_KEY = "nhFksOQCl83oEeFQgrjaNL99Hubzbb0z"
 _TIMEOUT = 8
 
 
+def _clean_numeric(val):
+    """Ensure a value is a real finite float, or None.
+
+    yfinance occasionally returns 'Infinity' as a string for PE etc.
+    """
+    if val is None:
+        return None
+    if isinstance(val, str):
+        return None
+    try:
+        f = float(val)
+        if not __import__("math").isfinite(f):
+            return None
+        return f
+    except (TypeError, ValueError):
+        return None
+
+
 def fetch_comps_row(ticker: str) -> Optional[dict]:
     """Fetch all comps-relevant data for a single ticker.
 
@@ -80,15 +98,15 @@ def fetch_comps_row(ticker: str) -> Optional[dict]:
             "ebitda": ebitda,
             "ebit": ebit,
             "net_income": info.get("netIncomeToCommon"),
-            "eps": info.get("trailingEps"),
+            "eps": _clean_numeric(info.get("trailingEps")),
             # Debt / cash
             "total_debt": info.get("totalDebt"),
             "cash": info.get("totalCash"),
             # Pre-computed trailing multiples from Yahoo
-            "trailing_pe": info.get("trailingPE"),
-            "forward_pe": info.get("forwardPE"),
-            "ev_revenue": info.get("enterpriseToRevenue"),
-            "ev_ebitda": info.get("enterpriseToEbitda"),
+            "trailing_pe": _clean_numeric(info.get("trailingPE")),
+            "forward_pe": _clean_numeric(info.get("forwardPE")),
+            "ev_revenue": _clean_numeric(info.get("enterpriseToRevenue")),
+            "ev_ebitda": _clean_numeric(info.get("enterpriseToEbitda")),
             # Calculated multiples
             "ev_ebit": ev_ebit,
             # Forward estimates
@@ -99,7 +117,7 @@ def fetch_comps_row(ticker: str) -> Optional[dict]:
             # Financial company fields
             "book_value_ps": book_val_ps,
             "tangible_book_ps": tbv_ps,
-            "price_to_book": p_book,
+            "price_to_book": _clean_numeric(p_book),
             "price_to_tbv": p_tbv,
             "dividend_yield": div_yield,
             "dividend_rate": info.get("dividendRate"),

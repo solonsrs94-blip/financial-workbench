@@ -167,7 +167,12 @@ def run_dcf(
     cagr = (final_rev / base_rev) ** (1 / n) - 1 if base_rev > 0 else 0.0
 
     warnings = []
-    if tv_pct > 0.75:
+    if tv_pct > 0.85:
+        warnings.append(
+            f"Terminal value is {tv_pct:.0%} of EV — consider whether "
+            f"growth/WACC assumptions are realistic"
+        )
+    elif tv_pct > 0.75:
         warnings.append(f"Terminal value is {tv_pct:.0%} of EV — high forecast uncertainty")
     if implied_exit and implied_exit > 25:
         warnings.append(f"Implied exit multiple of {implied_exit:.1f}x is very high")

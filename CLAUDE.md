@@ -22,6 +22,7 @@ pages/              → Streamlit pages (one screen = one file)
   pages/valuation/  → Valuation sub-pages (preparation, dcf steps 2-5, comps, ddm)
     preparation_editor.py → Editable data_editor for override values
     preparation_overrides.py → Rebuild cascade after overrides
+    dcf_step2_scenarios.py → Step 2 Bull/Base/Bear tab orchestration
     dcf_step2_table.py → Historical + projected FCF table
     dcf_step2_output.py → Calculated FCF output section
     dcf_step3_wacc.py → Step 3 WACC orchestrator
@@ -31,10 +32,14 @@ pages/              → Streamlit pages (one screen = one file)
     dcf_step3_peers.py → Peer Group Beta (table, add/remove, Hamada)
     dcf_step4_terminal.py → Step 4 TV orchestrator (method selector, cross-checks, warnings)
     dcf_step4_methods.py → Step 4 Gordon Growth + Exit Multiple renderers
+    dcf_step4_scenarios.py → Step 4 Bull/Base/Bear terminal value tabs
     dcf_step5_output.py → Step 5 DCF Output orchestrator (EV, implied price, summary)
+    dcf_step5_display.py → Step 5 display helpers (summary, EV breakdown, implied price)
+    dcf_step5_scenarios.py → Step 5 Bull/Base/Bear comparison + per-scenario output
     dcf_step5_bridge.py → Step 5 Equity Bridge (EV → equity value, overridable)
     dcf_step5_sensitivity.py → Step 5 Sensitivity tables (WACC×growth, WACC×multiple)
     historical_tab.py → Historical Multiples orchestrator (period/multiple controls)
+    historical_scenarios.py → Historical Bull/Base/Bear scenario valuation tabs
     historical_chart.py → Historical Multiples time series charts (Plotly, ±1σ bands)
     historical_summary.py → Summary statistics + implied value tables
     historical_football.py → Football field chart (10th-90th percentile range)
@@ -42,12 +47,16 @@ pages/              → Streamlit pages (one screen = one file)
     ddm_step1_ke.py → DDM Step 1: Cost of Equity (independent CAPM)
     ddm_step1_peers.py → DDM Step 1: Peer Group Beta (ddm_ session keys)
     ddm_step2_assumptions.py → DDM Step 2: Model selection + dividend projections
+    ddm_step2_scenarios.py → DDM Step 2: Bull/Base/Bear tab orchestration
     ddm_step2_reference.py → DDM Step 2: Reference data, warnings, history
-    ddm_step3_output.py → DDM Step 3: Implied price, sensitivity, football field
+    ddm_step3_output.py → DDM Step 3: Orchestrator + rendering helpers
+    ddm_step3_scenarios.py → DDM Step 3: Bull/Base/Bear comparison + per-scenario output
     summary_tab.py → Summary tab orchestrator (reads all model outputs)
     summary_table.py → Summary: Valuation overview table
     summary_football.py → Summary: Combined football field chart (all models)
-components/         → Reusable UI components (ticker search, charts, tables, explainer)
+    summary_helpers.py → Summary: DCF scenario format handling + stats
+components/         → Reusable UI components (ticker search, charts, tables, explainer, commentary)
+  commentary_templates/ → Sector-specific commentary templates (tech, industrials, consumer, healthcare, energy, real estate, dcf_step4, dcf_step5)
 lib/                → Core logic — NO Streamlit imports allowed here
   lib/data/         → Data fetching + standardization
     providers/      → Raw data sources (yahoo, simfin, damodaran, edgar, peer_beta)
@@ -80,7 +89,9 @@ lib/                → Core logic — NO Streamlit imports allowed here
   lib/workspace/    → Analysis sessions (data + reasoning + AI narrative)
   lib/sandbox/      → AI experiment station (code generation + execution)
   lib/alerts/       → Alert system (conditions + notifications)
-  lib/exports/      → Report generation (PDF, Excel, templates)
+  lib/exports/      → Report generation (PDF, Excel, templates, JSON analysis export)
+    analysis_export.py → build_export_json() — collects all session state into structured JSON for Claude report generation
+    company_data.py → Company model extraction helpers (description, ratios, extended meta, historical financials)
   lib/storage/      → Storage abstraction (local SQLite now, cloud later)
   lib/auth/         → User authentication (fase 6)
 models/             → Data models (company, portfolio, experiment, etc.)
@@ -154,8 +165,15 @@ tests/              → Tests for data, analysis, and cache
 - Comps financial multiples: Banks/insurance use P/E, P/Book, P/TBV, Div Yield instead of EV-based multiples. `comps_data.py` fetches `bookValue` (per share), tangible book from `balance_sheet["Tangible Book Value"]`, and `dividendYield / 100`.
 - DDM dividend data: `ddm_provider.py` normalizes `dividendYield / 100` (same convention as Comps). DPS CAGR computed from `ticker.dividends` aggregated to annual. Dividend cuts detected as year-over-year decreases.
 - DDM is independent from DCF: DDM has its own Ke calculation (same CAPM providers but separate UI/session keys). DDM does NOT require DCF WACC step to have been run.
-- DDM session keys use `ddm_` prefix: `ddm_ke`, `ddm_assumptions`, `ddm_output`, `ddm_data_{ticker}`, `ddm_ke_peers`. Never collides with `dcf_`/`wacc_` keys.
-- Summary tab reads from: `dcf_output` (implied_price, sensitivity_min/max, wacc, terminal_growth), `comps_valuation` (implied_prices with low/median/high per multiple), `historical_result` (implied_values with at_p10/at_median/at_p90 per multiple), `ddm_output` (implied_price, sensitivity_min/max, ke, g). Summary never writes to session_state — pure read-only.
+- DDM session keys use `ddm_` prefix: `ddm_ke`, `ddm_data_{ticker}`, `ddm_ke_peers`. Never collides with `dcf_`/`wacc_` keys.
+- DDM scenario keys: `ddm_scenarios` (dict with base/bull/bear assumption dicts), `ddm_scenarios_initialized` (set). Widget keys use `ddm_{scenario}_{field}` pattern. Ke is shared (single `ddm_ke`). Legacy `ddm_assumptions` auto-migrated to `ddm_scenarios['base']`.
+- `ddm_output` uses scenario format: `{'base': {...}, 'bull': {...}, 'bear': {...}}`. Summary handles both scenario and legacy formats via `summary_helpers.py`.
+- DCF scenario keys: `dcf_scenarios` (dict with base/bull/bear assumption dicts), `dcf_active_scenario`, `dcf_scenarios_initialized` (set), `dcf_scenarios_terminal` (dict with base/bull/bear terminal dicts). Widget keys use `dcf_{scenario}_{field}_{i}` pattern. Bridge keys use `bridge_{scenario}_{field}`. WACC is shared (single `dcf_wacc`). Legacy `dcf_assumptions` auto-migrated to `dcf_scenarios['base']`.
+- `dcf_output` uses scenario format: `{'base': {...}, 'bull': {...}, 'bear': {...}}`. Summary tab handles both scenario and legacy (flat dict) formats via `summary_helpers.py`.
+- Comps scenario keys: `comps_valuation` uses scenario format `{'base': {implied_price, applied_mult, premium, final_mult}, ...}` or legacy format `{implied_prices: {...}, method: ...}`. Scenario tabs in Step 3 with per-scenario applied multiples (defaults: 25th/median/75th percentile). Commentary: `commentary_comps_step3_{scenario}`, `commentary_comps_comparison`.
+- Summary tab reads from: `dcf_output` (scenario or legacy), `comps_valuation` (scenario or legacy), `historical_result` (implied_values with at_p10/at_median/at_p90 per multiple), `ddm_output` (scenario or legacy). Summary never writes to session_state — pure read-only. All scenario formats handled via `summary_helpers.py`.
+- Historical scenario keys: `historical_result` uses scenario format `{'base': {implied_price, applied_mult, mult_key}, ...}` plus `summary` and `implied_values` for backward compat. Scenario tabs with -1σ/mean/+1σ defaults. Commentary: `commentary_historical_{scenario}`, `commentary_historical_comparison`.
+- Analyst Commentary keys use `commentary_` prefix. Standard: `commentary_dcf_step3`, `commentary_summary` via `render_commentary(key)`. Per-scenario: DCF `commentary_dcf_step2_{scenario}`, `commentary_dcf_step4_{scenario}`; DDM `commentary_ddm_step2_{scenario}`; Comps `commentary_comps_step3_{scenario}`; Historical `commentary_historical_{scenario}`. Shared comparison: `commentary_dcf_step5`, `commentary_ddm_step3`, `commentary_comps_comparison`, `commentary_historical_comparison`. Templates in `components/commentary_templates/` (sector files + dcf_step4/5 + ddm_financial/step3 + comps + historical + non_dcf).
 
 ## Sensitivity Rules
 - Floor: Cells where g >= Ke (DDM) or implied price <= 0 (DCF) → NaN, displayed as "—" in UI.

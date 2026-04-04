@@ -1,184 +1,65 @@
-"""Step 5: DCF Output — EV, equity bridge, implied price, sensitivity."""
+"""Step 5: DCF Output — EV, equity bridge, implied price, sensitivity.
+
+Split into:
+  - dcf_step5_output.py (this) — orchestrator + data plumbing
+  - dcf_step5_display.py — summary, EV breakdown, implied price renderers
+  - dcf_step5_bridge.py — equity bridge with overrides
+  - dcf_step5_sensitivity.py — 2D sensitivity tables
+  - dcf_step5_scenarios.py — Bull/Base/Bear scenario orchestration
+"""
 
 import streamlit as st
 import pandas as pd
 
 from pages.valuation.dcf_step2_table import compute_projections, build_historical_data
-from pages.valuation.dcf_step5_bridge import render_bridge
-from pages.valuation.dcf_step5_sensitivity import render_sensitivity
+from pages.valuation.dcf_step5_scenarios import render_scenario_output
 from lib.analysis.valuation.dcf import run_dcf
 from models.valuation import WACCResult
-from components.layout import format_large_number
+from components.commentary import render_dcf_step5_commentary
 
 
 def render(prepared: dict, ticker: str) -> None:
-    """Render DCF output step."""
+    """Render DCF output step with scenario tabs."""
     st.markdown("### Step 5: DCF Output")
     st.caption(
         "Enterprise value, equity bridge, implied share price, "
-        "and sensitivity analysis."
+        "and sensitivity analysis across all scenarios."
     )
 
     wacc_data = st.session_state.get("dcf_wacc")
-    terminal = st.session_state.get("dcf_terminal")
-    assumptions = st.session_state.get("dcf_assumptions")
+    scenarios = st.session_state.get("dcf_scenarios")
+    terminals = st.session_state.get("dcf_scenarios_terminal")
 
-    if not all([wacc_data, terminal, assumptions]):
+    if not all([wacc_data, scenarios, terminals]):
         st.warning("Complete Steps 2, 3, and 4 first.")
         return
 
-    proj = _get_projections(prepared, assumptions)
-    if proj is None:
-        st.info("Complete all Step 2 assumptions to see DCF output.")
+    base_assumptions = scenarios.get("base")
+    base_terminal = terminals.get("base")
+    if not base_assumptions or not base_terminal:
+        st.warning("Complete Steps 2 and 4 for the Base Case first.")
         return
 
-    # ── Build inputs ───────────────────────────────────────────
-    fcf_table = _build_fcf_df(proj, assumptions)
-    wacc_result = _to_wacc_result(wacc_data)
-    bridge_inputs = _get_bridge_inputs(prepared, ticker)
-    current_price = bridge_inputs["current_price"]
+    # Verify base case projections are complete
+    proj = _get_projections(prepared, base_assumptions)
+    if proj is None:
+        st.info("Complete all Step 2 Base Case assumptions to see output.")
+        return
 
-    # ── Run DCF engine ─────────────────────────────────────────
-    result = run_dcf(
-        fcf_table=fcf_table,
-        wacc_result=wacc_result,
-        terminal_growth=terminal["terminal_growth"],
-        terminal_method=terminal["method"],
-        exit_multiple=terminal["exit_multiple"],
-        net_debt=bridge_inputs["net_debt"],
-        shares=bridge_inputs["shares"],
-        current_price=current_price,
-        minority_interest=bridge_inputs["minority"],
-        preferred_equity=bridge_inputs["preferred"],
+    # ── Delegate to scenario orchestrator ──────────────────────
+    render_scenario_output(
+        prepared, ticker,
+        build_fcf_fn=_build_fcf_df,
+        to_wacc_fn=_to_wacc_result,
+        get_bridge_fn=_get_bridge_inputs,
+        get_proj_fn=_get_projections,
     )
 
-    # Currency: DCF output is in financialCurrency. Convert to
-    # listing currency for display when they differ.
-    pf = bridge_inputs.get("price_factor", 1.0)
-    currency = bridge_inputs.get("currency", "USD")
-
-    # ── 1. Summary metrics ─────────────────────────────────────
-    _render_summary(result, wacc_data, terminal, pf, currency)
-
-    # ── 2. EV breakdown (PV FCFs vs PV TV) ─────────────────────
-    _render_ev_breakdown(result)
-
-    # ── 3. Equity bridge with overrides ────────────────────────
-    st.markdown("---")
-    bridge_result = render_bridge(result, bridge_inputs, ticker)
-
-    # ── 4. Implied price vs market ─────────────────────────────
-    st.markdown("---")
-    _render_implied_price(bridge_result, current_price, pf, currency)
-
-    # ── 5. Sensitivity tables ──────────────────────────────────
-    st.markdown("---")
-    sens_range = render_sensitivity(
-        fcf_table, wacc_result, terminal,
-        bridge_inputs, current_price,
-    )
-
-    # ── 6. Warnings ────────────────────────────────────────────
-    for w in result.warnings:
-        st.warning(w)
-
-    # ── Store output (implied_price in listing currency) ─────────
-    method_label = ("Gordon Growth" if terminal["method"] == "gordon"
-                    else "Exit Multiple")
-    implied_listing = bridge_result["implied_price"]
-    if pf != 1.0:
-        implied_listing = implied_listing / pf
-    st.session_state["dcf_output"] = {
-        "enterprise_value": result.enterprise_value,
-        "equity_value": bridge_result["equity_value"],
-        "implied_price": implied_listing,
-        "current_price": current_price,
-        "tv_pct_of_ev": result.tv_pct_of_ev,
-        "sensitivity_min": sens_range["min"] / pf if pf != 1.0 else sens_range["min"],
-        "sensitivity_max": sens_range["max"] / pf if pf != 1.0 else sens_range["max"],
-        "wacc": wacc_data["wacc"],
-        "terminal_growth": terminal["terminal_growth"],
-        "terminal_method": method_label,
-    }
+    # ── Analyst Commentary ────────────────────────────────────────
+    render_dcf_step5_commentary()
 
 
-
-def _render_summary(result, wacc_data, terminal, pf=1.0, cur="USD"):
-    """Top-line metrics row."""
-    ev = result.enterprise_value
-    eq = result.bridge.equity_value
-    # Convert implied price to listing currency
-    implied = result.implied_price / pf if pf != 1.0 else result.implied_price
-    current = result.current_price
-    upside = (implied / current - 1) * 100 if current > 0 else 0
-    sym = "$" if cur == "USD" else ""
-
-    c1, c2, c3, c4, c5 = st.columns(5)
-    c1.metric("Enterprise Value", format_large_number(ev * 1e6))
-    c2.metric("Equity Value", format_large_number(eq * 1e6))
-    c3.metric("Implied Price", f"{sym}{implied:,.2f} {cur}")
-    c4.metric("Current Price", f"{sym}{current:,.2f} {cur}")
-    color = "#2ea043" if upside > 0 else "#f85149"
-    c5.markdown(
-        f'<div style="font-size:13px;opacity:0.6">Upside / Downside</div>'
-        f'<div style="font-size:24px;font-weight:700;color:{color}">'
-        f'{upside:+.1f}%</div>',
-        unsafe_allow_html=True,
-    )
-
-    # Key assumptions line
-    method_label = ("Gordon Growth" if terminal["method"] == "gordon"
-                    else "Exit Multiple")
-    st.markdown(
-        f'<div style="font-size:13px;opacity:0.6;margin-top:4px">'
-        f'WACC: {wacc_data["wacc"]*100:.2f}% &nbsp;|&nbsp; '
-        f'Terminal: {method_label} '
-        f'(g={terminal["terminal_growth"]*100:.2f}%, '
-        f'multiple={terminal["exit_multiple"]:.1f}x) &nbsp;|&nbsp; '
-        f'{terminal["n_years"]}yr projection</div>',
-        unsafe_allow_html=True,
-    )
-
-
-
-def _render_ev_breakdown(result) -> None:
-    """Show PV of FCFs + PV of TV = EV."""
-    pv_fcfs_total = sum(result.pv_fcfs)
-    pv_tv = result.pv_terminal
-    ev = result.enterprise_value
-    tv_pct = result.tv_pct_of_ev
-
-    st.markdown("#### Enterprise Value Breakdown")
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("PV of FCFs", format_large_number(pv_fcfs_total * 1e6))
-    c2.metric("PV of Terminal Value", format_large_number(pv_tv * 1e6))
-    c3.metric("Enterprise Value", format_large_number(ev * 1e6))
-    c4.metric("TV as % of EV", f"{tv_pct:.0%}")
-
-
-
-def _render_implied_price(bridge_result, current_price, pf=1.0, cur="USD"):
-    """Large implied price display with upside/downside."""
-    implied = bridge_result["implied_price"]
-    if pf != 1.0:
-        implied = implied / pf
-    upside = (implied / current_price - 1) * 100 if current_price > 0 else 0
-    color = "#2ea043" if upside > 0 else "#f85149"
-    verdict = "UNDERVALUED" if upside > 0 else "OVERVALUED"
-    sym = "$" if cur == "USD" else ""
-
-    st.markdown(
-        f'<div style="text-align:center;padding:16px 0">'
-        f'<div style="font-size:14px;opacity:0.6">Implied Share Price</div>'
-        f'<div style="font-size:36px;font-weight:700;color:#1c83e1">'
-        f'{sym}{implied:,.2f} {cur}</div>'
-        f'<div style="font-size:14px;margin-top:4px">'
-        f'vs {sym}{current_price:,.2f} {cur} current → '
-        f'<span style="color:{color};font-weight:700">'
-        f'{upside:+.1f}% ({verdict})</span></div></div>',
-        unsafe_allow_html=True,
-    )
-
+# ── Data plumbing (used by scenario orchestrator) ──────────────────
 
 
 def _get_projections(prepared: dict, assumptions: dict) -> dict | None:
@@ -248,10 +129,8 @@ def _get_bridge_inputs(prepared: dict, ticker: str) -> dict:
     company = st.session_state.get(f"company_{ticker}")
     bs = val_data.get("balance_sheet", {})
 
-    # Net debt (raw dollars → millions)
     net_debt_raw = bs.get("net_debt", 0)
     if not net_debt_raw:
-        # Fallback: prepared standardized balance sheet
         years = prepared.get("years", [])
         if years:
             bal = prepared.get("standardized", {}).get("balance", {})
@@ -261,7 +140,6 @@ def _get_bridge_inputs(prepared: dict, ticker: str) -> dict:
     minority_raw = bs.get("minority_interest", 0) or 0
     preferred_raw = bs.get("preferred_equity", 0) or 0
 
-    # Shares (raw count → millions, for consistent units)
     shares_raw = (
         val_data.get("shares")
         or (getattr(getattr(company, "ratios", None),
@@ -269,15 +147,12 @@ def _get_bridge_inputs(prepared: dict, ticker: str) -> dict:
         or 1
     )
 
-    # Current price (dollars)
     current_price = 0
     if company:
         current_price = getattr(
             getattr(company, "price", None), "price", 0,
         ) or 0
 
-    # Currency alignment: DCF runs in financialCurrency, but
-    # current_price is in listing currency. Compute factor.
     currency = val_data.get("currency", "USD")
     fin_currency = val_data.get("financial_currency", currency)
     mcap = val_data.get("market_cap")

@@ -15,6 +15,7 @@ from config.constants import DEFAULT_TERMINAL_GROWTH
 def render_gordon(
     fcf_final: float, ebitda_final: float, wacc: float,
     is_primary: bool,
+    scenario: str = "base",
 ) -> tuple[float, float]:
     """Render Gordon Growth inputs + output. Returns (tv, g)."""
     label = "A. Gordon Growth Model"
@@ -29,7 +30,7 @@ def render_gordon(
             min_value=-2.0, max_value=8.0,
             value=DEFAULT_TERMINAL_GROWTH * 100,
             step=0.25, format="%.2f",
-            key="dcf_terminal_g",
+            key=f"dcf_{scenario}_terminal_g",
             help="Long-run perpetual growth. ~2-3% = inflation + real GDP.",
         )
     g = g_pct / 100
@@ -68,6 +69,7 @@ def render_exit_multiple(
     current_ev_ebitda: float | None,
     sector: str, sector_multiple: float | None,
     is_primary: bool,
+    scenario: str = "base",
 ) -> tuple[float, float]:
     """Render Exit Multiple inputs + output. Returns (tv, multiple)."""
     label = "B. Exit Multiple"
@@ -84,7 +86,7 @@ def render_exit_multiple(
             min_value=1.0, max_value=50.0,
             value=round(default, 1),
             step=0.5, format="%.1f",
-            key="dcf_exit_multiple",
+            key=f"dcf_{scenario}_exit_multiple",
             help="Applied to final-year EBITDA.",
         )
 

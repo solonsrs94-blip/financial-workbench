@@ -14,6 +14,7 @@ import streamlit as st
 from pages.valuation.dcf_step3_ke import render_cost_of_equity
 from pages.valuation.dcf_step3_kd import render_cost_of_debt
 from pages.valuation.dcf_step3_structure import render_structure_and_output
+from components.commentary import render_commentary
 
 
 def render(prepared: dict, ticker: str) -> None:
@@ -56,6 +57,9 @@ def render(prepared: dict, ticker: str) -> None:
 
     # ── Store in session state for Step 4 + 5 ─────────────────
     st.session_state["dcf_wacc"] = wacc_result
+
+    # ── Analyst Commentary ────────────────────────────────────────
+    render_commentary("commentary_dcf_step3")
 
 
 # ── Data extraction ───────────────────────────────────────────────

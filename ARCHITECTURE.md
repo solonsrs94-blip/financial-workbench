@@ -189,6 +189,8 @@ Vision/
 │   ├── technical_chart.py              ← Kertastjakar, indicators, overlays
 │   ├── tables.py                       ← Stöðluð töfluframsetning
 │   ├── annotations.py                  ← Textaboxar fyrir rökstuðning
+│   ├── commentary.py                   ← Analyst Commentary expanderar með sniðmátum
+│   ├── commentary_templates/           ← Sector-specific + per-scenario sniðmát
 │   ├── layout.py                       ← Sameiginlegt útlit (header, sidebar)
 │   ├── explainer.py                    ← ? hnappur við hverja tölu/forsendu
 │   │                                      • Stig 1-3 útskýring
@@ -586,7 +588,7 @@ Vision/
 - ✅ .env.example, .gitignore, requirements.txt
 
 ### Fase 2 — Kjarnaskjáir
-- ✅ Virðismat — Simple DCF (3-phase), Complex DCF (12-step IB-grade), 3-Statement Model, WACC (5 beta-aðferðir, 3 Rd-aðferðir, 4 cap-structure leiðir), Comps (operating metrics + football field), Historical Multiples (daily TTM, EDGAR 10Y + yfinance fallback, football field), DDM (Gordon Growth + 2-Stage, independent Ke, sensitivity, football field), Valuation Summary (combined football field + overview table), Damodaran integration
+- ✅ Virðismat — Simple DCF (3-phase), Complex DCF (12-step IB-grade), 3-Statement Model, WACC (5 beta-aðferðir, 3 Rd-aðferðir, 4 cap-structure leiðir), Bull/Base/Bear scenario tabs (DCF Steps 2/4/5, DDM Steps 2/3, Comps Step 3, Historical Multiples), Comps (operating metrics + football field + scenario valuation), Historical Multiples (daily TTM, EDGAR 10Y + yfinance fallback, football field), DDM (Gordon Growth + 2-Stage, independent Ke, Bull/Base/Bear scenarios, sensitivity, football field), Valuation Summary (combined football field + overview table, scenario-aware for both DCF and DDM), Damodaran integration, Analyst Commentary (sector-specific + per-scenario templates), Export Analysis (JSON for Claude report generation)
 - Tæknigröf (kertastjakar, RSI, MACD)
 - Hlutabréfasía
 - Vaktlistar

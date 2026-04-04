@@ -1,10 +1,25 @@
 """Summary tab — combined valuation overview from all models."""
 
+import json
+from datetime import date
+
 import streamlit as st
-import numpy as np
 
 from pages.valuation.summary_table import render_valuation_table
 from pages.valuation.summary_football import render_combined_football
+from pages.valuation.summary_helpers import (
+    collect_dcf_rows,
+    collect_dcf_bars,
+    collect_ddm_rows,
+    collect_ddm_bars,
+    collect_comps_rows,
+    collect_comps_bars,
+    collect_historical_rows,
+    collect_historical_bars,
+    render_summary_stats,
+)
+from components.commentary import render_commentary
+from lib.exports.analysis_export import build_export_json
 
 
 def render(prepared: dict, ticker: str) -> None:
@@ -58,12 +73,19 @@ def render(prepared: dict, ticker: str) -> None:
     # ── Section 4: Summary statistics ──────────────────────
     if len(rows) > 1:
         st.markdown("---")
-        _render_summary_stats(rows, current_price)
+        render_summary_stats(rows, current_price)
 
     # ── Section 5: Excluded models (grayed out) ────────────
     if excluded:
         st.markdown("---")
         _render_excluded(excluded, current_price)
+
+    # ── Export Analysis ────────────────────────────────────────────
+    st.markdown("---")
+    _render_export(ticker, included)
+
+    # ── Analyst Commentary ────────────────────────────────────────
+    render_commentary("commentary_summary")
 
 
 _GROUP_ORDER = ["DCF", "Comps", "Historical", "DDM"]
@@ -126,45 +148,26 @@ def _collect_rows(current_price: float) -> list[dict]:
     """Collect implied price rows from all completed models."""
     rows = []
     dcf = st.session_state.get("dcf_output")
-    if dcf and dcf.get("implied_price"):
-        w, tg = dcf.get("wacc", 0), dcf.get("terminal_growth", 0)
-        rows.append({"method": "DCF", "implied": dcf["implied_price"],
-                      "notes": f"WACC: {w*100:.1f}%, g: {tg*100:.1f}%"})
+    if dcf:
+        collect_dcf_rows(dcf, rows)
     comps = st.session_state.get("comps_valuation")
-    if comps and comps.get("implied_prices"):
-        for key, data in comps["implied_prices"].items():
-            if data is None:
-                continue
-            med = data.get("median")
-            if med is None or med <= 0:
-                continue
-            label = data.get("label", key)
-            rows.append({
-                "method": f"Comps ({label})",
-                "implied": med,
-                "notes": f"Peer median {label}",
-            })
+    if comps:
+        collect_comps_rows(comps, rows)
 
     hist = st.session_state.get("historical_result")
-    if hist and hist.get("implied_values"):
-        per = hist.get("period", "?")
-        for key, iv in hist["implied_values"].items():
-            if not iv:
-                continue
-            med = iv.get("at_median")
-            if not med or med <= 0:
-                continue
-            lbl = _HIST_LABELS.get(key, key)
-            rows.append({"method": f"Historical ({lbl})", "implied": med,
-                          "notes": f"{per}Y median {lbl}"})
-    # DDM — primary model + alt model (if available)
-    for ddm_key in ["ddm_output", "ddm_output_alt"]:
-        ddm = st.session_state.get(ddm_key)
-        if ddm and ddm.get("implied_price") and ddm["implied_price"] > 0:
-            ml = "Gordon Growth" if ddm.get("model") == "gordon" else "2-Stage"
-            ke, g = ddm.get("ke", 0), ddm.get("g", 0)
-            rows.append({"method": f"DDM ({ml})", "implied": ddm["implied_price"],
-                          "notes": f"Ke: {ke*100:.1f}%, g: {g*100:.1f}%"})
+    if hist:
+        collect_historical_rows(hist, rows)
+    # DDM — scenario or legacy format
+    ddm = st.session_state.get("ddm_output")
+    if ddm:
+        collect_ddm_rows(ddm, rows)
+    # Alt model (legacy only — not used in scenario format)
+    ddm_alt = st.session_state.get("ddm_output_alt")
+    if ddm_alt and ddm_alt.get("implied_price") and ddm_alt["implied_price"] > 0:
+        ml = "Gordon Growth" if ddm_alt.get("model") == "gordon" else "2-Stage"
+        ke, g = ddm_alt.get("ke", 0), ddm_alt.get("g", 0)
+        rows.append({"method": f"DDM ({ml})", "implied": ddm_alt["implied_price"],
+                      "notes": f"Ke: {ke*100:.1f}%, g: {g*100:.1f}%"})
     return rows
 
 
@@ -172,110 +175,39 @@ def _collect_bars() -> list[dict]:
     """Collect football field bar data from all completed models."""
     bars = []
 
-    # DCF — sensitivity range
+    # DCF — scenario range or single sensitivity range
     dcf = st.session_state.get("dcf_output")
-    if dcf and dcf.get("implied_price"):
-        lo = dcf.get("sensitivity_min", dcf["implied_price"])
-        hi = dcf.get("sensitivity_max", dcf["implied_price"])
+    if dcf:
+        collect_dcf_bars(dcf, bars)
+
+    # Comps — scenario range or per-multiple range
+    comps = st.session_state.get("comps_valuation")
+    if comps:
+        collect_comps_bars(comps, bars)
+
+    # Historical — scenario range or per-multiple range
+    hist = st.session_state.get("historical_result")
+    if hist:
+        collect_historical_bars(hist, bars)
+
+    # DDM — scenario or legacy format
+    ddm = st.session_state.get("ddm_output")
+    if ddm:
+        collect_ddm_bars(ddm, bars)
+    # Alt model (legacy only)
+    ddm_alt = st.session_state.get("ddm_output_alt")
+    if ddm_alt and ddm_alt.get("implied_price") and ddm_alt["implied_price"] > 0:
+        lo = ddm_alt.get("sensitivity_min", ddm_alt["implied_price"])
+        hi = ddm_alt.get("sensitivity_max", ddm_alt["implied_price"])
+        ml = "Gordon" if ddm_alt.get("model") == "gordon" else "2-Stage"
         bars.append({
-            "label": "DCF",
-            "low": lo, "high": hi,
-            "mid": dcf["implied_price"],
-            "color": "rgba(28, 131, 225, 0.5)",
-            "marker_color": "#1c83e1",
+            "label": f"DDM ({ml})",
+            "low": lo, "high": hi, "mid": ddm_alt["implied_price"],
+            "color": "rgba(163, 113, 247, 0.5)",
+            "marker_color": "#a371f7",
         })
 
-    # Comps — one bar per multiple (low → high)
-    comps = st.session_state.get("comps_valuation")
-    if comps and comps.get("implied_prices"):
-        for key, data in comps["implied_prices"].items():
-            if data is None:
-                continue
-            lo = data.get("low")
-            hi = data.get("high")
-            med = data.get("median")
-            if lo is None or hi is None or med is None:
-                continue
-            label = data.get("label", key)
-            bars.append({
-                "label": f"Comps ({label})",
-                "low": lo, "high": hi, "mid": med,
-                "color": "rgba(63, 185, 80, 0.5)",
-                "marker_color": "#3fb950",
-            })
-
-    # Historical — one bar per multiple (p10 → p90)
-    hist = st.session_state.get("historical_result")
-    if hist and hist.get("implied_values"):
-        for key, iv in hist["implied_values"].items():
-            if iv is None:
-                continue
-            lo = iv.get("at_p10")
-            hi = iv.get("at_p90")
-            med = iv.get("at_median")
-            if lo is None or hi is None or med is None:
-                continue
-            if lo <= 0 or hi <= 0:
-                continue
-            label = _HIST_LABELS.get(key, key)
-            bars.append({
-                "label": f"Historical ({label})",
-                "low": lo, "high": hi, "mid": med,
-                "color": "rgba(210, 153, 34, 0.5)",
-                "marker_color": "#d29922",
-            })
-
-    # DDM — primary + alt model
-    for ddm_key in ["ddm_output", "ddm_output_alt"]:
-        ddm = st.session_state.get(ddm_key)
-        if ddm and ddm.get("implied_price") and ddm["implied_price"] > 0:
-            lo = ddm.get("sensitivity_min", ddm["implied_price"])
-            hi = ddm.get("sensitivity_max", ddm["implied_price"])
-            ml = "Gordon" if ddm.get("model") == "gordon" else "2-Stage"
-            bars.append({
-                "label": f"DDM ({ml})",
-                "low": lo, "high": hi, "mid": ddm["implied_price"],
-                "color": "rgba(163, 113, 247, 0.5)",
-                "marker_color": "#a371f7",
-            })
-
     return bars
-
-
-def _render_summary_stats(rows: list[dict], current_price: float) -> None:
-    """Cross-method summary statistics (included models only)."""
-    st.markdown("#### Summary Statistics")
-    prices = [r["implied"] for r in rows]
-    mean_p, median_p = float(np.mean(prices)), float(np.median(prices))
-    lo, hi = min(prices), max(prices)
-    spread = (hi - lo) / mean_p * 100 if mean_p > 0 else 0
-
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Mean", f"${mean_p:,.2f}")
-    c2.metric("Median", f"${median_p:,.2f}")
-    c3.metric("Range", f"${lo:,.0f} – ${hi:,.0f}")
-    c4.metric("Spread", f"{spread:.0f}%")
-
-    if current_price > 0:
-        up_mean = (mean_p / current_price - 1) * 100
-        up_med = (median_p / current_price - 1) * 100
-        cm = "#2ea043" if up_mean > 0 else "#f85149"
-        cd = "#2ea043" if up_med > 0 else "#f85149"
-        st.markdown(
-            f'<div style="font-size:13px;opacity:0.7;margin-top:4px">'
-            f'Consensus — Mean: <span style="color:{cm}">{up_mean:+.1f}%</span>'
-            f' · Median: <span style="color:{cd}">{up_med:+.1f}%</span></div>',
-            unsafe_allow_html=True,
-        )
-
-
-_HIST_LABELS = {
-    "pe": "P/E",
-    "ev_ebitda": "EV/EBITDA",
-    "ev_revenue": "EV/Revenue",
-    "p_book": "P/Book",
-    "p_tbv": "P/TBV",
-}
 
 
 def _get_current_price(ticker: str) -> float:
@@ -285,3 +217,64 @@ def _get_current_price(ticker: str) -> float:
         price_obj = getattr(company, "price", None)
         return getattr(price_obj, "price", 0) or 0
     return 0.0
+
+
+def _render_export(ticker: str, included: set) -> None:
+    """Render Export Analysis download button."""
+    included_modules = {
+        g: (g in included) for g in _GROUP_ORDER
+    }
+
+    defaults = _build_default_templates()
+    state_copy = dict(st.session_state)
+
+    export_data = build_export_json(
+        state_copy, ticker, included_modules, defaults,
+    )
+    json_str = json.dumps(export_data, indent=2, default=str)
+    today = date.today().isoformat()
+
+    st.download_button(
+        "Export Analysis",
+        data=json_str,
+        file_name=f"{ticker}_analysis_{today}.json",
+        mime="application/json",
+        type="secondary",
+    )
+
+
+def _build_default_templates() -> dict:
+    """Build map of commentary key -> default template for comparison."""
+    from components.commentary import (
+        TEMPLATES, get_step2_template,
+        _STEP4_TEMPLATES, _DDM_STEP2_TEMPLATES,
+        _COMPS_TEMPLATES, _HIST_TEMPLATES,
+    )
+    from components.commentary_templates import dcf_step5, ddm_step3
+    from components.commentary_templates import (
+        comps as comps_t, historical as hist_t,
+    )
+
+    defaults = dict(TEMPLATES)
+    # DCF Step 2 (sector-specific)
+    for s in ["base", "bull", "bear"]:
+        defaults[f"commentary_dcf_step2_{s}"] = get_step2_template(s)
+    # DCF Step 4
+    for s, tmpl in _STEP4_TEMPLATES.items():
+        defaults[f"commentary_dcf_step4_{s}"] = tmpl
+    # DCF Step 5
+    defaults["commentary_dcf_step5"] = dcf_step5.STEP5_COMPARISON
+    # DDM Step 2
+    for s, tmpl in _DDM_STEP2_TEMPLATES.items():
+        defaults[f"commentary_ddm_step2_{s}"] = tmpl
+    # DDM Step 3
+    defaults["commentary_ddm_step3"] = ddm_step3.STEP3_COMPARISON
+    # Comps
+    for s, tmpl in _COMPS_TEMPLATES.items():
+        defaults[f"commentary_comps_step3_{s}"] = tmpl
+    defaults["commentary_comps_comparison"] = comps_t.COMPARISON
+    # Historical
+    for s, tmpl in _HIST_TEMPLATES.items():
+        defaults[f"commentary_historical_{s}"] = tmpl
+    defaults["commentary_historical_comparison"] = hist_t.COMPARISON
+    return defaults

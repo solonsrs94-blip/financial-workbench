@@ -9,7 +9,10 @@ import streamlit as st
 from components.layout import format_large_number
 
 
-def render_bridge(result, bridge_inputs: dict, ticker: str) -> dict:
+def render_bridge(
+    result, bridge_inputs: dict, ticker: str,
+    scenario: str = "base",
+) -> dict:
     """Render equity bridge with overridable inputs. Returns final values."""
     st.markdown("#### Equity Bridge")
     st.caption(
@@ -30,15 +33,15 @@ def render_bridge(result, bridge_inputs: dict, ticker: str) -> dict:
 
     net_debt = _bridge_row(
         "Net Debt (Debt − Cash)", bridge_inputs["net_debt"],
-        "bridge_net_debt", subtract=True,
+        f"bridge_{scenario}_net_debt", subtract=True,
     )
     minority = _bridge_row(
         "Minority Interest", bridge_inputs["minority"],
-        "bridge_minority", subtract=True,
+        f"bridge_{scenario}_minority", subtract=True,
     )
     preferred = _bridge_row(
         "Preferred Equity", bridge_inputs["preferred"],
-        "bridge_preferred", subtract=True,
+        f"bridge_{scenario}_preferred", subtract=True,
     )
 
     # ── Equity Value ───────────────────────────────────────────
@@ -64,7 +67,8 @@ def render_bridge(result, bridge_inputs: dict, ticker: str) -> dict:
         shares = st.number_input(
             "Shares", value=round(shares_default, 1),
             min_value=0.1, step=10.0, format="%.1f",
-            key="bridge_shares", label_visibility="collapsed",
+            key=f"bridge_{scenario}_shares",
+            label_visibility="collapsed",
         )
 
     implied_price = equity_value / shares if shares > 0 else 0

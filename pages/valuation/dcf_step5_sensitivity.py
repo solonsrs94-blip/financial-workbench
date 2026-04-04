@@ -24,6 +24,7 @@ def render_sensitivity(
     terminal: dict,
     bridge_inputs: dict,
     current_price: float,
+    scenario: str = "",
 ) -> dict:
     """Render two sensitivity tables side by side.
 
@@ -56,7 +57,8 @@ def render_sensitivity(
         # Convert from financial currency to listing currency
         if pf != 1.0:
             df_g = df_g / pf
-        _render_table(df_g, current_price, "Terminal Growth Rate")
+        _render_table(df_g, current_price, "Terminal Growth Rate",
+                      f"dcf_sens_g_{scenario}" if scenario else "")
 
     with tab2:
         df_m = exit_sensitivity_table(
@@ -65,7 +67,8 @@ def render_sensitivity(
         )
         if pf != 1.0:
             df_m = df_m / pf
-        _render_table(df_m, current_price, "Exit Multiple (EV/EBITDA)")
+        _render_table(df_m, current_price, "Exit Multiple (EV/EBITDA)",
+                      f"dcf_sens_m_{scenario}" if scenario else "")
 
     # Collect sensitivity range for Summary tab (skip NaN/invalid)
     import math
@@ -80,6 +83,7 @@ def render_sensitivity(
 
 def _render_table(
     df: pd.DataFrame, current_price: float, col_label: str,
+    key_id: str = "",
 ) -> None:
     """Render a sensitivity DataFrame with color coding."""
     # Format as price strings (NaN → dash)
@@ -134,6 +138,7 @@ def _render_table(
         styled,
         use_container_width=True,
         height=min(250, 50 + len(df) * 40),
+        key=key_id if key_id else None,
     )
 
     # Base case marker

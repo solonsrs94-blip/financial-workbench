@@ -4,8 +4,9 @@ IB-style table: historical (left, read-only) | projected (right, editable).
 Analyst fills in all assumptions manually — no pre-populated defaults.
 Calculated FCF output appears below when all assumptions are complete.
 
-Split into 3 files:
-  - dcf_step2_assumptions.py (this) — controls + input rows
+Split into 4 files:
+  - dcf_step2_assumptions.py (this) — controls + input rows + driver table
+  - dcf_step2_scenarios.py — Bull/Base/Bear tab orchestration
   - dcf_step2_table.py — data extraction + projection math
   - dcf_step2_output.py — calculated output rendering
 """
@@ -13,9 +14,10 @@ Split into 3 files:
 import streamlit as st
 
 from pages.valuation.dcf_step2_table import build_historical_data
-from pages.valuation.dcf_step2_output import (
-    render_projected_revenue,
-    render_calculated_output,
+from pages.valuation.dcf_step2_output import render_projected_revenue
+from pages.valuation.dcf_step2_scenarios import (
+    migrate_legacy,
+    render_scenario_tabs,
 )
 
 
@@ -35,42 +37,6 @@ def _detect_nwc_method(ratios: list[dict]) -> str:
     return "detailed" if has_detail else "simplified"
 
 
-# ── Session state initialization ────────────────────────────────────
-
-
-def _init_assumptions(n_years: int, nwc_method: str) -> dict:
-    """Get or initialize dcf_assumptions in session state."""
-    key = "dcf_assumptions"
-    existing = st.session_state.get(key)
-
-    # Reset if n_years or method changed
-    if existing and (
-        existing["n_years"] != n_years
-        or existing["nwc_method"] != nwc_method
-    ):
-        existing = None
-
-    if existing is None:
-        empty = [None] * n_years
-        assumptions = {
-            "n_years": n_years,
-            "nwc_method": nwc_method,
-            "growth_rates": list(empty),
-            "ebit_margins": list(empty),
-            "tax_rates": list(empty),
-            "capex_pcts": list(empty),
-            "da_pcts": list(empty),
-            "sbc_pcts": list(empty),
-            "dso": list(empty),
-            "dio": list(empty),
-            "dpo": list(empty),
-            "nwc_pcts": list(empty),
-        }
-        st.session_state[key] = assumptions
-
-    return st.session_state[key]
-
-
 # ── Input row renderer ──────────────────────────────────────────────
 
 
@@ -81,6 +47,7 @@ def _render_input_row(
     assumptions: dict,
     n_years: int,
     proj_years: list[int],
+    scenario: str = "base",
     suffix: str = "%",
     divisor: float = 100.0,
     is_days: bool = False,
@@ -103,11 +70,11 @@ def _render_input_row(
         '<div style="border-left:2px solid rgba(28,131,225,0.3);'
         'height:38px"></div>', unsafe_allow_html=True)
 
-    # Projected inputs
+    # Projected inputs — scenario-prefixed widget keys
     vals = assumptions.get(assumption_key, [None] * n_years)
     for i in range(n_years):
         col_idx = sep_idx + 1 + i
-        k = f"dcf_{assumption_key}_{i}"
+        k = f"dcf_{scenario}_{assumption_key}_{i}"
         cur = vals[i]
         if is_days:
             new_val = cols[col_idx].number_input(
@@ -129,6 +96,8 @@ def _render_input_row(
 
 def render(prepared: dict, ticker: str) -> None:
     """Render Step 2: Assumptions + Projected Financials."""
+    migrate_legacy()
+
     st.markdown("### Step 2: Assumptions & Projected Financials")
     st.caption(
         "Enter your assumptions for each projected year. "
@@ -146,7 +115,7 @@ def render(prepared: dict, ticker: str) -> None:
         )
         return
 
-    # ── Controls ─────────────────────────────────────────────────
+    # ── Shared controls ─────────────────────────────────────────
     ctrl_cols = st.columns([1, 1, 3])
 
     with ctrl_cols[0]:
@@ -179,25 +148,22 @@ def render(prepared: dict, ticker: str) -> None:
         "detailed" if "Detailed" in method_label else "simplified"
     )
 
-    # ── Initialize assumptions ───────────────────────────────────
-    assumptions = _init_assumptions(n_years, nwc_method)
-
-    # ── Historical data ──────────────────────────────────────────
+    # ── Historical data (shared across all scenarios) ────────────
     n_display = min(5, len(years))
     hist = build_historical_data(ratios, standardized, years, n_display)
 
-    # Projected year labels
     last_year = int(years[-1])
     proj_years = [last_year + i + 1 for i in range(n_years)]
 
-    # ── Render table ─────────────────────────────────────────────
-    _render_driver_table(
-        hist, assumptions, n_years, proj_years, nwc_method,
+    # ── Scenario tabs ────────────────────────────────────────────
+    render_scenario_tabs(
+        hist, n_years, proj_years, nwc_method,
+        render_driver_table_fn=_render_driver_table,
     )
 
-    # ── Calculated output section ────────────────────────────────
-    st.markdown("---")
-    render_calculated_output(assumptions, hist, proj_years)
+
+
+# ── Driver table ────────────────────────────────────────────────────
 
 
 def _render_driver_table(
@@ -206,6 +172,7 @@ def _render_driver_table(
     n_years: int,
     proj_years: list[int],
     nwc_method: str,
+    scenario: str = "base",
 ) -> None:
     """Render the full driver input table with headers."""
     n_hist = len(hist["years"])
@@ -257,7 +224,7 @@ def _render_driver_table(
         _render_input_row(
             label, hist[hist_key],
             assumption_key, assumptions, n_years, proj_years,
-            is_days=is_days,
+            scenario=scenario, is_days=is_days,
         )
 
     # Working capital separator
@@ -275,12 +242,13 @@ def _render_driver_table(
             _render_input_row(
                 label, hist[hist_key],
                 key, assumptions, n_years, proj_years,
-                is_days=True,
+                scenario=scenario, is_days=True,
             )
     else:
         _render_input_row(
             "NWC / Revenue %", hist["nwc_pct"],
             "nwc_pcts", assumptions, n_years, proj_years,
+            scenario=scenario,
         )
 
     # Show projected revenue

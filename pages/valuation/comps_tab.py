@@ -13,8 +13,6 @@ from pages.valuation import (
     comps_step2_table,
     comps_step3_valuation,
 )
-
-
 def render(prepared: dict, ticker: str) -> None:
     """Render Comps tab using prepared financial data."""
     company_type = prepared.get("company_type", {})
@@ -34,6 +32,6 @@ def render(prepared: dict, ticker: str) -> None:
     st.divider()
     comps_step2_table.render(prepared, ticker)
 
-    # === STEP 3: Implied Valuation ===
+    # === STEP 3: Implied Valuation (includes scenario tabs + commentary) ===
     st.divider()
     comps_step3_valuation.render(prepared, ticker)

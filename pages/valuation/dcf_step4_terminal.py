@@ -7,21 +7,18 @@ All inputs auto-populated with sensible defaults, fully overridable.
 Split into:
   - dcf_step4_terminal.py (this) — orchestrator + cross-checks + warnings
   - dcf_step4_methods.py — Gordon + Exit Multiple renderers
+  - dcf_step4_scenarios.py — Bull/Base/Bear tab orchestration
 """
 
 import streamlit as st
 
 from pages.valuation.dcf_step2_table import compute_projections, build_historical_data
-from pages.valuation.dcf_step4_methods import (
-    render_gordon,
-    render_exit_multiple,
-    implied_growth,
-)
-from config.constants import SECTOR_EXIT_MULTIPLES
+from pages.valuation.dcf_step4_methods import implied_growth
+from pages.valuation.dcf_step4_scenarios import render_terminal_scenarios
 
 
 def render(prepared: dict, ticker: str) -> None:
-    """Render terminal value step."""
+    """Render terminal value step with scenario tabs."""
     st.markdown("### Step 4: Terminal Value")
     st.caption(
         "Value of all cash flows beyond the projection period. "
@@ -30,71 +27,30 @@ def render(prepared: dict, ticker: str) -> None:
 
     # ── Prerequisites ──────────────────────────────────────────
     wacc_data = st.session_state.get("dcf_wacc")
-    assumptions = st.session_state.get("dcf_assumptions")
+    scenarios = st.session_state.get("dcf_scenarios")
 
-    if not wacc_data or not assumptions:
+    if not wacc_data or not scenarios:
         st.warning("Complete Steps 2 and 3 first.")
         return
 
-    wacc = wacc_data.get("wacc", 0.10)
-    proj = _get_projections(prepared, assumptions)
-    if proj is None:
-        st.info("Complete all Step 2 assumptions to calculate Terminal Value.")
+    # Check at least base scenario has assumptions
+    base = scenarios.get("base")
+    if not base:
+        st.warning("Complete Step 2 Base Case first.")
         return
 
-    n_years = assumptions["n_years"]
-    fcf_final = proj["fcf"][-1]
-    ebitda_final = proj["ebit"][-1] + proj["da"][-1]
+    wacc = wacc_data.get("wacc", 0.10)
 
-    # ── Defaults ───────────────────────────────────────────────
-    company = st.session_state.get(f"company_{ticker}")
-    current_ev_ebitda = _get_current_ev_ebitda(company, ticker)
-    sector = _get_sector(company)
-    sector_multiple = SECTOR_EXIT_MULTIPLES.get(sector)
-
-    # ── Method selector ────────────────────────────────────────
-    method = st.radio(
-        "Primary Method",
-        ["Gordon Growth Model", "Exit Multiple"],
-        horizontal=True,
-        key="dcf_tv_method",
-        help="Both methods are always calculated. "
-             "Select which one drives the valuation in Step 5.",
-    )
-    is_gordon = method == "Gordon Growth Model"
-
-    _hr()
-
-    # ── Compute both methods ───────────────────────────────────
-    gordon_tv, g = render_gordon(fcf_final, ebitda_final, wacc, is_gordon)
-    exit_tv, multiple = render_exit_multiple(
-        ebitda_final, fcf_final, wacc, current_ev_ebitda,
-        sector, sector_multiple, not is_gordon,
+    # Render scenario tabs (each computes its own terminal value)
+    render_terminal_scenarios(
+        prepared, ticker, wacc,
+        proj_fn=lambda p, a: _get_projections(p, a),
+        get_ev_ebitda_fn=_get_current_ev_ebitda,
+        get_sector_fn=_get_sector,
+        render_cross_checks_fn=_render_cross_checks,
+        render_warnings_fn=_render_warnings,
     )
 
-    primary_tv = gordon_tv if is_gordon else exit_tv
-
-    # ── Cross-checks ───────────────────────────────────────────
-    _hr()
-    _render_cross_checks(
-        gordon_tv, exit_tv, fcf_final, ebitda_final, wacc,
-    )
-
-    # ── Sanity warnings ────────────────────────────────────────
-    _render_warnings(g, multiple, wacc, sector_multiple)
-
-    # ── Store for Step 5 ───────────────────────────────────────
-    st.session_state["dcf_terminal"] = {
-        "method": "gordon" if is_gordon else "exit_multiple",
-        "terminal_value": primary_tv,
-        "terminal_growth": g,
-        "exit_multiple": multiple,
-        "gordon_tv": gordon_tv,
-        "exit_tv": exit_tv,
-        "fcf_final": fcf_final,
-        "ebitda_final": ebitda_final,
-        "n_years": n_years,
-    }
 
 
 # ── Cross-checks ───────────────────────────────────────────────
@@ -167,13 +123,6 @@ def _render_warnings(
 
 
 # ── Helpers ────────────────────────────────────────────────────
-
-
-def _hr():
-    st.markdown(
-        '<hr style="margin:12px 0;border-color:rgba(128,128,128,0.2)">',
-        unsafe_allow_html=True,
-    )
 
 
 def _get_projections(prepared: dict, assumptions: dict) -> dict | None:

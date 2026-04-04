@@ -13,6 +13,7 @@ from lib.data.valuation_data import get_historical_multiples
 from pages.valuation.historical_chart import render_historical_charts
 from pages.valuation.historical_summary import render_historical_summary
 from pages.valuation.historical_football import render_historical_football
+from pages.valuation.historical_scenarios import render_scenario_valuation
 
 
 # ── Financial detection (reuse Comps logic) ───────────────────
@@ -157,12 +158,14 @@ def render(prepared: dict, ticker: str) -> None:
         data["current_price"], data["currency"],
     )
 
-    # ── Store result for Summary tab ─────────────────────────
-    st.session_state["historical_result"] = {
-        "summary": data["summary"],
-        "implied_values": data["implied_values"],
-        "current_price": data["current_price"],
-        "currency": data["currency"],
-        "period": period,
-        "is_financial": is_fin,
-    }
+    # ── Section 4: Scenario Valuation ───────────────────────────
+    st.divider()
+    st.markdown("#### Scenario Valuation")
+    st.caption(
+        "Select a primary multiple and set bear/base/bull values "
+        "based on historical statistics."
+    )
+    render_scenario_valuation(
+        data["summary"], data["implied_values"],
+        data["current_price"], data["currency"],
+    )

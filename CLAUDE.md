@@ -68,6 +68,10 @@ lib/                → Core logic — NO Streamlit imports allowed here
     flags.py        → 15-rule flagging system (anomaly detection)
     company_classifier.py → normal / financial / dividend_stable
     historical.py   → Build IS/BS/CF tables + ratios
+    valuation/wacc.py → CAPM, beta, cost of debt (shared by DCF + DDM)
+    valuation/dcf.py → DCF engine (build FCF, terminal value, run DCF)
+    valuation/ddm.py → DDM engine (Gordon Growth, 2-Stage, sensitivity)
+    valuation/sensitivity.py → 2D sensitivity tables for DCF
   lib/ai/           → AI features (chat, document reader, tutor, etc.)
   lib/education/    → Education system (curriculum, concepts, prompt builder)
   lib/workspace/    → Analysis sessions (data + reasoning + AI narrative)
@@ -141,6 +145,9 @@ tests/              → Tests for data, analysis, and cache
 - Comps peer universe: `peer_universe.py` fetches 6 indices (S&P 500, Euro STOXX 50, CAC 40, FTSE 100, TSX 60, Hang Seng = ~823 companies). Cached 30 days via `get_peer_universe()`.
 - Financial company detection: Company model lacks `sector` attribute, so `_is_financial()` in comps uses 3-tier fallback: prepared company_type → target industry keywords → yfinance candidate info sector.
 - Comps financial multiples: Banks/insurance use P/E, P/Book, P/TBV, Div Yield instead of EV-based multiples. `comps_data.py` fetches `bookValue` (per share), tangible book from `balance_sheet["Tangible Book Value"]`, and `dividendYield / 100`.
+- DDM dividend data: `ddm_provider.py` normalizes `dividendYield / 100` (same convention as Comps). DPS CAGR computed from `ticker.dividends` aggregated to annual. Dividend cuts detected as year-over-year decreases.
+- DDM is independent from DCF: DDM has its own Ke calculation (same CAPM providers but separate UI/session keys). DDM does NOT require DCF WACC step to have been run.
+- DDM session keys use `ddm_` prefix: `ddm_ke`, `ddm_assumptions`, `ddm_output`, `ddm_data_{ticker}`, `ddm_ke_peers`. Never collides with `dcf_`/`wacc_` keys.
 
 ## CSS
 - Custom CSS in `assets/styles/custom.css` — loaded by both app.py and page files.

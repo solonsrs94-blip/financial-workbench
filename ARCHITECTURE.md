@@ -471,9 +471,10 @@ Vision/
 ### Fyrirtækjagreining
 - [x] Fyrirtækjayfirlit (verð, lykiltölur, fréttir)
 - [x] Ársreikningar (rekstrarreikn., efnahagsreikn., sjóðstreymi)
-- [x] Virðismat (Simple DCF, Complex DCF, 3-Statement, WACC með aðferðavalkostum, Comps, Football Field)
+- [x] Virðismat (Simple DCF, Complex DCF, 3-Statement, WACC með aðferðavalkostum, Comps, Football Field, DDM)
+- [x] DDM — Dividend Discount Model (Gordon Growth + 2-Stage, independent Ke, DPS Growth / EPS×Payout, sensitivity, football field)
 - [x] Innherjaviðskipti (kaup/sala stjórnenda)
-- [ ] Arðgreiðslusaga og yield
+- [x] Arðgreiðslusaga og yield (DDM Step 2 reference: DPS history, CAGR, streaks, cuts)
 
 ### Markaðsgreining
 - [ ] Tæknigröf (kertastjakar, indicators, overlays, teikning)
@@ -582,7 +583,7 @@ Vision/
 - ✅ .env.example, .gitignore, requirements.txt
 
 ### Fase 2 — Kjarnaskjáir
-- ✅ Virðismat — Simple DCF (3-phase), Complex DCF (12-step IB-grade), 3-Statement Model, WACC (5 beta-aðferðir, 3 Rd-aðferðir, 4 cap-structure leiðir), Comps (operating metrics + football field), Historical Multiples (daily TTM, EDGAR 10Y + yfinance fallback, football field), Damodaran integration
+- ✅ Virðismat — Simple DCF (3-phase), Complex DCF (12-step IB-grade), 3-Statement Model, WACC (5 beta-aðferðir, 3 Rd-aðferðir, 4 cap-structure leiðir), Comps (operating metrics + football field), Historical Multiples (daily TTM, EDGAR 10Y + yfinance fallback, football field), DDM (Gordon Growth + 2-Stage, independent Ke, sensitivity, football field), Damodaran integration
 - Tæknigröf (kertastjakar, RSI, MACD)
 - Hlutabréfasía
 - Vaktlistar

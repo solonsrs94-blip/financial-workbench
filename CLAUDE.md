@@ -61,6 +61,7 @@ lib/                → Core logic — NO Streamlit imports allowed here
   lib/data/         → Data fetching + standardization
     providers/      → Raw data sources (yahoo, simfin, damodaran, edgar, peer_beta)
       damodaran.py → ERP, CRP, spreads, industry betas (US/global/emerging)
+      damodaran_industry.py → Industry averages (margins, leverage, payout, ROE)
       peer_beta.py → Yahoo recommended peers + beta/D/E/tax per peer
       industry_map.py → Yahoo→Damodaran industry name mapping (pure data, 109+ entries)
       historical_multiples.py → EDGAR + yfinance router, module caches
@@ -77,7 +78,11 @@ lib/                → Core logic — NO Streamlit imports allowed here
     financial_data.py → Middleware for SimFin (banks/insurance)
     standardizer.py → EDGAR standardizer (kept, not active)
   lib/analysis/     → Calculations (valuation, technicals, risk, etc.)
-    flags.py        → 15-rule flagging system (anomaly detection)
+    flags.py        → 22-rule flagging system (rules 1-7 + orchestrator)
+    flags_rules.py  → Rules 8-15 (sector-aware skips for financials/REITs)
+    flags_rules_v2.py → Rules 16-20 (sector-aware: payout, unusual items, coverage, leverage, margin history)
+    flags_industry.py → Rules 21-23 (industry-relative: margins, ROE, leverage vs Damodaran)
+    flags_helpers.py → _g(), _flag(), _get_company_category(), suppress(), KNOWN_EVENTS
     company_classifier.py → normal / financial / dividend_stable
     historical.py   → Build IS/BS/CF tables + ratios
     valuation/wacc.py → CAPM, beta, cost of debt (shared by DCF + DDM)
@@ -180,11 +185,31 @@ tests/              → Tests for data, analysis, and cache
 - Cap: Implied price > 100x current price → NaN (excludes asymptotic Gordon values near g=Ke).
 - Ranges (min/max): Exclude NaN cells. Football field and Summary use only valid positive values.
 
+## Flagging System (22 rules)
+- Rules 1-7 in `flags.py`, 8-15 in `flags_rules.py`, 16-20 in `flags_rules_v2.py`, 21-22 in `flags_industry.py`. Config in `flags_config.py`. Suppression in `flags_helpers.py`.
+- **Knowledge base (`flags_config.py`):** Centralized skip lists and industry configs. `SKIP_RULES` dict maps each category to rules that should not fire. `LOW_MARGIN_INDUSTRIES` set prevents margin-below-industry flags for discount retailers/commodity businesses. `should_skip(rule_name, category)` replaces scattered if/else logic.
+- **Industry-relative rules (21-22):** Rule 21 (margin_below_industry): EBIT/net margin vs Damodaran avg, 30%/50% gap. Skips LOW_MARGIN_INDUSTRIES. Rule 22 (roe_below_industry): ROE vs industry avg. Skips when equity is negative (meaningless ROE).
+- **Industry data source:** `damodaran_industry.py` fetches 4 Damodaran Excel files (margin.xls, dbtfund.xls, divfund.xls, roe.xls). Cached 30 days. Middleware: `valuation_data.get_industry_averages(industry)`.
+- **Industry-aware thresholds:** Rules 16 (payout) and 19 (leverage) use industry averages for thresholds when available, falling back to hardcoded tables. Rules 1-2 and 20 append industry context to messages.
+- **Category system**: `_get_company_category()` maps sector/industry/company_type → category (default, financial, reit, utility, energy, dividend_stable). All rules check `should_skip()` from config.
+- **Financial skip** (banks/insurance): 15 rules skip (margin, debt, FCF, leverage, etc.). Only tax (4), known events (5), M&A (7), goodwill (11), unusual items (17), and industry-relative (21-22) remain.
+- **REIT skip**: Tax anomaly (pass-through entity), FCF/NI divergence, earnings quality, payout ratio, dividend coverage all skip. Margin thresholds widened to 5pp/10pp (property gains/losses). Dilution threshold 15%.
+- **Utility skip**: FCF/NI divergence, earnings quality, dividend coverage skip (capex-heavy, FCF is wrong metric).
+- **Energy**: Margin thresholds 5pp/10pp (cyclical). High-ETR threshold 50% (vs 35% default) — resource taxes and production-sharing make 35-50% ETR normal.
+- **Mining**: High-ETR threshold 50% — same resource tax logic. Detected via industry keyword match (mining, metals, steel, gold). Config: `is_resource_company()` in `flags_config.py`.
+- **Suppression**: Margin flags suppressed in years with tax anomaly (+next year), M&A, or material unusual items (the event explains the margin movement).
+- `detect_flags()` accepts `industry_averages` kwarg. `classify_company()` must be called BEFORE `detect_flags()`.
+- **Rule 4 (tax_anomaly):** Low-ETR: 3% for utilities (vs 10% default). High-ETR: 50% for energy/mining (vs 35% default).
+- **Rule 6 (capex_spike):** Minimum capex/revenue of 1% required — prevents flagging trivial amounts.
+- **Tested on 155 companies** (92 US via `test_flags_80.py` + 63 international via `test_flags_intl.py`). Zero false positives. 530 total flags across US + EMEA + Asia-Pacific + Americas.
+
 ## Comps Peer Selection
 - `filter_peer_universe()` uses GICS mapping for industry-matched peers — correct for valuation.
 - `get_suggested_peers()` returns Yahoo "recommended" tickers (often wrong sector) — use only as fallback.
 
 ## Testing
+- Flagging test US: `scripts/test_flags_80.py` — 92 US companies, 0 FP.
+- Flagging test intl: `scripts/test_flags_intl.py` — 63 non-US companies (UK, EU, Canada, Japan, Australia, HK/China, Brazil), 0 FP.
 - Main test: `scripts/test_all_valuations.py` — 12 companies (US/Europe/Asia), all modules.
 - Reports: `test_results/valuation_test_report_v1.md`, `v2.md`, `v3.md` (v3 is current).
 - Verification scripts: `scripts/test_currency_fix.py`, `test_sensitivity_fix.py`, `test_prompt3.py`.

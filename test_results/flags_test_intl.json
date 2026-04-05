@@ -1,0 +1,2369 @@
+{
+  "SHEL": {
+    "sector": "Energy",
+    "sub_industry": "oil & gas integrated",
+    "classification": "normal",
+    "industry_match": "Oil/Gas (Integrated)",
+    "n_firms": 4,
+    "metrics": {
+      "ebit_margin": 0.1293,
+      "net_margin": 0.0668,
+      "debt_ebitda": 1.33,
+      "payout_ratio": 0.475,
+      "roe": 0.1023,
+      "equity": 174.4
+    },
+    "flag_count": 2,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "margin",
+        "what": "EBIT Margin dropped 6.6pp (18.4% -> 11.8%) (industry avg: 11.2%, Oil/Gas (Integrated))"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "quality",
+        "what": "FCF ($35.1B) is 2.2x Net Income ($16.1B)"
+      }
+    ]
+  },
+  "BP": {
+    "sector": "Energy",
+    "sub_industry": "oil & gas integrated",
+    "classification": "dividend_stable",
+    "industry_match": "Oil/Gas (Integrated)",
+    "n_firms": 4,
+    "metrics": {
+      "ebit_margin": 0.068,
+      "net_margin": 0.0003,
+      "debt_ebitda": 2.36,
+      "payout_ratio": 91.9636,
+      "roe": 0.001,
+      "equity": 53.1
+    },
+    "flag_count": 13,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2022",
+        "category": "quality",
+        "what": "Unusual items ($-27.1B) represent 150% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "tax",
+        "what": "Effective tax rate 108.8%"
+      },
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "quality",
+        "what": "Unusual items ($-6.3B) represent 23% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "quality",
+        "what": "Unusual items ($-7.1B) represent 62% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "tax",
+        "what": "Effective tax rate 81.9%"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "quality",
+        "what": "FCF ($12.0B) is 31.5x Net Income ($0.4B)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "m_and_a",
+        "what": "Goodwill declined 31% ($14.9B -> $10.3B)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "Payout ratio 9196% \u2014 dividends exceed earnings"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "Unusual items ($-5.4B) represent 42% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "debt",
+        "what": "Debt/EBITDA at 2.4x \u2014 high leverage (industry avg: 1.0x)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "ROE 0.1% \u2014 99% below Oil/Gas (Integrated) (4 firms) avg 10.0%"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "tax",
+        "what": "Effective tax rate 83.3%"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "quality",
+        "what": "FCF ($11.3B) is 204.9x Net Income ($0.1B)"
+      }
+    ]
+  },
+  "AZN": {
+    "sector": "Healthcare",
+    "sub_industry": "drug manufacturers - general",
+    "classification": "normal",
+    "industry_match": "Drugs (Pharmaceutical)",
+    "n_firms": 228,
+    "metrics": {
+      "ebit_margin": 0.2386,
+      "net_margin": 0.1741,
+      "debt_ebitda": 1.49,
+      "payout_ratio": 0.4862,
+      "roe": 0.2101,
+      "equity": 48.7
+    },
+    "flag_count": 4,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "quality",
+        "what": "FCF ($7.2B) is 2.2x Net Income ($3.3B)"
+      },
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "quality",
+        "what": "Unusual items ($-0.7B) represent 19% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "margin",
+        "what": "EBIT Margin jumped 9.9pp (8.6% -> 18.5%) (industry avg: 29.5%, Drugs (Pharmaceutical))"
+      },
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "margin",
+        "what": "Net Margin jumped 5.6pp (7.4% -> 13.0%) (industry avg: 18.5%, Drugs (Pharmaceutical))"
+      }
+    ]
+  },
+  "HSBA.L": {
+    "sector": "Financial Services",
+    "sub_industry": "banks - diversified",
+    "classification": "financial",
+    "industry_match": "Bank (Money Center)",
+    "n_firms": 15,
+    "metrics": {
+      "ebit_margin": null,
+      "net_margin": 0.3365,
+      "debt_ebitda": null,
+      "payout_ratio": 0.5197,
+      "roe": 0.1124,
+      "equity": 198.2
+    },
+    "flag_count": 1,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "tax",
+        "what": "Effective tax rate 4.7%"
+      }
+    ]
+  },
+  "ULVR.L": {
+    "sector": "Consumer Defensive",
+    "sub_industry": "household & personal products",
+    "classification": "normal",
+    "industry_match": "Household Products",
+    "n_firms": 110,
+    "metrics": {
+      "ebit_margin": 0.1939,
+      "net_margin": 0.1875,
+      "debt_ebitda": 2.48,
+      "payout_ratio": 0.4703,
+      "roe": 0.6097,
+      "equity": 15.5
+    },
+    "flag_count": 2,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "quality",
+        "what": "Unusual items ($-1.6B) represent 18% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "m_and_a",
+        "what": "Goodwill declined 21% ($22.3B -> $17.7B)"
+      }
+    ]
+  },
+  "GSK": {
+    "sector": "Healthcare",
+    "sub_industry": "drug manufacturers - general",
+    "classification": "normal",
+    "industry_match": "Drugs (Pharmaceutical)",
+    "n_firms": 228,
+    "metrics": {
+      "ebit_margin": 0.2476,
+      "net_margin": 0.175,
+      "debt_ebitda": 1.7,
+      "payout_ratio": 0.4486,
+      "roe": 0.349,
+      "equity": 16.4
+    },
+    "flag_count": 4,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "margin",
+        "what": "Net Margin dropped 34.8pp (51.0% -> 16.2%) (industry avg: 18.5%, Drugs (Pharmaceutical))"
+      },
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "quality",
+        "what": "Unusual items ($-1.5B) represent 35% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "margin",
+        "what": "EBIT Margin jumped 11.6pp (13.1% -> 24.8%) (industry avg: 29.5%, Drugs (Pharmaceutical))"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "margin",
+        "what": "Net Margin jumped 9.3pp (8.2% -> 17.5%) (industry avg: 18.5%, Drugs (Pharmaceutical))"
+      }
+    ]
+  },
+  "RIO": {
+    "sector": "Basic Materials",
+    "sub_industry": "other industrial metals & mining",
+    "classification": "dividend_stable",
+    "industry_match": "Metals & Mining",
+    "n_firms": 73,
+    "metrics": {
+      "ebit_margin": 0.2845,
+      "net_margin": 0.1729,
+      "debt_ebitda": 1.02,
+      "payout_ratio": 0.6166,
+      "roe": 0.1602,
+      "equity": 62.2
+    },
+    "flag_count": 4,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "margin",
+        "what": "EBIT Margin dropped 7.8pp (36.9% -> 29.1%) (industry avg: 23.9%, Metals & Mining)"
+      },
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "margin",
+        "what": "Net Margin dropped 3.7pp (22.3% -> 18.6%) (industry avg: 10.5%, Metals & Mining)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "m_and_a",
+        "what": "Acquisition spend $6.0B (10% of revenue)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "FCF does not fully cover dividends \u2014 shortfall of $1.6B"
+      }
+    ]
+  },
+  "BHP": {
+    "sector": "Basic Materials",
+    "sub_industry": "other industrial metals & mining",
+    "classification": "dividend_stable",
+    "industry_match": "Metals & Mining",
+    "n_firms": 73,
+    "metrics": {
+      "ebit_margin": 0.3946,
+      "net_margin": 0.1759,
+      "debt_ebitda": 0.95,
+      "payout_ratio": 0.7099,
+      "roe": 0.1951,
+      "equity": 46.2
+    },
+    "flag_count": 5,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "margin",
+        "what": "EBIT Margin dropped 8.9pp (52.7% -> 43.8%) (industry avg: 23.9%, Metals & Mining)"
+      },
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "margin",
+        "what": "Net Margin dropped 23.5pp (47.5% -> 24.0%) (industry avg: 10.5%, Metals & Mining)"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "quality",
+        "what": "Unusual items ($-3.1B) represent 17% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "margin",
+        "what": "EBIT Margin jumped 6.7pp (32.8% -> 39.5%) (industry avg: 23.9%, Metals & Mining)"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "quality",
+        "what": "Payout ratio 71% \u2014 approaching ceiling"
+      }
+    ]
+  },
+  "LSEG.L": {
+    "sector": "Financial Services",
+    "sub_industry": "financial data & stock exchanges",
+    "classification": "financial",
+    "industry_match": "Financial Svcs. (Non-bank & Insurance)",
+    "n_firms": 176,
+    "metrics": {
+      "ebit_margin": 0.2453,
+      "net_margin": 0.1336,
+      "debt_ebitda": 2.59,
+      "payout_ratio": 0.5749,
+      "roe": 0.0631,
+      "equity": 19.8
+    },
+    "flag_count": 4,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "quality",
+        "what": "Unusual items ($-0.2B) represent 16% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "quality",
+        "what": "Unusual items ($-0.3B) represent 19% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "ROE 6.3% \u2014 78% below Financial Svcs. (Non-bank & Insurance) (176 firms) avg 28.8%"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "margin",
+        "what": "Net margin 13.4% \u2014 40% below Financial Svcs. (Non-bank & Insurance) (176 firms) avg 22.2%"
+      }
+    ]
+  },
+  "DGE.L": {
+    "sector": "Consumer Defensive",
+    "sub_industry": "beverages - brewers",
+    "classification": "dividend_stable",
+    "industry_match": "Beverage (Alcoholic)",
+    "n_firms": 14,
+    "metrics": {
+      "ebit_margin": 0.2292,
+      "net_margin": 0.1163,
+      "debt_ebitda": 3.84,
+      "payout_ratio": 0.9762,
+      "roe": 0.2123,
+      "equity": 11.1
+    },
+    "flag_count": 3,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "margin",
+        "what": "EBIT Margin dropped 9.6pp (32.5% -> 22.9%) (industry avg: 22.8%, Beverage (Alcoholic))"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "margin",
+        "what": "Net Margin dropped 7.5pp (19.1% -> 11.6%) (industry avg: 0.6%, Beverage (Alcoholic))"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "Payout ratio 98% \u2014 near ceiling, limited room for dividend growth"
+      }
+    ]
+  },
+  "BA.L": {
+    "sector": "Industrials",
+    "sub_industry": "aerospace & defense",
+    "classification": "normal",
+    "industry_match": "Aerospace/Defense",
+    "n_firms": 79,
+    "metrics": {
+      "ebit_margin": 0.1086,
+      "net_margin": 0.0728,
+      "debt_ebitda": 2.14,
+      "payout_ratio": 0.4981,
+      "roe": 0.175,
+      "equity": 11.8
+    },
+    "flag_count": 1,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "quality",
+        "what": "Unusual items ($+0.5B) represent 21% of EBIT"
+      }
+    ]
+  },
+  "REL.L": {
+    "sector": "Communication Services",
+    "sub_industry": "publishing",
+    "classification": "dividend_stable",
+    "industry_match": "Publishing & Newspapers",
+    "n_firms": 19,
+    "metrics": {
+      "ebit_margin": 0.3152,
+      "net_margin": 0.2153,
+      "debt_ebitda": 1.97,
+      "payout_ratio": 0.5719,
+      "roe": 0.8728,
+      "equity": 2.4
+    },
+    "flag_count": 0,
+    "flags": []
+  },
+  "VOD.L": {
+    "sector": "Communication Services",
+    "sub_industry": "telecom services",
+    "classification": "normal",
+    "industry_match": "Telecom. Services",
+    "n_firms": 39,
+    "metrics": {
+      "ebit_margin": 0.0216,
+      "net_margin": -0.1113,
+      "debt_ebitda": 4.58,
+      "payout_ratio": null,
+      "roe": -0.079,
+      "equity": 52.7
+    },
+    "flag_count": 7,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "tax",
+        "what": "Effective tax rate 37.6%"
+      },
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "quality",
+        "what": "FCF ($11.2B) is 5.0x Net Income ($2.2B)"
+      },
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "quality",
+        "what": "Unusual items ($+9.4B) represent 61% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "tax",
+        "what": "Effective tax rate 3.8%"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "tax",
+        "what": "Effective tax rate 3.1%"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "quality",
+        "what": "FCF ($9.7B) is 8.5x Net Income ($1.1B)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "Unusual items ($-3.6B) represent 448% of EBIT"
+      }
+    ]
+  },
+  "LLOY.L": {
+    "sector": "Financial Services",
+    "sub_industry": "banks - regional",
+    "classification": "financial",
+    "industry_match": "Banks (Regional)",
+    "n_firms": 568,
+    "metrics": {
+      "ebit_margin": null,
+      "net_margin": 0.2326,
+      "debt_ebitda": null,
+      "payout_ratio": 0.4293,
+      "roe": 0.0977,
+      "equity": 47.7
+    },
+    "flag_count": 0,
+    "flags": []
+  },
+  "BARC.L": {
+    "sector": "Financial Services",
+    "sub_industry": "banks - diversified",
+    "classification": "financial",
+    "industry_match": "Bank (Money Center)",
+    "n_firms": 15,
+    "metrics": {
+      "ebit_margin": null,
+      "net_margin": 0.2461,
+      "debt_ebitda": null,
+      "payout_ratio": 0.3139,
+      "roe": 0.0922,
+      "equity": 77.8
+    },
+    "flag_count": 0,
+    "flags": []
+  },
+  "NG.L": {
+    "sector": "Utilities",
+    "sub_industry": "utilities - regulated gas",
+    "classification": "dividend_stable",
+    "industry_match": "Utility (General)",
+    "n_firms": 14,
+    "metrics": {
+      "ebit_margin": 0.2971,
+      "net_margin": 0.1579,
+      "debt_ebitda": 6.23,
+      "payout_ratio": null,
+      "roe": 0.0768,
+      "equity": 37.8
+    },
+    "flag_count": 4,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "tax",
+        "what": "Effective tax rate 36.6%"
+      },
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "margin",
+        "what": "Net Margin dropped 24.5pp (36.0% -> 11.5%) (industry avg: 14.2%, Utility (General))"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "margin",
+        "what": "EBIT Margin jumped 5.7pp (24.0% -> 29.7%) (industry avg: 23.5%, Utility (General))"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "dilution",
+        "what": "Diluted shares increased 17.2%"
+      }
+    ]
+  },
+  "ASML": {
+    "sector": "Technology",
+    "sub_industry": "semiconductor equipment & materials",
+    "classification": "normal",
+    "industry_match": "Semiconductor Equip",
+    "n_firms": 31,
+    "metrics": {
+      "ebit_margin": 0.3528,
+      "net_margin": 0.2942,
+      "debt_ebitda": 0.35,
+      "payout_ratio": 0.2654,
+      "roe": 0.49,
+      "equity": 19.6
+    },
+    "flag_count": 0,
+    "flags": []
+  },
+  "MC.PA": {
+    "sector": "Consumer Cyclical",
+    "sub_industry": "luxury goods",
+    "classification": "normal",
+    "industry_match": "Retail (Special Lines)",
+    "n_firms": 94,
+    "metrics": {
+      "ebit_margin": 0.2209,
+      "net_margin": 0.1346,
+      "debt_ebitda": 1.42,
+      "payout_ratio": null,
+      "roe": 0.1612,
+      "equity": 67.5
+    },
+    "flag_count": 2,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "margin",
+        "what": "EBIT Margin dropped 3.4pp (26.2% -> 22.8%) (industry avg: 7.7%, Retail (Special Lines))"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "quality",
+        "what": "ROE 16.1% \u2014 46% below Retail (Special Lines) (94 firms) avg 30.1%"
+      }
+    ]
+  },
+  "SAP": {
+    "sector": "Technology",
+    "sub_industry": "software - application",
+    "classification": "normal",
+    "industry_match": "Software (System & Application)",
+    "n_firms": 309,
+    "metrics": {
+      "ebit_margin": 0.2924,
+      "net_margin": 0.1946,
+      "debt_ebitda": 0.62,
+      "payout_ratio": 0.383,
+      "roe": 0.1606,
+      "equity": 44.6
+    },
+    "flag_count": 7,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "quality",
+        "what": "FCF ($4.8B) is 2.1x Net Income ($2.3B)"
+      },
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "quality",
+        "what": "Unusual items ($-1.3B) represent 26% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "margin",
+        "what": "Net Margin jumped 11.9pp (7.7% -> 19.7%) (industry avg: 25.5%, Software (System & Application))"
+      },
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "quality",
+        "what": "Unusual items ($-2.9B) represent 55% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "margin",
+        "what": "EBIT Margin jumped 13.7pp (15.5% -> 29.2%) (industry avg: 33.0%, Software (System & Application))"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "margin",
+        "what": "Net Margin jumped 10.3pp (9.1% -> 19.5%) (industry avg: 25.5%, Software (System & Application))"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "quality",
+        "what": "ROE 16.1% \u2014 46% below Software (System & Application) (309 firms) avg 29.6%"
+      }
+    ]
+  },
+  "SIE.DE": {
+    "sector": "Industrials",
+    "sub_industry": "specialty industrial machinery",
+    "classification": "normal",
+    "industry_match": "Machinery",
+    "n_firms": 105,
+    "metrics": {
+      "ebit_margin": 0.158,
+      "net_margin": 0.1219,
+      "debt_ebitda": 3.53,
+      "payout_ratio": 0.4255,
+      "roe": 0.1546,
+      "equity": 62.2
+    },
+    "flag_count": 5,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "tax",
+        "what": "Effective tax rate 38.3%"
+      },
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "quality",
+        "what": "FCF ($8.2B) is 2.2x Net Income ($3.7B)"
+      },
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "quality",
+        "what": "Unusual items ($+2.4B) represent 19% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "m_and_a",
+        "what": "Acquisition spend $14.2B (18% of revenue)"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "debt",
+        "what": "Debt/EBITDA at 3.5x \u2014 elevated leverage (industry avg: 2.3x)"
+      }
+    ]
+  },
+  "TTE": {
+    "sector": "Energy",
+    "sub_industry": "oil & gas integrated",
+    "classification": "dividend_stable",
+    "industry_match": "Oil/Gas (Integrated)",
+    "n_firms": 4,
+    "metrics": {
+      "ebit_margin": 0.1371,
+      "net_margin": 0.072,
+      "debt_ebitda": 1.55,
+      "payout_ratio": 0.6186,
+      "roe": 0.1143,
+      "equity": 114.9
+    },
+    "flag_count": 2,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "tax",
+        "what": "Effective tax rate 51.4%"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "debt",
+        "what": "Debt/EBITDA at 1.5x \u2014 elevated leverage (industry avg: 1.0x)"
+      }
+    ]
+  },
+  "SAN.PA": {
+    "sector": "Consumer Defensive",
+    "sub_industry": "household & personal products",
+    "classification": "dividend_stable",
+    "industry_match": "Household Products",
+    "n_firms": 110,
+    "metrics": {
+      "ebit_margin": 0.1456,
+      "net_margin": 0.1672,
+      "debt_ebitda": 1.63,
+      "payout_ratio": 0.6108,
+      "roe": 0.1095,
+      "equity": 71.4
+    },
+    "flag_count": 4,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "quality",
+        "what": "Unusual items ($-1.8B) represent 26% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "quality",
+        "what": "Unusual items ($-1.7B) represent 23% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "Unusual items ($-3.3B) represent 48% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "ROE 10.9% \u2014 59% below Household Products (110 firms) avg 27.0%"
+      }
+    ]
+  },
+  "OR.PA": {
+    "sector": "Consumer Defensive",
+    "sub_industry": "household & personal products",
+    "classification": "dividend_stable",
+    "industry_match": "Household Products",
+    "n_firms": 110,
+    "metrics": {
+      "ebit_margin": 0.2015,
+      "net_margin": 0.1391,
+      "debt_ebitda": 1.11,
+      "payout_ratio": 0.6393,
+      "roe": 0.1753,
+      "equity": 35.0
+    },
+    "flag_count": 1,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "quality",
+        "what": "ROE 17.5% \u2014 35% below Household Products (110 firms) avg 27.0%"
+      }
+    ]
+  },
+  "ALV.DE": {
+    "sector": "Financial Services",
+    "sub_industry": "insurance - diversified",
+    "classification": "financial",
+    "industry_match": "Insurance (General)",
+    "n_firms": 21,
+    "metrics": {
+      "ebit_margin": 0.118,
+      "net_margin": 0.0784,
+      "debt_ebitda": 1.92,
+      "payout_ratio": 0.5928,
+      "roe": 0.1718,
+      "equity": 62.7
+    },
+    "flag_count": 2,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "margin",
+        "what": "EBIT margin 11.8% \u2014 45% below Insurance (General) (21 firms) avg 21.3%"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "margin",
+        "what": "Net margin 7.8% \u2014 37% below Insurance (General) (21 firms) avg 12.4%"
+      }
+    ]
+  },
+  "BNP.PA": {
+    "sector": "Financial Services",
+    "sub_industry": "banks - diversified",
+    "classification": "financial",
+    "industry_match": "Bank (Money Center)",
+    "n_firms": 15,
+    "metrics": {
+      "ebit_margin": null,
+      "net_margin": 0.1777,
+      "debt_ebitda": null,
+      "payout_ratio": null,
+      "roe": 0.0974,
+      "equity": 125.5
+    },
+    "flag_count": 1,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "margin",
+        "what": "Net margin 17.8% \u2014 38% below Bank (Money Center) (15 firms) avg 28.9%"
+      }
+    ]
+  },
+  "NVO": {
+    "sector": "Healthcare",
+    "sub_industry": "drug manufacturers - general",
+    "classification": "normal",
+    "industry_match": "Drugs (Pharmaceutical)",
+    "n_firms": 228,
+    "metrics": {
+      "ebit_margin": 0.436,
+      "net_margin": 0.3314,
+      "debt_ebitda": 0.84,
+      "payout_ratio": null,
+      "roe": 0.5279,
+      "equity": 194.0
+    },
+    "flag_count": 5,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "margin",
+        "what": "EBIT Margin jumped 6.1pp (39.2% -> 45.3%) (industry avg: 29.5%, Drugs (Pharmaceutical))"
+      },
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "capex",
+        "what": "CapEx/Revenue jumped to 16.7% (from 8.3%)"
+      },
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "debt",
+        "what": "Total debt jumped 281% ($27.0B -> $102.8B)"
+      },
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "m_and_a",
+        "what": "Acquisition spend $82.2B (28% of revenue)"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "capex",
+        "what": "CapEx/Revenue jumped to 29.2% (from 17.7%)"
+      }
+    ]
+  },
+  "NOVN.SW": {
+    "sector": "Healthcare",
+    "sub_industry": "drug manufacturers - general",
+    "classification": "normal",
+    "industry_match": "Drugs (Pharmaceutical)",
+    "n_firms": 228,
+    "metrics": {
+      "ebit_margin": 0.3087,
+      "net_margin": 0.2467,
+      "debt_ebitda": 1.55,
+      "payout_ratio": 0.5591,
+      "roe": 0.3031,
+      "equity": 46.1
+    },
+    "flag_count": 2,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "m_and_a",
+        "what": "Goodwill declined 20% ($29.3B -> $23.3B)"
+      },
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "tax",
+        "what": "Effective tax rate 6.0%"
+      }
+    ]
+  },
+  "NESN.SW": {
+    "sector": "Consumer Defensive",
+    "sub_industry": "packaged foods",
+    "classification": "dividend_stable",
+    "industry_match": "Food Processing",
+    "n_firms": 78,
+    "metrics": {
+      "ebit_margin": 0.1399,
+      "net_margin": 0.1005,
+      "debt_ebitda": 3.57,
+      "payout_ratio": 0.8689,
+      "roe": 0.2753,
+      "equity": 32.8
+    },
+    "flag_count": 1,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "quality",
+        "what": "Unusual items ($-2.7B) represent 22% of EBIT"
+      }
+    ]
+  },
+  "ROG.SW": {
+    "sector": "Healthcare",
+    "sub_industry": "drug manufacturers - general",
+    "classification": "normal",
+    "industry_match": "Drugs (Pharmaceutical)",
+    "n_firms": 228,
+    "metrics": {
+      "ebit_margin": 0.2891,
+      "net_margin": 0.2033,
+      "debt_ebitda": 1.53,
+      "payout_ratio": null,
+      "roe": 0.381,
+      "equity": 33.8
+    },
+    "flag_count": 4,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "margin",
+        "what": "EBIT Margin dropped 3.8pp (24.9% -> 21.1%) (industry avg: 29.5%, Drugs (Pharmaceutical))"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "margin",
+        "what": "Net Margin dropped 5.8pp (19.0% -> 13.3%) (industry avg: 18.5%, Drugs (Pharmaceutical))"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "margin",
+        "what": "EBIT Margin jumped 7.8pp (21.1% -> 28.9%) (industry avg: 29.5%, Drugs (Pharmaceutical))"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "margin",
+        "what": "Net Margin jumped 7.1pp (13.3% -> 20.3%) (industry avg: 18.5%, Drugs (Pharmaceutical))"
+      }
+    ]
+  },
+  "ENEL.MI": {
+    "sector": "Utilities",
+    "sub_industry": "utilities - regulated electric",
+    "classification": "dividend_stable",
+    "industry_match": "Utility (General)",
+    "n_firms": 14,
+    "metrics": {
+      "ebit_margin": null,
+      "net_margin": null,
+      "debt_ebitda": null,
+      "payout_ratio": null,
+      "roe": null,
+      "equity": null
+    },
+    "flag_count": 6,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2021",
+        "category": "quality",
+        "what": "Unusual items ($+15.0B) represent 194% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2022",
+        "category": "quality",
+        "what": "Unusual items ($+34.1B) represent 302% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "tax",
+        "what": "Effective tax rate 40.6%"
+      },
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "quality",
+        "what": "Unusual items ($+4.0B) represent 37% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "tax",
+        "what": "Effective tax rate 37.5%"
+      },
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "quality",
+        "what": "Unusual items ($+6.2B) represent 41% of EBIT"
+      }
+    ]
+  },
+  "ISP.MI": {
+    "sector": "Financial Services",
+    "sub_industry": "banks - diversified",
+    "classification": "financial",
+    "industry_match": "Bank (Money Center)",
+    "n_firms": 15,
+    "metrics": {
+      "ebit_margin": null,
+      "net_margin": null,
+      "debt_ebitda": null,
+      "payout_ratio": null,
+      "roe": null,
+      "equity": null
+    },
+    "flag_count": 0,
+    "flags": []
+  },
+  "SU.PA": {
+    "sector": "Industrials",
+    "sub_industry": "specialty industrial machinery",
+    "classification": "normal",
+    "industry_match": "Machinery",
+    "n_firms": 105,
+    "metrics": {
+      "ebit_margin": 0.1674,
+      "net_margin": 0.1037,
+      "debt_ebitda": 2.14,
+      "payout_ratio": null,
+      "roe": 0.172,
+      "equity": 24.2
+    },
+    "flag_count": 0,
+    "flags": []
+  },
+  "RY": {
+    "sector": "Financial Services",
+    "sub_industry": "banks - diversified",
+    "classification": "financial",
+    "industry_match": "Bank (Money Center)",
+    "n_firms": 15,
+    "metrics": {
+      "ebit_margin": null,
+      "net_margin": null,
+      "debt_ebitda": null,
+      "payout_ratio": null,
+      "roe": null,
+      "equity": 139.1
+    },
+    "flag_count": 1,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "m_and_a",
+        "what": "Acquisition spend $12.7B (22% of revenue)"
+      }
+    ]
+  },
+  "TD": {
+    "sector": "Financial Services",
+    "sub_industry": "banks - diversified",
+    "classification": "financial",
+    "industry_match": "Bank (Money Center)",
+    "n_firms": 15,
+    "metrics": {
+      "ebit_margin": null,
+      "net_margin": 0.3351,
+      "debt_ebitda": null,
+      "payout_ratio": null,
+      "roe": 0.1607,
+      "equity": 127.8
+    },
+    "flag_count": 0,
+    "flags": []
+  },
+  "ENB": {
+    "sector": "Energy",
+    "sub_industry": "oil & gas midstream",
+    "classification": "normal",
+    "industry_match": "Oil/Gas Distribution",
+    "n_firms": 23,
+    "metrics": {
+      "ebit_margin": 0.2268,
+      "net_margin": 0.1149,
+      "debt_ebitda": 5.15,
+      "payout_ratio": 1.0973,
+      "roe": 0.1202,
+      "equity": 62.3
+    },
+    "flag_count": 8,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2022",
+        "category": "quality",
+        "what": "Unusual items ($-2.9B) represent 38% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "quality",
+        "what": "FCF ($6.4B) is 2.1x Net Income ($3.0B)"
+      },
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "margin",
+        "what": "EBIT Margin jumped 12.3pp (14.6% -> 26.9%) (industry avg: 25.8%, Oil/Gas Distribution)"
+      },
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "margin",
+        "what": "Net Margin jumped 8.6pp (5.6% -> 14.2%) (industry avg: 13.4%, Oil/Gas Distribution)"
+      },
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "m_and_a",
+        "what": "Acquisition spend $13.5B (25% of revenue)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "Payout ratio 110% \u2014 dividends exceed earnings"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "FCF does not fully cover dividends \u2014 shortfall of $5.1B"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "quality",
+        "what": "ROE 12.0% \u2014 33% below Oil/Gas Distribution (23 firms) avg 18.0%"
+      }
+    ]
+  },
+  "CNQ": {
+    "sector": "Energy",
+    "sub_industry": "oil & gas exploration & production",
+    "classification": "normal",
+    "industry_match": "Oil/Gas (Production and Exploration)",
+    "n_firms": 142,
+    "metrics": {
+      "ebit_margin": 0.3233,
+      "net_margin": 0.245,
+      "debt_ebitda": 0.76,
+      "payout_ratio": 0.4502,
+      "roe": 0.2439,
+      "equity": 44.4
+    },
+    "flag_count": 3,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "margin",
+        "what": "EBIT Margin dropped 5.5pp (26.6% -> 21.0%) (industry avg: 25.4%, Oil/Gas (Production and Exploration))"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "margin",
+        "what": "Net Margin dropped 5.5pp (20.2% -> 14.7%) (industry avg: 14.6%, Oil/Gas (Production and Exploration))"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "Unusual items ($+5.8B) represent 41% of EBIT"
+      }
+    ]
+  },
+  "SU": {
+    "sector": "Energy",
+    "sub_industry": "oil & gas integrated",
+    "classification": "normal",
+    "industry_match": "Oil/Gas (Integrated)",
+    "n_firms": 4,
+    "metrics": {
+      "ebit_margin": 0.1659,
+      "net_margin": 0.113,
+      "debt_ebitda": 0.93,
+      "payout_ratio": 0.4747,
+      "roe": 0.1311,
+      "equity": 45.1
+    },
+    "flag_count": 2,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "quality",
+        "what": "Unusual items ($+2.4B) represent 21% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "margin",
+        "what": "EBIT Margin dropped 5.6pp (21.8% -> 16.2%) (industry avg: 11.2%, Oil/Gas (Integrated))"
+      }
+    ]
+  },
+  "BMO": {
+    "sector": "Financial Services",
+    "sub_industry": "banks - diversified",
+    "classification": "financial",
+    "industry_match": "Bank (Money Center)",
+    "n_firms": 15,
+    "metrics": {
+      "ebit_margin": null,
+      "net_margin": 0.2413,
+      "debt_ebitda": null,
+      "payout_ratio": null,
+      "roe": 0.0989,
+      "equity": 88.1
+    },
+    "flag_count": 1,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "m_and_a",
+        "what": "Acquisition spend $15.1B (49% of revenue)"
+      }
+    ]
+  },
+  "BCE": {
+    "sector": "Communication Services",
+    "sub_industry": "telecom services",
+    "classification": "normal",
+    "industry_match": "Telecom. Services",
+    "n_firms": 39,
+    "metrics": {
+      "ebit_margin": 0.3875,
+      "net_margin": 0.264,
+      "debt_ebitda": 2.79,
+      "payout_ratio": 0.3136,
+      "roe": 0.2806,
+      "equity": 23.0
+    },
+    "flag_count": 5,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "quality",
+        "what": "Unusual items ($-2.9B) represent 109% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "tax",
+        "what": "Effective tax rate 60.6%"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "quality",
+        "what": "FCF ($2.6B) is 7.4x Net Income ($0.3B)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "m_and_a",
+        "what": "Acquisition spend $4.9B (20% of revenue)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "Unusual items ($+3.9B) represent 41% of EBIT"
+      }
+    ]
+  },
+  "CP": {
+    "sector": "Industrials",
+    "sub_industry": "railroads",
+    "classification": "normal",
+    "industry_match": "Transportation (Railroads)",
+    "n_firms": 4,
+    "metrics": {
+      "ebit_margin": 0.4217,
+      "net_margin": 0.2746,
+      "debt_ebitda": 2.82,
+      "payout_ratio": 0.1922,
+      "roe": 0.0903,
+      "equity": 45.9
+    },
+    "flag_count": 4,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "quality",
+        "what": "Unusual items ($-7.2B) represent 316% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "margin",
+        "what": "EBIT Margin jumped 56.5pp (-18.2% -> 38.3%) (industry avg: 37.4%, Transportation (Railroads))"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "margin",
+        "what": "Net Margin dropped 5.7pp (31.3% -> 25.6%) (industry avg: 24.7%, Transportation (Railroads))"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "ROE 9.0% \u2014 69% below Transportation (Railroads) (4 firms) avg 29.1%"
+      }
+    ]
+  },
+  "7203.T": {
+    "sector": "Consumer Cyclical",
+    "sub_industry": "auto manufacturers",
+    "classification": "normal",
+    "industry_match": "Auto & Truck",
+    "n_firms": 33,
+    "metrics": {
+      "ebit_margin": 0.1353,
+      "net_margin": 0.0992,
+      "debt_ebitda": 4.43,
+      "payout_ratio": 0.2376,
+      "roe": 0.1326,
+      "equity": 35924.8
+    },
+    "flag_count": 7,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2022",
+        "category": "quality",
+        "what": "Net Income positive ($2850.1B) but FCF negative ($-107.6B)"
+      },
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "quality",
+        "what": "Net Income positive ($2451.3B) but FCF negative ($-750.8B)"
+      },
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "quality",
+        "what": "Net Income positive ($4944.9B) but FCF negative ($-842.0B)"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "margin",
+        "what": "EBIT Margin jumped 5.6pp (10.0% -> 15.6%) (industry avg: 2.3%, Auto & Truck)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "Net Income positive ($4765.1B) but FCF negative ($-1561.0B)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "Earnings quality score 20/100 (3yr avg)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "FCF does not fully cover dividends \u2014 shortfall of $2693.3B"
+      }
+    ]
+  },
+  "6758.T": {
+    "sector": "Technology",
+    "sub_industry": "consumer electronics",
+    "classification": "normal",
+    "industry_match": "Electronics (Consumer & Office)",
+    "n_firms": 8,
+    "metrics": {
+      "ebit_margin": 0.1169,
+      "net_margin": 0.0881,
+      "debt_ebitda": 1.57,
+      "payout_ratio": 0.101,
+      "roe": 0.1396,
+      "equity": 8179.7
+    },
+    "flag_count": 1,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "quality",
+        "what": "Net Income positive ($1005.3B) but FCF negative ($-298.9B)"
+      }
+    ]
+  },
+  "8306.T": {
+    "sector": "Financial Services",
+    "sub_industry": "banks - diversified",
+    "classification": "financial",
+    "industry_match": "Bank (Money Center)",
+    "n_firms": 15,
+    "metrics": {
+      "ebit_margin": null,
+      "net_margin": 0.2724,
+      "debt_ebitda": null,
+      "payout_ratio": 0.2861,
+      "roe": 0.0908,
+      "equity": 20520.4
+    },
+    "flag_count": 1,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "m_and_a",
+        "what": "Acquisition spend $1784.8B (29% of revenue)"
+      }
+    ]
+  },
+  "9984.T": {
+    "sector": "Technology",
+    "sub_industry": "internet content & information",
+    "classification": "normal",
+    "industry_match": "Software (Internet)",
+    "n_firms": 29,
+    "metrics": {
+      "ebit_margin": 0.3156,
+      "net_margin": 0.1592,
+      "debt_ebitda": 6.0,
+      "payout_ratio": null,
+      "roe": 0.0998,
+      "equity": 11561.5
+    },
+    "flag_count": 8,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2022",
+        "category": "quality",
+        "what": "Unusual items ($-2286.8B) represent 470% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "quality",
+        "what": "Unusual items ($-707.5B) represent 815% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "quality",
+        "what": "Unusual items ($+876.0B) represent 143% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "tax",
+        "what": "Effective tax rate 262.0%"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "Net Income positive ($1153.3B) but FCF negative ($-650.6B)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "Earnings quality score 20/100 (3yr avg)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "Unusual items ($+1767.4B) represent 77% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "tax",
+        "what": "Effective tax rate 6.0%"
+      }
+    ]
+  },
+  "6861.T": {
+    "sector": "Technology",
+    "sub_industry": "scientific & technical instruments",
+    "classification": "normal",
+    "industry_match": "Electronics (General)",
+    "n_firms": 114,
+    "metrics": {
+      "ebit_margin": 0.5191,
+      "net_margin": 0.3764,
+      "debt_ebitda": null,
+      "payout_ratio": null,
+      "roe": 0.1282,
+      "equity": 3108.6
+    },
+    "flag_count": 1,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "capex",
+        "what": "CapEx/Revenue jumped to 4.3% (from 0.8%)"
+      }
+    ]
+  },
+  "4502.T": {
+    "sector": "Healthcare",
+    "sub_industry": "drug manufacturers - general",
+    "classification": "normal",
+    "industry_match": "Drugs (Pharmaceutical)",
+    "n_firms": 228,
+    "metrics": {
+      "ebit_margin": 0.0682,
+      "net_margin": 0.0236,
+      "debt_ebitda": 4.2,
+      "payout_ratio": null,
+      "roe": 0.0156,
+      "equity": 6935.1
+    },
+    "flag_count": 11,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "quality",
+        "what": "FCF ($937.1B) is 4.1x Net Income ($230.1B)"
+      },
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "quality",
+        "what": "Unusual items ($-113.1B) represent 27% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "capex",
+        "what": "CapEx/Revenue jumped to 15.7% (from 5.2%)"
+      },
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "quality",
+        "what": "Unusual items ($-103.1B) represent 21% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "quality",
+        "what": "Unusual items ($-179.4B) represent 104% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "tax",
+        "what": "Effective tax rate 173.1%"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "Unusual items ($-165.3B) represent 53% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "ROE 1.6% \u2014 94% below Drugs (Pharmaceutical) (228 firms) avg 24.0%"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "tax",
+        "what": "Effective tax rate 38.2%"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "quality",
+        "what": "FCF ($677.6B) is 6.3x Net Income ($107.9B)"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "debt",
+        "what": "Debt/EBITDA at 4.2x \u2014 elevated leverage (industry avg: 2.4x)"
+      }
+    ]
+  },
+  "CBA.AX": {
+    "sector": "Financial Services",
+    "sub_industry": "banks - diversified",
+    "classification": "financial",
+    "industry_match": "Bank (Money Center)",
+    "n_firms": 15,
+    "metrics": {
+      "ebit_margin": null,
+      "net_margin": 0.353,
+      "debt_ebitda": null,
+      "payout_ratio": 0.7858,
+      "roe": 0.1284,
+      "equity": 78.8
+    },
+    "flag_count": 1,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "quality",
+        "what": "Payout ratio 79% \u2014 approaching ceiling"
+      }
+    ]
+  },
+  "BHP.AX": {
+    "sector": "Basic Materials",
+    "sub_industry": "other industrial metals & mining",
+    "classification": "dividend_stable",
+    "industry_match": "Metals & Mining",
+    "n_firms": 73,
+    "metrics": {
+      "ebit_margin": 0.3946,
+      "net_margin": 0.1759,
+      "debt_ebitda": 0.95,
+      "payout_ratio": 0.7099,
+      "roe": 0.1951,
+      "equity": 46.2
+    },
+    "flag_count": 5,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "margin",
+        "what": "EBIT Margin dropped 8.9pp (52.7% -> 43.8%) (industry avg: 23.9%, Metals & Mining)"
+      },
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "margin",
+        "what": "Net Margin dropped 23.5pp (47.5% -> 24.0%) (industry avg: 10.5%, Metals & Mining)"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "quality",
+        "what": "Unusual items ($-3.1B) represent 17% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "margin",
+        "what": "EBIT Margin jumped 6.7pp (32.8% -> 39.5%) (industry avg: 23.9%, Metals & Mining)"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "quality",
+        "what": "Payout ratio 71% \u2014 approaching ceiling"
+      }
+    ]
+  },
+  "CSL.AX": {
+    "sector": "Healthcare",
+    "sub_industry": "drug manufacturers - specialty & generic",
+    "classification": "normal",
+    "industry_match": "Drugs (Pharmaceutical)",
+    "n_firms": 228,
+    "metrics": {
+      "ebit_margin": 0.2668,
+      "net_margin": 0.1946,
+      "debt_ebitda": 2.24,
+      "payout_ratio": 0.4777,
+      "roe": 0.1553,
+      "equity": 19.3
+    },
+    "flag_count": 2,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "m_and_a",
+        "what": "Acquisition spend $10.5B (80% of revenue)"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "quality",
+        "what": "ROE 15.5% \u2014 35% below Drugs (Pharmaceutical) (228 firms) avg 24.0%"
+      }
+    ]
+  },
+  "WBC.AX": {
+    "sector": "Financial Services",
+    "sub_industry": "banks - diversified",
+    "classification": "financial",
+    "industry_match": "Bank (Money Center)",
+    "n_firms": 15,
+    "metrics": {
+      "ebit_margin": null,
+      "net_margin": 0.3238,
+      "debt_ebitda": null,
+      "payout_ratio": 0.8086,
+      "roe": 0.0975,
+      "equity": 71.7
+    },
+    "flag_count": 2,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2021",
+        "category": "tax",
+        "what": "Effective tax rate 35.7%"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "quality",
+        "what": "Payout ratio 81% \u2014 approaching ceiling"
+      }
+    ]
+  },
+  "9988.HK": {
+    "sector": "Consumer Cyclical",
+    "sub_industry": "internet retail",
+    "classification": "normal",
+    "industry_match": "Retail (General)",
+    "n_firms": 23,
+    "metrics": {
+      "ebit_margin": 0.1657,
+      "net_margin": 0.1306,
+      "debt_ebitda": 1.2,
+      "payout_ratio": null,
+      "roe": 0.1288,
+      "equity": 1009.9
+    },
+    "flag_count": 5,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2022",
+        "category": "quality",
+        "what": "Unusual items ($-25.1B) represent 31% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "tax",
+        "what": "Effective tax rate 45.0%"
+      },
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "quality",
+        "what": "FCF ($165.4B) is 2.3x Net Income ($72.8B)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "ROE 12.9% \u2014 51% below Retail (General) (23 firms) avg 26.1%"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "capex",
+        "what": "CapEx/Revenue jumped to 8.6% (from 3.5%)"
+      }
+    ]
+  },
+  "0700.HK": {
+    "sector": "Communication Services",
+    "sub_industry": "internet content & information",
+    "classification": "normal",
+    "industry_match": "Software (Internet)",
+    "n_firms": 29,
+    "metrics": {
+      "ebit_margin": 0.3846,
+      "net_margin": 0.2939,
+      "debt_ebitda": 1.15,
+      "payout_ratio": 0.1487,
+      "roe": 0.1993,
+      "equity": 973.5
+    },
+    "flag_count": 8,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2021",
+        "category": "quality",
+        "what": "Unusual items ($+149.5B) represent 58% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2021",
+        "category": "tax",
+        "what": "Effective tax rate 8.2%"
+      },
+      {
+        "severity": "high",
+        "year": "2022",
+        "category": "quality",
+        "what": "Unusual items ($+137.4B) represent 62% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "margin",
+        "what": "EBIT Margin dropped 11.3pp (39.7% -> 28.4%) (industry avg: 3.7%, Software (Internet))"
+      },
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "margin",
+        "what": "Net Margin dropped 15.0pp (33.9% -> 18.9%)"
+      },
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "margin",
+        "what": "EBIT Margin jumped 10.0pp (28.4% -> 38.5%) (industry avg: 3.7%, Software (Internet))"
+      },
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "margin",
+        "what": "Net Margin jumped 10.5pp (18.9% -> 29.4%)"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "capex",
+        "what": "CapEx/Revenue jumped to 14.5% (from 7.8%)"
+      }
+    ]
+  },
+  "1299.HK": {
+    "sector": "Financial Services",
+    "sub_industry": "insurance - life",
+    "classification": "financial",
+    "industry_match": "Insurance (Life)",
+    "n_firms": 20,
+    "metrics": {
+      "ebit_margin": 0.2054,
+      "net_margin": 0.1574,
+      "debt_ebitda": null,
+      "payout_ratio": 0.3916,
+      "roe": 0.1442,
+      "equity": 43.2
+    },
+    "flag_count": 0,
+    "flags": []
+  },
+  "0005.HK": {
+    "sector": "Financial Services",
+    "sub_industry": "banks - diversified",
+    "classification": "financial",
+    "industry_match": "Bank (Money Center)",
+    "n_firms": 15,
+    "metrics": {
+      "ebit_margin": null,
+      "net_margin": 0.3365,
+      "debt_ebitda": null,
+      "payout_ratio": 0.5197,
+      "roe": 0.1124,
+      "equity": 198.2
+    },
+    "flag_count": 1,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "tax",
+        "what": "Effective tax rate 4.7%"
+      }
+    ]
+  },
+  "VALE": {
+    "sector": "Basic Materials",
+    "sub_industry": "other industrial metals & mining",
+    "classification": "normal",
+    "industry_match": "Metals & Mining",
+    "n_firms": 73,
+    "metrics": {
+      "ebit_margin": 0.1743,
+      "net_margin": 0.0612,
+      "debt_ebitda": 2.22,
+      "payout_ratio": null,
+      "roe": 0.0702,
+      "equity": 33.5
+    },
+    "flag_count": 7,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "quality",
+        "what": "Unusual items ($-2.1B) represent 17% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "quality",
+        "what": "Unusual items ($-2.6B) represent 32% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "m_and_a",
+        "what": "Goodwill declined 57% ($3.0B -> $1.3B)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "Unusual items ($-4.2B) represent 63% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "ROE 7.0% \u2014 61% below Metals & Mining (73 firms) avg 17.8%"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "tax",
+        "what": "Effective tax rate 57.4%"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "debt",
+        "what": "Debt/EBITDA at 2.2x \u2014 elevated leverage (industry avg: 1.4x)"
+      }
+    ]
+  },
+  "BABA": {
+    "sector": "Consumer Cyclical",
+    "sub_industry": "internet retail",
+    "classification": "normal",
+    "industry_match": "Retail (General)",
+    "n_firms": 23,
+    "metrics": {
+      "ebit_margin": 0.1657,
+      "net_margin": 0.1306,
+      "debt_ebitda": 1.2,
+      "payout_ratio": null,
+      "roe": 0.1288,
+      "equity": 1009.9
+    },
+    "flag_count": 5,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2022",
+        "category": "quality",
+        "what": "Unusual items ($-25.1B) represent 31% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2022",
+        "category": "tax",
+        "what": "Effective tax rate 45.0%"
+      },
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "quality",
+        "what": "FCF ($165.4B) is 2.3x Net Income ($72.8B)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "ROE 12.9% \u2014 51% below Retail (General) (23 firms) avg 26.1%"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "capex",
+        "what": "CapEx/Revenue jumped to 8.6% (from 3.5%)"
+      }
+    ]
+  },
+  "TSM": {
+    "sector": "Technology",
+    "sub_industry": "semiconductors",
+    "classification": "normal",
+    "industry_match": "Semiconductor",
+    "n_firms": 66,
+    "metrics": {
+      "ebit_margin": 0.5393,
+      "net_margin": 0.451,
+      "debt_ebitda": 0.39,
+      "payout_ratio": 0.2717,
+      "roe": 0.317,
+      "equity": 5419.6
+    },
+    "flag_count": 2,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "margin",
+        "what": "EBIT Margin dropped 5.2pp (51.1% -> 45.9%) (industry avg: 35.3%, Semiconductor)"
+      },
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "margin",
+        "what": "Net Margin dropped 4.5pp (43.9% -> 39.4%) (industry avg: 30.4%, Semiconductor)"
+      }
+    ]
+  },
+  "TM": {
+    "sector": "Consumer Cyclical",
+    "sub_industry": "auto manufacturers",
+    "classification": "normal",
+    "industry_match": "Auto & Truck",
+    "n_firms": 33,
+    "metrics": {
+      "ebit_margin": 0.1353,
+      "net_margin": 0.0992,
+      "debt_ebitda": 4.43,
+      "payout_ratio": 0.2376,
+      "roe": 0.1326,
+      "equity": 35924.8
+    },
+    "flag_count": 7,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2022",
+        "category": "quality",
+        "what": "Net Income positive ($2850.1B) but FCF negative ($-107.6B)"
+      },
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "quality",
+        "what": "Net Income positive ($2451.3B) but FCF negative ($-750.8B)"
+      },
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "quality",
+        "what": "Net Income positive ($4944.9B) but FCF negative ($-842.0B)"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "margin",
+        "what": "EBIT Margin jumped 5.6pp (10.0% -> 15.6%) (industry avg: 2.3%, Auto & Truck)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "Net Income positive ($4765.1B) but FCF negative ($-1561.0B)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "Earnings quality score 20/100 (3yr avg)"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "FCF does not fully cover dividends \u2014 shortfall of $2693.3B"
+      }
+    ]
+  },
+  "UL": {
+    "sector": "Consumer Defensive",
+    "sub_industry": "household & personal products",
+    "classification": "normal",
+    "industry_match": "Household Products",
+    "n_firms": 110,
+    "metrics": {
+      "ebit_margin": 0.1939,
+      "net_margin": 0.1875,
+      "debt_ebitda": 2.48,
+      "payout_ratio": 0.4703,
+      "roe": 0.6097,
+      "equity": 15.5
+    },
+    "flag_count": 2,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "quality",
+        "what": "Unusual items ($-1.6B) represent 18% of EBIT"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "m_and_a",
+        "what": "Goodwill declined 21% ($22.3B -> $17.7B)"
+      }
+    ]
+  },
+  "NVS": {
+    "sector": "Healthcare",
+    "sub_industry": "drug manufacturers - general",
+    "classification": "normal",
+    "industry_match": "Drugs (Pharmaceutical)",
+    "n_firms": 228,
+    "metrics": {
+      "ebit_margin": 0.3087,
+      "net_margin": 0.2467,
+      "debt_ebitda": 1.55,
+      "payout_ratio": 0.5591,
+      "roe": 0.3031,
+      "equity": 46.1
+    },
+    "flag_count": 2,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2023",
+        "category": "m_and_a",
+        "what": "Goodwill declined 20% ($29.3B -> $23.3B)"
+      },
+      {
+        "severity": "medium",
+        "year": "2023",
+        "category": "tax",
+        "what": "Effective tax rate 6.0%"
+      }
+    ]
+  },
+  "STLA": {
+    "sector": "Consumer Cyclical",
+    "sub_industry": "auto manufacturers",
+    "classification": "normal",
+    "industry_match": "Auto & Truck",
+    "n_firms": 33,
+    "metrics": {
+      "ebit_margin": -0.1637,
+      "net_margin": -0.1457,
+      "debt_ebitda": null,
+      "payout_ratio": null,
+      "roe": -0.4177,
+      "equity": 53.6
+    },
+    "flag_count": 5,
+    "flags": [
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "quality",
+        "what": "Net Income positive ($5.5B) but FCF negative ($-9.5B)"
+      },
+      {
+        "severity": "high",
+        "year": "2024",
+        "category": "quality",
+        "what": "Unusual items ($-1.8B) represent 33% of EBIT"
+      },
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "tax",
+        "what": "Effective tax rate 36.9%"
+      },
+      {
+        "severity": "high",
+        "year": "2025",
+        "category": "quality",
+        "what": "FCF does not fully cover dividends \u2014 shortfall of $15.8B"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "quality",
+        "what": "Earnings quality score 30/100 (3yr avg)"
+      }
+    ]
+  },
+  "MBG.DE": {
+    "sector": "Consumer Cyclical",
+    "sub_industry": "auto manufacturers",
+    "classification": "normal",
+    "industry_match": "Auto & Truck",
+    "n_firms": 33,
+    "metrics": {
+      "ebit_margin": 0.0505,
+      "net_margin": 0.0389,
+      "debt_ebitda": 5.92,
+      "payout_ratio": null,
+      "roe": 0.0551,
+      "equity": 93.3
+    },
+    "flag_count": 4,
+    "flags": [
+      {
+        "severity": "medium",
+        "year": "2024",
+        "category": "margin",
+        "what": "EBIT Margin dropped 3.5pp (13.6% -> 10.1%) (industry avg: 2.3%, Auto & Truck)"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "margin",
+        "what": "EBIT Margin dropped 5.1pp (10.1% -> 5.1%) (industry avg: 2.3%, Auto & Truck)"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "margin",
+        "what": "Net Margin dropped 3.1pp (7.0% -> 3.9%) (industry avg: 1.3%, Auto & Truck)"
+      },
+      {
+        "severity": "medium",
+        "year": "2025",
+        "category": "debt",
+        "what": "Debt/EBITDA increased 1.6x YoY (4.3x to 5.9x)"
+      }
+    ]
+  },
+  "RACE": {
+    "sector": "Consumer Cyclical",
+    "sub_industry": "auto manufacturers",
+    "classification": "normal",
+    "industry_match": "Auto & Truck",
+    "n_firms": 33,
+    "metrics": {
+      "ebit_margin": 0.2946,
+      "net_margin": 0.2235,
+      "debt_ebitda": 1.04,
+      "payout_ratio": 0.3317,
+      "roe": 0.4087,
+      "equity": 3.9
+    },
+    "flag_count": 0,
+    "flags": []
+  }
+}

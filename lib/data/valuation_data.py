@@ -112,6 +112,12 @@ def get_industry_beta(industry: str, region: str = "us"):
     return dam_provider.fetch_industry_beta(industry, region)
 
 
+def get_industry_averages(industry: str, region: str = "us"):
+    """Industry average margins/leverage/payout/ROE from Damodaran (cached 30d)."""
+    from lib.data.providers import damodaran_industry as dam_ind
+    return dam_ind.fetch_industry_averages(industry, region)
+
+
 # ── Peer beta middleware ─────────────────────────────────────────
 
 

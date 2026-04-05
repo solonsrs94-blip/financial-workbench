@@ -14,6 +14,8 @@ from lib.analysis.historical_flags import detect_flags, compute_averages
 
 def rebuild_with_overrides(
     data: dict, overrides: dict, sector: str, ticker: str,
+    industry: str = "", company_type: str = "",
+    industry_averages=None,
 ) -> None:
     """Rebuild tables, ratios, flags, averages from overridden data.
 
@@ -33,6 +35,8 @@ def rebuild_with_overrides(
     flags = detect_flags(
         ratios, is_table=is_t, bs_table=bs_t, cf_table=cf_t,
         sector=sector, ticker=ticker,
+        industry=industry, company_type=company_type,
+        industry_averages=industry_averages,
     )
     avgs = compute_averages(ratios)
 

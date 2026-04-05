@@ -213,6 +213,7 @@ Vision/
 │   │   │   ├── yahoo.py                ← Verð, fjárhagur, hlutföll, arðir, options
 │   │   │   ├── yahoo_valuation.py      ← BS/CF/IS smáatriði + analyst estimates
 │   │   │   ├── damodaran.py            ← ERP, beta, CRP, spreads ✅
+│   │   │   ├── damodaran_industry.py  ← Industry averages (margins, leverage, payout, ROE) ✅
 │   │   │   ├── peer_beta.py           ← Peer suggestions + beta/D/E/tax data
 │   │   │   ├── comps_peers.py         ← Finnhub peers + S&P 500 universe + candidate info
 │   │   │   ├── comps_data.py          ← Comps multiples data (trailing + forward + EBIT)
@@ -260,9 +261,12 @@ Vision/
 │   │
 │   ├── analysis/
 │   │   ├── company_classifier.py       ← Flokkar: normal / financial / dividend_stable
-│   │   ├── flags.py                    ← 15-rule flagging (anomaly detection)
-│   │   ├── flags_rules.py              ← Flag rules 8-15
-│   │   ├── flags_helpers.py            ← Flag utilities + known events
+│   │   ├── flags.py                    ← 23-rule flagging (rules 1-7 + orchestrator)
+│   │   ├── flags_rules.py              ← Flag rules 8-15 (sector-aware skips)
+│   │   ├── flags_rules_v2.py           ← Flag rules 16-20 (sector-aware thresholds)
+│   │   ├── flags_industry.py           ← Flag rules 21-22 (industry-relative, Damodaran)
+│   │   ├── flags_config.py            ← Centralized knowledge base (skip rules, thresholds)
+│   │   ├── flags_helpers.py            ← Category detection, suppress, known events
 │   │   ├── historical.py               ← Build IS/BS/CF tables + ratios
 │   │   ├── historical_ratios.py        ← Ratio calculations (margins, growth, etc.)
 │   │   ├── historical_averages.py      ← 3-year averages

@@ -1,12 +1,24 @@
-"""Financial statement flagging — rules 8-15 and suppression logic."""
+"""Financial statement flagging — rules 8-15.
+
+All rules accept `category` from _get_company_category() to skip or
+adjust thresholds for financials, REITs, etc.
+No Streamlit imports (lib/ rule).
+"""
 import statistics
 from lib.analysis.flags_helpers import _g, _flag
+from lib.analysis.flags_config import should_skip
 
-def rule_fcf_ni_divergence(is_table, cf_table, flags):
-    causes_high_fcf = ["High non-cash charges (D&A, SBC)",
-                       "Working capital release", "Aggressive capitalization"]
-    causes_neg_fcf = ["Heavy capex cycle", "Working capital build",
-                      "Aggressive revenue recognition"]
+# ── Rule 8: fcf_ni_divergence ───────────────────────────────────────
+
+def rule_fcf_ni_divergence(is_table, cf_table, flags,
+                           category="default"):
+    """FCF vs NI mismatch.  Skip via config (financials, REITs, utilities)."""
+    if should_skip("fcf_ni_divergence", category):
+        return
+    causes_neg = ["Heavy capex cycle", "Working capital build",
+                  "Aggressive revenue recognition"]
+    causes_high = ["High non-cash charges (D&A, SBC)",
+                   "Working capital release", "Aggressive capitalization"]
     for i in range(len(is_table)):
         if i >= len(cf_table):
             break
@@ -22,19 +34,24 @@ def rule_fcf_ni_divergence(is_table, cf_table, flags):
                 "quality", "high", year,
                 f"Net Income positive (${ni/1e9:.1f}B) but FCF negative "
                 f"(${fcf/1e9:.1f}B)",
-                causes_neg_fcf, abs(ni - fcf) / 1e6, "free_cash_flow",
+                causes_neg, abs(ni - fcf) / 1e6, "free_cash_flow",
             ))
         elif ratio > 2.0:
             flags.append(_flag(
                 "quality", "medium", year,
                 f"FCF (${fcf/1e9:.1f}B) is {ratio:.1f}x Net Income "
                 f"(${ni/1e9:.1f}B)",
-                causes_high_fcf, abs(fcf - ni) / 1e6, "free_cash_flow",
+                causes_high, abs(fcf - ni) / 1e6, "free_cash_flow",
             ))
 
-def rule_working_capital_trend(ratios, flags):
+# ── Rule 9: working_capital_trend ───────────────────────────────────
+
+def rule_working_capital_trend(ratios, flags, category="default"):
+    """CCC lengthening.  Skip via config."""
+    if should_skip("working_capital", category):
+        return
     causes = ["Customer payment delays", "Inventory buildup",
-              "Supplier leverage loss", "Revenue quality change"]
+              "Supplier leverage loss"]
     ccc_data = []
     for r in ratios:
         dso = _g(r, "dso")
@@ -65,9 +82,15 @@ def rule_working_capital_trend(ratios, flags):
                 ))
                 return
 
-def rule_interest_rate_spike(is_table, bs_table, flags):
+# ── Rule 10: interest_rate_spike ────────────────────────────────────
+
+def rule_interest_rate_spike(is_table, bs_table, flags,
+                             category="default"):
+    """Implied interest rate rise.  Skip via config."""
+    if should_skip("interest_rate_spike", category):
+        return
     causes = ["Refinancing at higher rates", "New expensive debt",
-              "Floating rate exposure", "Debt mix change"]
+              "Floating rate exposure"]
     prev_rate = None
     for i in range(len(is_table)):
         if i >= len(bs_table):
@@ -94,7 +117,10 @@ def rule_interest_rate_spike(is_table, bs_table, flags):
                 ))
         prev_rate = rate
 
+# ── Rule 11: goodwill_impairment ────────────────────────────────────
+
 def rule_goodwill_impairment(bs_table, flags):
+    """Goodwill decline >20%.  Universal — noteworthy for all types."""
     for i in range(1, len(bs_table)):
         curr = _g(bs_table[i], "goodwill")
         prev = _g(bs_table[i - 1], "goodwill")
@@ -110,10 +136,14 @@ def rule_goodwill_impairment(bs_table, flags):
                 None, impact, "goodwill",
             ))
 
-def rule_margin_mean_reversion(ratios, flags):
+# ── Rule 12: margin_mean_reversion ──────────────────────────────────
+
+def rule_margin_mean_reversion(ratios, flags, category="default"):
+    """Margin at >95th pctl + >2σ.  Skip via config.  Needs 7+ years."""
+    if should_skip("margin_mean_reversion", category):
+        return
     causes = ["Cyclical peak", "Unsustainable pricing",
-              "Temporary cost advantage",
-              "May be sustainable \u2014 new business model"]
+              "Temporary cost advantage", "New business model"]
     if len(ratios) < 7:
         return
     for metric, label, line in [
@@ -139,13 +169,18 @@ def rule_margin_mean_reversion(ratios, flags):
                 "quality", "medium", ratios[-1]["year"],
                 f"{label} at {pctl*100:.0f}th percentile of own history "
                 f"({curr*100:.1f}% vs avg {mean*100:.1f}%, "
-                f"+{(curr-mean)/stdev:.1f}\u03c3)",
+                f"+{(curr-mean)/stdev:.1f}σ)",
                 causes, None, line,
             ))
 
-def rule_long_trend_reversal(ratios, flags):
+# ── Rule 13: long_trend_reversal ────────────────────────────────────
+
+def rule_long_trend_reversal(ratios, flags, category="default"):
+    """4-year trend breaks.  Skip via config.  Needs 6+ years."""
+    if should_skip("long_trend_reversal", category):
+        return
     causes = ["Structural change", "Cyclical turning point",
-              "Management change", "Competitive pressure"]
+              "Competitive pressure"]
     if len(ratios) < 6:
         return
 
@@ -187,7 +222,13 @@ def rule_long_trend_reversal(ratios, flags):
                     causes, None, line,
                 ))
 
-def rule_major_dilution(is_table, flags):
+# ── Rule 14: major_dilution ─────────────────────────────────────────
+
+def rule_major_dilution(is_table, flags, category="default"):
+    """Shares ±10% (±15% for REITs).  Skip via config."""
+    if should_skip("major_dilution", category):
+        return
+    threshold = 0.15 if category == "reit" else 0.10
     for i in range(1, len(is_table)):
         curr = _g(is_table[i], "diluted_shares")
         prev = _g(is_table[i - 1], "diluted_shares")
@@ -199,7 +240,7 @@ def rule_major_dilution(is_table, flags):
             continue
 
         year = is_table[i].get("year")
-        if pct > 0.10:
+        if pct > threshold:
             flags.append(_flag(
                 "dilution", "medium", year,
                 f"Diluted shares increased {pct*100:.1f}%",
@@ -207,7 +248,7 @@ def rule_major_dilution(is_table, flags):
                  "Convertible exercise", "Heavy SBC"],
                 None, "diluted_shares",
             ))
-        elif pct < -0.10:
+        elif pct < -threshold:
             flags.append(_flag(
                 "dilution", "medium", year,
                 f"Diluted shares decreased {abs(pct)*100:.1f}%",
@@ -215,86 +256,43 @@ def rule_major_dilution(is_table, flags):
                 None, "diluted_shares",
             ))
 
-def rule_earnings_quality(ratios, is_table, cf_table, flags):
-    causes = ["High accruals", "Revenue recognition concerns",
-              "SBC dilution", "Working capital manipulation"]
+# ── Rule 15: earnings_quality ───────────────────────────────────────
+
+def rule_earnings_quality(ratios, is_table, cf_table, flags,
+                          category="default"):
+    """FCF/NI + SBC score.  Skip via config (financials, REITs, utilities)."""
+    if should_skip("earnings_quality", category):
+        return
     if len(ratios) < 3:
         return
-
-    recent = ratios[-3:]
-    recent_is = is_table[-3:] if len(is_table) >= 3 else is_table
-    recent_cf = cf_table[-3:] if len(cf_table) >= 3 else cf_table
+    _score_buckets = [(0.9, 100), (0.7, 80), (0.5, 60), (0.3, 40)]
+    _sbc_buckets = [(0.02, 100), (0.05, 80), (0.10, 60), (0.15, 40)]
 
     scores = []
-    for i, r in enumerate(recent):
-        ni = _g(recent_is[i], "net_income") if i < len(recent_is) else None
-        fcf = _g(recent_cf[i], "free_cash_flow") if i < len(recent_cf) else None
-        rev = _g(recent_is[i], "revenue") if i < len(recent_is) else None
-        sbc = _g(recent_cf[i], "stock_based_compensation") \
-            if i < len(recent_cf) else None
-
-        sub_scores = []
-
+    for i in range(max(len(ratios) - 3, 0), len(ratios)):
+        is_r = is_table[i] if i < len(is_table) else {}
+        cf_r = cf_table[i] if i < len(cf_table) else {}
+        ni = _g(is_r, "net_income")
+        fcf, rev = _g(cf_r, "free_cash_flow"), _g(is_r, "revenue")
+        sbc = _g(cf_r, "stock_based_compensation")
+        subs = []
         if ni and ni > 0 and fcf is not None:
-            ratio = fcf / ni
-            if ratio >= 0.9:
-                sub_scores.append(100)
-            elif ratio >= 0.7:
-                sub_scores.append(80)
-            elif ratio >= 0.5:
-                sub_scores.append(60)
-            elif ratio >= 0.3:
-                sub_scores.append(40)
-            else:
-                sub_scores.append(20)
-
+            r = fcf / ni
+            subs.append(next((s for t, s in _score_buckets if r >= t), 20))
         if sbc and rev and rev > 0:
-            pct = abs(sbc) / rev
-            if pct < 0.02:
-                sub_scores.append(100)
-            elif pct < 0.05:
-                sub_scores.append(80)
-            elif pct < 0.10:
-                sub_scores.append(60)
-            elif pct < 0.15:
-                sub_scores.append(40)
-            else:
-                sub_scores.append(20)
-
-        if sub_scores:
-            scores.append(statistics.mean(sub_scores))
-
+            p = abs(sbc) / rev
+            subs.append(next((s for t, s in _sbc_buckets if p < t), 20))
+        if subs:
+            scores.append(statistics.mean(subs))
     if not scores:
         return
-
-    avg_score = statistics.mean(scores)
-    if avg_score < 40:
-        sev = "high" if avg_score < 25 else "medium"
+    avg = statistics.mean(scores)
+    if avg < 40:
+        sev = "high" if avg < 25 else "medium"
         flags.append(_flag(
             "quality", sev, ratios[-1]["year"],
-            f"Earnings quality score {avg_score:.0f}/100 (3yr avg)",
-            causes, None, "net_income",
+            f"Earnings quality score {avg:.0f}/100 (3yr avg)",
+            ["High accruals", "Revenue recognition concerns",
+             "SBC dilution", "Working capital manipulation"],
+            None, "net_income",
         ))
-
-def suppress(flags):
-    """Remove redundant flags based on known interactions."""
-    tax_years = set()
-    ma_years = set()
-    for f in flags:
-        if f["category"] == "tax":
-            tax_years.add(f["year"])
-        if f["category"] == "m_and_a":
-            ma_years.add(f["year"])
-
-    tax_suppress = set()
-    for y in tax_years:
-        tax_suppress.add(y)
-        tax_suppress.add(str(int(y) + 1))
-
-    ma_suppress = ma_years
-    suppress_years = tax_suppress | ma_suppress
-    return [
-        f for f in flags
-        if not (f["category"] == "margin" and f["year"] in suppress_years)
-    ]
-

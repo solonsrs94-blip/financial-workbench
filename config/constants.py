@@ -38,6 +38,10 @@ DAMODARAN_URLS = {
     "betas_global": "https://pages.stern.nyu.edu/~adamodar/pc/datasets/betaGlobal.xls",
     "betas_emerging": "https://pages.stern.nyu.edu/~adamodar/pc/datasets/betaemerg.xls",
     "wacc": "https://pages.stern.nyu.edu/~adamodar/pc/datasets/wacc.xlsx",
+    "margins": "https://pages.stern.nyu.edu/~adamodar/pc/datasets/margin.xls",
+    "leverage": "https://pages.stern.nyu.edu/~adamodar/pc/datasets/dbtfund.xls",
+    "payout": "https://pages.stern.nyu.edu/~adamodar/pc/datasets/divfund.xls",
+    "roe": "https://pages.stern.nyu.edu/~adamodar/pc/datasets/roe.xls",
 }
 
 # --- FRED Series IDs ---

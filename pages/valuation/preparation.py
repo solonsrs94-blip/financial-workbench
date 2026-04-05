@@ -1,11 +1,7 @@
-"""Financial Preparation — data loading, standardization, flagging, classification.
+"""Financial Preparation — loading, standardization, flagging, classification.
 
-Runs BEFORE any valuation tab. Results stored in st.session_state["prepared_data"].
-Data sources:
-  - Normal companies: yfinance (standardized, ~4 years)
-  - Financial institutions: SimFin (banks, insurance)
+Results stored in st.session_state["prepared_data"].
 """
-
 import streamlit as st
 from typing import Optional
 
@@ -61,12 +57,16 @@ def _load_normal(ticker: str, sector: str, sub_industry: str) -> dict:
     bs_t = build_balance_table(std, years)
     cf_t = build_cashflow_table(std, years)
     ratios = build_ratios_table(is_t, bs_t, cf_t)
+    company_type = classify_company(ticker, sector, sub_industry, ratios)
+    from lib.data.valuation_data import get_industry_averages
+    ind_avg = get_industry_averages(sub_industry)
     flags = detect_flags(
         ratios, is_table=is_t, bs_table=bs_t, cf_table=cf_t,
         sector=sector, ticker=ticker,
+        industry=sub_industry, company_type=company_type.get("type", ""),
+        industry_averages=ind_avg,
     )
     avgs = compute_averages(ratios)
-    company_type = classify_company(ticker, sector, sub_industry, ratios)
 
     return {
         "ticker": ticker,
@@ -78,6 +78,7 @@ def _load_normal(ticker: str, sector: str, sub_industry: str) -> dict:
         "flags": flags,
         "averages": avgs,
         "years": years,
+        "industry_averages": ind_avg,
     }
 
 
@@ -132,8 +133,9 @@ def render_preparation(ticker: str, company) -> None:
     """Run Financial Preparation and store results in session_state."""
     st.markdown("## Financial Preparation")
 
-    sector = getattr(company, "sector", "") or ""
-    sub_industry = getattr(company, "sub_industry", "") or ""
+    info = getattr(company, "info", None)
+    sector = getattr(info, "sector", "") or "" if info else ""
+    sub_industry = getattr(info, "industry", "") or "" if info else ""
 
     cache_key = f"prepared_data_{ticker}"
     if cache_key not in st.session_state:
@@ -155,7 +157,10 @@ def render_preparation(ticker: str, company) -> None:
     overrides = st.session_state[ovr_key]
 
     if count_overrides(overrides) > 0 and data.get("original_standardized"):
-        rebuild_with_overrides(data, overrides, sector, ticker)
+        ctype = data.get("company_type", {}).get("type", "")
+        rebuild_with_overrides(data, overrides, sector, ticker,
+                               industry=sub_industry, company_type=ctype,
+                               industry_averages=data.get("industry_averages"))
 
     st.session_state["prepared_data"] = data
 
@@ -189,18 +194,41 @@ def render_preparation(ticker: str, company) -> None:
 # ── UI sub-sections ──────────────────────────────────────────────────
 
 def _render_classification(ctype: dict) -> None:
-    """Show company classification banner."""
-    t, methods = ctype["type"], ", ".join(
-        m.upper() for m in ctype["recommended_methods"])
-    msg = f"**{t.replace('_', ' ').title()}** — {ctype['reason']}. Recommended: {methods}."
-    (st.warning if t == "financial" else
-     st.info if t == "dividend_stable" else st.caption)(
-        f"Classification: {msg}" if t == "normal" else msg)
-    pd = st.session_state.get("prepared_data", {})
-    src = pd.get("standardized", {}).get("source", "yfinance")
+    """Show company classification banner with reasoning."""
+    t = ctype["type"]
+    methods = ", ".join(m.upper() for m in ctype["recommended_methods"])
+    signals = ctype.get("signals", {})
+    sect = signals.get("sector", "")
+    ind = signals.get("industry", "")
+    method = signals.get("method", "")
+
+    # Type label
+    label = t.replace("_", " ").title()
+    if t == "financial":
+        sub = ctype.get("subtype", "")
+        label = f"Financial ({sub.title()})" if sub else "Financial"
+
+    # Build detail line
+    parts = [s for s in [f"Sector: {sect}" if sect else "",
+                         f"Industry: {ind}" if ind else "",
+                         f"Matched: {method}" if method else ""] if s]
+    detail = " | ".join(parts)
+
+    msg = f"**{label}** — {ctype['reason']}. Recommended: {methods}."
+    renderer = (st.warning if t == "financial" else
+                st.info if t == "dividend_stable" else st.caption)
+    renderer(msg)
+
+    # Data source + classification detail
+    pd_data = st.session_state.get("prepared_data", {})
+    src = pd_data.get("standardized", {}).get("source", "yfinance")
     src_lbl = {"yfinance": "Yahoo Finance", "simfin": "SimFin",
                "edgar": "EDGAR"}.get(src, src)
-    st.caption(f"{len(pd.get('years', []))} years of data | Source: {src_lbl}")
+    n_years = len(pd_data.get("years", []))
+    caption_parts = [f"{n_years} years of data", f"Source: {src_lbl}"]
+    if detail:
+        caption_parts.append(detail)
+    st.caption(" | ".join(caption_parts))
 
 
 _CAT_LABELS = {
@@ -260,15 +288,13 @@ _AVG_ROWS = [
      ("Eff Tax", "eff_tax_3yr", "pct")],
 ]
 
-
 def _render_averages(avgs: dict) -> None:
     """3yr averages dashboard."""
+    _fmt = {"days": lambda v: f"{v:.0f} days",
+            "ratio": lambda v: f"{v:.1f}x",
+            "pct": lambda v: f"{v*100:.1f}%"}
     for row_def in _AVG_ROWS:
         cols = st.columns(len(row_def))
         for col, (label, key, fmt) in zip(cols, row_def):
             v = avgs.get(key)
-            s = "---"
-            if v is not None:
-                s = (f"{v:.0f} days" if fmt == "days" else
-                     f"{v:.1f}x" if fmt == "ratio" else f"{v*100:.1f}%")
-            col.metric(f"3yr {label}", s)
+            col.metric(f"3yr {label}", _fmt[fmt](v) if v is not None else "---")

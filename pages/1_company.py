@@ -19,7 +19,11 @@ from pages.company import detail_tab, financials_tab, ownership_tab
 from pages.company import peers_tab, analysts_tab, news_tab, about_tab
 from pages.company.header import render_header, render_key_metrics, calc_peer_medians
 
+from components.auth_guard import require_auth, show_user_sidebar
+
 load_css()
+require_auth()
+show_user_sidebar()
 
 page_header("Company Overview", "Search for any publicly traded company")
 

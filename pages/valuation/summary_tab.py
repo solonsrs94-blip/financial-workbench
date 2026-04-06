@@ -239,20 +239,34 @@ def _render_export(ticker: str, included: set) -> None:
     json_str = json.dumps(export_data, indent=2, default=str)
     today = date.today().isoformat()
 
-    st.download_button(
-        "Export Analysis",
-        data=json_str,
-        file_name=f"{ticker}_analysis_{today}.json",
-        mime="application/json",
-        type="secondary",
-    )
+    col_export, col_save = st.columns(2)
+    with col_export:
+        st.download_button(
+            "Export Analysis",
+            data=json_str,
+            file_name=f"{ticker}_analysis_{today}.json",
+            mime="application/json",
+            type="secondary",
+        )
+    with col_save:
+        if st.button("Save Valuation", key="_save_valuation",
+                      type="secondary"):
+            from lib.exports.session_collector import collect_valuation_state
+            save_data = collect_valuation_state(state_copy, ticker)
+            uid = st.session_state.get("auth_uid")
+            if uid:
+                from lib.storage.firestore_valuations import save_valuation as fs_save
+                st.toast(f"Valuation saved (ID: {fs_save(uid, save_data)[:8]})")
+            else:
+                from lib.storage.valuations import save_valuation
+                st.toast(f"Valuation saved: {save_valuation(save_data, ticker)}")
 
 
 def _build_default_templates() -> dict:
     """Build map of commentary key -> default template for comparison."""
     from components.commentary import (
         TEMPLATES, get_step2_template,
-        _STEP4_TEMPLATES, _DDM_STEP2_TEMPLATES,
+        _STEP4_TEMPLATES, _get_ddm_step2_template,
         _COMPS_TEMPLATES, _HIST_TEMPLATES,
     )
     from components.commentary_templates import dcf_step5, ddm_step3
@@ -269,9 +283,9 @@ def _build_default_templates() -> dict:
         defaults[f"commentary_dcf_step4_{s}"] = tmpl
     # DCF Step 5
     defaults["commentary_dcf_step5"] = dcf_step5.STEP5_COMPARISON
-    # DDM Step 2
-    for s, tmpl in _DDM_STEP2_TEMPLATES.items():
-        defaults[f"commentary_ddm_step2_{s}"] = tmpl
+    # DDM Step 2 (sector-specific, like DCF Step 2)
+    for s in ["base", "bull", "bear"]:
+        defaults[f"commentary_ddm_step2_{s}"] = _get_ddm_step2_template(s)
     # DDM Step 3
     defaults["commentary_ddm_step3"] = ddm_step3.STEP3_COMPARISON
     # Comps

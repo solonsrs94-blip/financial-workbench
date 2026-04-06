@@ -103,7 +103,7 @@ Vision/
 │
 ├── pages/                              ← Hver skjár er sín skrá
 │   ├── 1_company.py                    ← Fyrirtækjayfirlit
-│   ├── 2_financials.py                 ← Ársreikningar
+│   ├── 2_saved.py                      ← Vistuð virðismöt (save/load)
 │   ├── 3_valuation.py                  ← Virðismat (DCF, comps)
 │   ├── 4_screener.py                   ← Almenn hlutabréfasía
 │   ├── 5_analysis.py                   ← Greiningarvinnusvæði
@@ -338,7 +338,11 @@ Vision/
 │   │
 │   │   ── ÚTFLUTNINGUR ──
 │   │
-│   ├── exports/                        ← Skýrslugerð
+│   ├── exports/                        ← Skýrslugerð og vistun
+│   │   ├── analysis_export.py          ← JSON export for Claude reports
+│   │   ├── company_data.py             ← Company extraction helpers
+│   │   ├── session_collector.py        ← session_state → JSON-safe dict (save)
+│   │   ├── session_restorer.py         ← JSON-safe dict → session_state (load)
 │   │   ├── pdf.py                      ← PDF skýrslur
 │   │   ├── excel.py                    ← Excel útflutningur
 │   │   └── templates/                  ← Sniðmát fyrir skýrslur
@@ -348,7 +352,13 @@ Vision/
 │   │
 │   │   ── GAGNAGEYMSLA ──
 │   │
+│   ├── auth/                           ← Firebase auðkenning (pure Python)
+│   │   ├── firebase_init.py            ← Firebase Admin SDK singleton init
+│   │   └── firebase_auth.py            ← Sign-up/sign-in (REST API), approval check (Firestore)
+│   │
 │   ├── storage/                        ← Abstraction lag
+│   │   ├── valuations.py               ← Save/load valuation JSON files (local fallback)
+│   │   ├── firestore_valuations.py     ← Firestore CRUD (users/{uid}/valuations/{id})
 │   │   ├── base.py                     ← Interface — skilgreinir hvað geymsla gerir
 │   │   ├── local.py                    ← SQLite á tölvunni (fase 1)
 │   │   └── cloud.py                    ← Firebase/PostgreSQL (fase 2)
@@ -559,7 +569,9 @@ Vision/
 - [ ] Afkomuviðvaranir
 - [ ] Email / push / webhook
 
-### Útflutningur
+### Útflutningur og vistun
+- [x] Save/Load virðismöt (JSON á disk, full session state restore)
+- [x] JSON export for Claude report generation
 - [ ] PDF skýrslur (virðismat, yfirlit)
 - [ ] Excel útflutningur
 - [ ] Sérsniðin sniðmát
@@ -635,8 +647,8 @@ Vision/
 - Íslensku/ensku þýðingar
 
 ### Fase 6 — Deiling og útlit
-- Notendaauðkenning (auth)
-- Cloud storage (Firebase/PostgreSQL)
+- ~~Notendaauðkenning (auth)~~ ✅ Firebase Auth (email/password + admin approval)
+- ~~Cloud storage (Firebase/PostgreSQL)~~ ✅ Firestore (users/{uid}/valuations)
 - React framendi (fallegt UI)
 - Viðvaranir og tilkynningar
 - Spjall milli notenda (chat)

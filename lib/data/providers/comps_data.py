@@ -15,7 +15,9 @@ import yfinance as yf
 
 logger = logging.getLogger(__name__)
 
-_FMP_KEY = "nhFksOQCl83oEeFQgrjaNL99Hubzbb0z"
+from config.settings import FMP_API_KEY
+
+_FMP_KEY = FMP_API_KEY
 _TIMEOUT = 8
 
 

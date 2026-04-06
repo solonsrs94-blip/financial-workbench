@@ -19,7 +19,9 @@ import yfinance as yf
 logger = logging.getLogger(__name__)
 
 _TIMEOUT = 10
-_FINNHUB_KEY = "d77r40hr01qqrhp2r9n0d77r40hr01qqrhp2r9ng"
+from config.settings import FINNHUB_API_KEY
+
+_FINNHUB_KEY = FINNHUB_API_KEY
 _SP500_URL = "https://en.wikipedia.org/wiki/List_of_S%26P_500_companies"
 _HEADERS = {
     "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"

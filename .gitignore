@@ -33,8 +33,15 @@ data/education/
 Thumbs.db
 desktop.ini
 
-# Streamlit
-.streamlit/
+# Streamlit (allow secrets template)
+.streamlit/*
+!.streamlit/secrets.toml.example
+
+# Firebase
+firebase-service-account.json
+
+# Saved valuations (local-only, moved to Firestore)
+saved_valuations/
 
 # Misc
 *.log

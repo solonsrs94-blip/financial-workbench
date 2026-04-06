@@ -11,6 +11,7 @@ Read VISION.md for project philosophy. Read ARCHITECTURE.md for full structure, 
 - simfin (bank/insurance financials — free tier, 5 years)
 - fredapi (macro data — needs API key, fase 4)
 - Plotly (interactive charts — preferred over Matplotlib)
+- Firebase Admin SDK (auth + Firestore cloud storage)
 - SQLite (local data cache — fase 1, cloud later)
 - Claude API / Anthropic SDK (AI features — needs API key, fase 3)
 - Whisper (earnings call transcription — fase 5)
@@ -19,6 +20,7 @@ Read VISION.md for project philosophy. Read ARCHITECTURE.md for full structure, 
 ```
 app.py              → Main Streamlit entry point
 pages/              → Streamlit pages (one screen = one file)
+  2_saved.py        → Saved Valuations page (browse, load, delete saved analyses)
   pages/valuation/  → Valuation sub-pages (preparation, dcf steps 2-5, comps, ddm)
     preparation_editor.py → Editable data_editor for override values
     preparation_overrides.py → Rebuild cascade after overrides
@@ -58,6 +60,8 @@ pages/              → Streamlit pages (one screen = one file)
     summary_helpers.py → Summary: DCF scenario format handling + re-exports
     summary_weights.py → Summary: Model weighting inputs + weighted fair value + stats
 components/         → Reusable UI components (ticker search, charts, tables, explainer, commentary, save_button)
+  auth_guard.py     → require_auth() guard + show_user_sidebar() (call at top of every page)
+  auth_forms.py     → Login/sign-up forms (email/password, tabs)
   commentary_templates/ → Sector-specific commentary templates (tech, industrials, consumer, healthcare, energy, real estate, dcf_step4, dcf_step5)
 lib/                → Core logic — NO Streamlit imports allowed here
   lib/data/         → Data fetching + standardization
@@ -99,11 +103,17 @@ lib/                → Core logic — NO Streamlit imports allowed here
   lib/workspace/    → Analysis sessions (data + reasoning + AI narrative)
   lib/sandbox/      → AI experiment station (code generation + execution)
   lib/alerts/       → Alert system (conditions + notifications)
-  lib/exports/      → Report generation (PDF, Excel, templates, JSON analysis export)
+  lib/exports/      → Report generation (PDF, Excel, templates, JSON analysis export, save/load)
     analysis_export.py → build_export_json() — collects all session state into structured JSON for Claude report generation
     company_data.py → Company model extraction helpers (description, ratios, extended meta, historical financials)
-  lib/storage/      → Storage abstraction (local SQLite now, cloud later)
-  lib/auth/         → User authentication (fase 6)
+    session_collector.py → collect_valuation_state() — session_state → JSON-safe dict for saving
+    session_restorer.py → restore_valuation_state() — JSON-safe dict → session_state keys for loading
+  lib/storage/      → Storage abstraction (local fallback + Firestore cloud)
+    valuations.py   → Save/load/list/delete valuation JSON files (local fallback)
+    firestore_valuations.py → Firestore CRUD: save/list/load/delete (users/{uid}/valuations/{id})
+  lib/auth/         → Firebase authentication (pure Python, NO streamlit imports)
+    firebase_init.py → Firebase Admin SDK singleton init
+    firebase_auth.py → sign_up/sign_in (REST API), check_user_approved, create_user_profile
 models/             → Data models (company, portfolio, experiment, etc.)
 data/               → Local storage (cache, portfolio, simfin_cache, etc.)
 assets/             → CSS styles and educational diagrams
@@ -138,8 +148,9 @@ tests/              → Tests for data, analysis, and cache
 - New AI feature → new file in `lib/ai/`.
 
 ### 5. No hardcoded secrets
-- API keys go in `.env`, read via `config/settings.py`.
-- `.env` is in `.gitignore` — never committed.
+- API keys go in `st.secrets` (Streamlit Cloud) or `.env` (local dev), read via `config/settings.py._get_secret()`.
+- `.env` and `.streamlit/secrets.toml` are in `.gitignore` — never committed.
+- Firebase service account credentials go in `st.secrets["firebase_service_account"]` or `firebase-service-account.json` (local).
 
 ### 6. Storage abstraction
 - `lib/storage/base.py` defines the interface.
@@ -199,6 +210,23 @@ tests/              → Tests for data, analysis, and cache
 - The save button shows status: green check if saved matches current, warning if results changed since last save.
 - `ddm_output_alt` is only shown in Summary when no scenario DDM output exists (prevents ghost entries).
 - When adding a new valuation module, use `render_save_button(key, label, data)` from `components/save_button.py`.
+
+## Save/Load Valuations
+- **Save:** "Save Valuation" button on Summary tab. Collects all session state via `session_collector.collect_valuation_state()`, saves to Firestore `users/{uid}/valuations/{auto_id}` (or local JSON fallback if no auth). Never overwrites — each save creates a new document.
+- **Load:** Saved Valuations page (`pages/2_saved.py`) lists all saves from Firestore grouped by ticker. Load button calls `session_restorer.restore_valuation_state()` → injects into `st.session_state` → `st.switch_page("pages/3_valuation.py")`.
+- **Load guard:** `pages/3_valuation.py` checks for `_loaded_ticker` in session_state. If present and matches current ticker, skips cache clearing (prevents wiping loaded data).
+- **Serialization:** `_make_json_safe()` handles sets (→ `__set__` marker), DataFrames (→ `__df__` marker), numpy types, NaN/Inf (→ None), dataclasses (→ dict with `__dataclass__` marker). Reverse: `_restore_types()`.
+- **Company objects:** Serialized via `dataclasses.asdict()` with DataFrame fields set to None. On restore, reconstructed as Company dataclass (no DataFrames needed — valuation modules use `prepared_data` and `val_data`).
+- **Storage:** `lib/storage/firestore_valuations.py` (Firestore CRUD, primary) or `lib/storage/valuations.py` (local JSON fallback).
+- **When adding new session state keys** to any valuation module, add them to `_FIXED_KEYS` or `_TICKER_KEYS` in `session_collector.py` so they get saved.
+
+## Authentication (Firebase)
+- **Auth provider:** Firebase Auth (email/password). Admin SDK for server-side ops, REST API for client-side sign-in/sign-up.
+- **Auth guard:** Every page calls `require_auth()` + `show_user_sidebar()` from `components/auth_guard.py`. Unauthenticated users are redirected to `app.py` (login page).
+- **Approval flow:** New users get `approved: false` in Firestore `users/{uid}`. Admin sets `approved: true` via Firebase Console. App checks approval on every sign-in.
+- **Session state keys:** `auth_uid`, `auth_email`, `auth_id_token`, `auth_refresh_token`, `auth_approved`. Cleared on sign-out.
+- **Firebase init:** Singleton via `lib/auth/firebase_init.py`. Service account from `st.secrets["firebase_service_account"]` (cloud) or `firebase-service-account.json` (local).
+- **Config:** All API keys read via `config/settings.py._get_secret()` which tries `st.secrets` first, then `.env` fallback.
 
 ## Sensitivity Rules
 - Floor: Cells where g >= Ke (DDM) or implied price <= 0 (DCF) → NaN, displayed as "—" in UI.

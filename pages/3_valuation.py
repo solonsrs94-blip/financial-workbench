@@ -20,7 +20,11 @@ from pages.valuation import (
     preparation, dcf_tab, comps_tab, ddm_tab, historical_tab, summary_tab,
 )
 
+from components.auth_guard import require_auth, show_user_sidebar
+
 load_css()
+require_auth()
+show_user_sidebar()
 
 page_header("Valuation", "Multi-method valuation workbench")
 
@@ -37,6 +41,13 @@ if ticker != saved_ticker:
     st.query_params["ticker"] = ticker
 
 force_refresh = is_force_refresh()
+
+# Detect loaded-from-save: skip cache clearing, use pre-loaded state
+_loaded = st.session_state.pop("_loaded_ticker", None)
+if _loaded and _loaded == ticker:
+    st.session_state.pop("_loaded_from_save", None)
+    force_refresh = False
+    st.session_state["_val_cached_ticker"] = ticker
 
 # Clear session cache on ticker change
 if force_refresh or st.session_state.get("_val_cached_ticker") != ticker:

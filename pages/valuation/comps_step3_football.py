@@ -64,6 +64,8 @@ def render_football_field(
         med = data.get("median")
         if lo is None or hi is None or med is None:
             continue
+        if lo <= 0 or hi <= 0:
+            continue
 
         labels.append(_MULT_LABELS.get(key, key))
         lows.append(lo)

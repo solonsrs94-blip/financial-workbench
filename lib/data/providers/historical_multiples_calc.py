@@ -176,11 +176,13 @@ def compute_implied_values(
     is_financial: bool,
     is_quarterly: bool = True,
     price_factor: float = 1.0,
+    eps_override: float | None = None,
 ) -> dict:
     """Implied share price at historical mean/median/-1σ.
 
     is_quarterly=False uses last 1 row (annual = already TTM).
     price_factor: implied prices converted back to listing currency.
+    eps_override: if set, uses this value instead of TTM EPS for P/E implied prices.
     """
     if not current_price:
         return {}
@@ -206,7 +208,7 @@ def compute_implied_values(
         ttm_revenue = last_n.iloc[0]["revenue"]
         ttm_ebitda = last_n.iloc[0]["ebitda"]
         ttm_ni = last_n.iloc[0]["net_income"]
-    eps = ttm_ni / shares if ttm_ni else None
+    eps = eps_override if eps_override else (ttm_ni / shares if ttm_ni else None)
 
     # Use latest BS with valid equity (not just latest date, which
     # may be from a dei filing with no financial data)

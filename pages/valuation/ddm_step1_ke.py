@@ -185,10 +185,13 @@ def _extract_inputs(prepared: dict, ticker: str) -> dict | None:
         return None
 
     price_obj = getattr(company, "price", None)
-    ratios_obj = getattr(company, "ratios", None)
-    profile_obj = getattr(company, "profile", None)
+    info_obj = getattr(company, "info", None)
 
-    raw_beta = getattr(ratios_obj, "beta", None) or 1.0
+    raw_beta = (
+        getattr(price_obj, "beta", None)
+        or val_data.get("beta")
+        or 1.0
+    )
     market_cap = getattr(price_obj, "market_cap", None) or 0
 
     # Total debt from val_data or standardized
@@ -202,8 +205,8 @@ def _extract_inputs(prepared: dict, ticker: str) -> dict | None:
             ).get(years[-1], {})
             total_debt = last_bs.get("total_debt", 0) or 0
 
-    country = getattr(profile_obj, "country", "") or ""
-    industry = getattr(profile_obj, "industry", "") or ""
+    country = getattr(info_obj, "country", "") or ""
+    industry = getattr(info_obj, "industry", "") or ""
 
     # Effective tax rate from ratios
     ratios_list = prepared.get("ratios", [])

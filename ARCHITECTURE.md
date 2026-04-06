@@ -76,6 +76,8 @@ Normal companies:
       ↓
   lib/analysis/historical_flags.py   →  anomaly flags + 3yr averages
       ↓
+  lib/analysis/recommendations.py   →  analyst briefing (model fit, risks)
+      ↓
   st.session_state["prepared_data"]  →  used by DCF Steps 2-5
 
 Override cascade: user edits value → override_utils merges with original
@@ -126,6 +128,7 @@ Vision/
 │   │   ├── preparation_display.py      ← Charts, tables, ratios display
 │   │   ├── preparation_editor.py       ← Editable data_editor for override values
 │   │   ├── preparation_overrides.py    ← Rebuild cascade after overrides
+│   │   ├── preparation_recommendations.py ← Recommendations & Considerations UI panel
 │   │   ├── dcf_tab.py                  ← DCF tab orchestrator (Steps 2-5)
 │   │   ├── dcf_step2_assumptions.py    ← Step 2: Assumptions + controls
 │   │   ├── dcf_step2_table.py          ← Step 2: Historical data + projection math
@@ -267,6 +270,9 @@ Vision/
 │   │   ├── flags_industry.py           ← Flag rules 21-22 (industry-relative, Damodaran)
 │   │   ├── flags_config.py            ← Centralized knowledge base (skip rules, thresholds)
 │   │   ├── flags_helpers.py            ← Category detection, suppress, known events
+│   │   ├── recommendations.py          ← Recommendation engine orchestrator
+│   │   ├── recommendations_rules.py    ← Model assessment rules (DCF, DDM, Comps, Historical)
+│   │   ├── recommendations_risks.py    ← Attention items + risk rules
 │   │   ├── historical.py               ← Build IS/BS/CF tables + ratios
 │   │   ├── historical_ratios.py        ← Ratio calculations (margins, growth, etc.)
 │   │   ├── historical_averages.py      ← 3-year averages

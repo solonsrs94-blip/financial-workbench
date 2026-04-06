@@ -159,6 +159,7 @@ def fetch_valuation_data(ticker: str) -> Optional[dict]:
         "shares": shares,
         "market_cap": info.get("marketCap"),
         "enterprise_value": info.get("enterpriseValue"),
+        "ebitda_ttm": info.get("ebitda"),
         "beta": info.get("beta"),
         "dividend_yield": info.get("dividendYield"),
         "currency": currency,

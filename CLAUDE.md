@@ -22,6 +22,7 @@ pages/              → Streamlit pages (one screen = one file)
   pages/valuation/  → Valuation sub-pages (preparation, dcf steps 2-5, comps, ddm)
     preparation_editor.py → Editable data_editor for override values
     preparation_overrides.py → Rebuild cascade after overrides
+    preparation_recommendations.py → Recommendations & Considerations UI panel
     dcf_step2_scenarios.py → Step 2 Bull/Base/Bear tab orchestration
     dcf_step2_table.py → Historical + projected FCF table
     dcf_step2_output.py → Calculated FCF output section
@@ -54,8 +55,9 @@ pages/              → Streamlit pages (one screen = one file)
     summary_tab.py → Summary tab orchestrator (reads all model outputs)
     summary_table.py → Summary: Valuation overview table
     summary_football.py → Summary: Combined football field chart (all models)
-    summary_helpers.py → Summary: DCF scenario format handling + stats
-components/         → Reusable UI components (ticker search, charts, tables, explainer, commentary)
+    summary_helpers.py → Summary: DCF scenario format handling + re-exports
+    summary_weights.py → Summary: Model weighting inputs + weighted fair value + stats
+components/         → Reusable UI components (ticker search, charts, tables, explainer, commentary, save_button)
   commentary_templates/ → Sector-specific commentary templates (tech, industrials, consumer, healthcare, energy, real estate, dcf_step4, dcf_step5)
 lib/                → Core logic — NO Streamlit imports allowed here
   lib/data/         → Data fetching + standardization
@@ -84,6 +86,9 @@ lib/                → Core logic — NO Streamlit imports allowed here
     flags_industry.py → Rules 21-23 (industry-relative: margins, ROE, leverage vs Damodaran)
     flags_helpers.py → _g(), _flag(), _get_company_category(), suppress(), KNOWN_EVENTS
     company_classifier.py → normal / financial / dividend_stable
+    recommendations.py → Recommendation engine orchestrator (generate_recommendations)
+    recommendations_rules.py → Model assessment rules (DCF, DDM, Comps, Historical)
+    recommendations_risks.py → Attention items + risk rules (flags, dividend, industry)
     historical.py   → Build IS/BS/CF tables + ratios
     valuation/wacc.py → CAPM, beta, cost of debt (shared by DCF + DDM)
     valuation/dcf.py → DCF engine (build FCF, terminal value, run DCF)
@@ -178,7 +183,22 @@ tests/              → Tests for data, analysis, and cache
 - Comps scenario keys: `comps_valuation` uses scenario format `{'base': {implied_price, applied_mult, premium, final_mult}, ...}` or legacy format `{implied_prices: {...}, method: ...}`. Scenario tabs in Step 3 with per-scenario applied multiples (defaults: 25th/median/75th percentile). Commentary: `commentary_comps_step3_{scenario}`, `commentary_comps_comparison`.
 - Summary tab reads from: `dcf_output` (scenario or legacy), `comps_valuation` (scenario or legacy), `historical_result` (implied_values with at_p10/at_median/at_p90 per multiple), `ddm_output` (scenario or legacy). Summary never writes to session_state — pure read-only. All scenario formats handled via `summary_helpers.py`.
 - Historical scenario keys: `historical_result` uses scenario format `{'base': {implied_price, applied_mult, mult_key}, ...}` plus `summary` and `implied_values` for backward compat. Scenario tabs with -1σ/mean/+1σ defaults. Commentary: `commentary_historical_{scenario}`, `commentary_historical_comparison`.
-- Analyst Commentary keys use `commentary_` prefix. Standard: `commentary_dcf_step3`, `commentary_summary` via `render_commentary(key)`. Per-scenario: DCF `commentary_dcf_step2_{scenario}`, `commentary_dcf_step4_{scenario}`; DDM `commentary_ddm_step2_{scenario}`; Comps `commentary_comps_step3_{scenario}`; Historical `commentary_historical_{scenario}`. Shared comparison: `commentary_dcf_step5`, `commentary_ddm_step3`, `commentary_comps_comparison`, `commentary_historical_comparison`. Templates in `components/commentary_templates/` (sector files + dcf_step4/5 + ddm_financial/step3 + comps + historical + non_dcf).
+- Analyst Commentary keys use `commentary_` prefix. Standard: `commentary_dcf_step3`, `commentary_summary` via `render_commentary(key)`. Per-scenario: DCF `commentary_dcf_step2_{scenario}`, `commentary_dcf_step4_{scenario}`; DDM `commentary_ddm_step2_{scenario}`; Comps `commentary_comps_step3_{scenario}`; Historical `commentary_historical_{scenario}`. Shared comparison: `commentary_dcf_step5`, `commentary_ddm_step3`, `commentary_comps_comparison`, `commentary_historical_comparison`. Templates in `components/commentary_templates/` (sector files + dcf_step4/5 + ddm templates + comps + historical + non_dcf).
+- DDM commentary uses 5 sector templates: Consumer/Aristocrat (`ddm_consumer.py`), Financial (`ddm_financial.py`), Utility (`ddm_utility.py`), REIT (`ddm_reit.py`), Cyclical (`ddm_cyclical.py`). Selector state: `ddm_sector_template`. Same UX pattern as DCF Step 2 sector selector.
+- DDM anomaly detection: `ddm_provider.py` detects DPS spikes >3x vs both adjacent years (stock split artifacts). Returns `dps_anomalies`, `dps_cagr_clean`, `years_increasing_clean`, `dividend_cuts_clean`. Reference UI uses clean metrics by default.
+- DDM Gordon Growth defaults: perpetual g = 2.5% (long-term nominal GDP proxy), NOT historical DPS CAGR. Historical CAGR shown as reference only. Warning when g > Ke - 2%.
+- **Payout ratio (canonical):** Always `DPS / diluted_EPS`. yahoo.py computes this (not yfinance `payoutRatio`). DDM provider uses same formula. Historical ratios use aggregate `dividends_paid / net_income` for trend analysis only.
+- **Model weighting:** Summary tab has per-model weight inputs (default equal, stored in `summary_weights` session key as `{dcf: 0.25, ...}`). Weighted fair value displayed alongside mean/median. Weights exported in JSON `summary.model_weights`.
+- **Historical EPS basis:** Historical Multiples has EPS basis selector (Trailing/Forward/Manual). Scaling applied to P/E implied values only. `eps_basis` and `eps_used` stored in `historical_result` output when overridden.
+- **JSON export includes:** `flags` section (from `prepared_data["flags"]`), `ebitda_ttm` + source in meta, `weighted_fair_value` + `model_weights` + `weighted_components` in summary, `industry_averages` (Damodaran benchmarks), `recommendations` (model suitability + risks), `company_category` in meta, DCF `projections` (per-year Revenue/EBIT/FCF/PV) + `sensitivity` (WACC×growth and WACC×multiple grids) per scenario, DDM `projections` (per-year DPS/PV + terminal) + `sensitivity` (Ke×growth grid) per scenario.
+
+## Save-to-Summary Pattern
+- Valuation modules (DCF, DDM, Comps, Historical) do NOT auto-write output to session_state.
+- Each module has a "Save to Summary" button (`components/save_button.py`) that commits results when clicked.
+- Summary tab and JSON export read only from committed session_state keys (`dcf_output`, `ddm_output`, `comps_valuation`, `historical_result`).
+- The save button shows status: green check if saved matches current, warning if results changed since last save.
+- `ddm_output_alt` is only shown in Summary when no scenario DDM output exists (prevents ghost entries).
+- When adding a new valuation module, use `render_save_button(key, label, data)` from `components/save_button.py`.
 
 ## Sensitivity Rules
 - Floor: Cells where g >= Ke (DDM) or implied price <= 0 (DCF) → NaN, displayed as "—" in UI.
@@ -202,6 +222,16 @@ tests/              → Tests for data, analysis, and cache
 - **Rule 4 (tax_anomaly):** Low-ETR: 3% for utilities (vs 10% default). High-ETR: 50% for energy/mining (vs 35% default).
 - **Rule 6 (capex_spike):** Minimum capex/revenue of 1% required — prevents flagging trivial amounts.
 - **Tested on 155 companies** (92 US via `test_flags_80.py` + 63 international via `test_flags_intl.py`). Zero false positives. 530 total flags across US + EMEA + Asia-Pacific + Americas.
+
+## Recommendations System
+- `generate_recommendations(prepared_data, dividend_data)` in `lib/analysis/recommendations.py` — orchestrator that builds analyst briefing.
+- Model assessment rules in `recommendations_rules.py`: `assess_dcf`, `assess_ddm`, `assess_comps`, `assess_historical`. Each returns `{model, fit, headline, reasons, caveats}`.
+- Attention items + risk rules in `recommendations_risks.py`: flag grouping, dividend health, SBC, cyclicality, industry risks, leverage, margin vs industry, growth deceleration.
+- Output: `{model_suitability, limited_value_models, attention_items, risks}`.
+- `_build_context()` derives signals from prepared_data: FCF analysis, margin stability, revenue volatility, negative equity, flag categories.
+- Dividend data fetched at preparation time via `_get_dividend_data()` in `preparation.py` — reuses `ddm_data_{ticker}` session key shared with DDM tab.
+- UI rendered by `pages/valuation/preparation_recommendations.py` — model cards with fit badges, attention items with severity, risk section with category tags.
+- Tested on 14 companies (PEP, AAPL, JPM, MET, O, DUK, XOM, TSLA, INTC, AMZN, JNJ, GS, AMT, CAT). All produce specific, accurate recommendations.
 
 ## Comps Peer Selection
 - `filter_peer_universe()` uses GICS mapping for industry-matched peers — correct for valuation.

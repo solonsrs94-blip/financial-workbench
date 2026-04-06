@@ -128,9 +128,18 @@ def render_scenario_output(
                 "wacc": wacc_data["wacc"],
                 "terminal_growth": terminal["terminal_growth"],
                 "terminal_method": method_label,
+                "projections": _build_projections(
+                    fcf_table, dcf_result.pv_fcfs,
+                ),
+                "sensitivity": _build_sensitivity(
+                    fcf_table, wacc_result, terminal,
+                    bridge_inputs, current_price, pf,
+                ),
             }
 
-    st.session_state["dcf_output"] = dcf_output
+    # Save button — only writes to session_state when clicked
+    from components.save_button import render_save_button
+    render_save_button("dcf_output", "DCF", dcf_output)
 
 
 # ── Comparison table ──────────────────────────────────────────────
@@ -183,6 +192,85 @@ def _render_comparison_table(
             f'</div></div>',
             unsafe_allow_html=True,
         )
+
+
+def _build_projections(fcf_table, pv_fcfs: list) -> list[dict]:
+    """Convert FCF DataFrame + PV list to JSON-serializable projections."""
+    rows = []
+    for i in range(len(fcf_table)):
+        r = fcf_table.iloc[i]
+        rows.append({
+            "year": int(r["Year"]),
+            "revenue": float(r["Revenue"]),
+            "growth": float(r["Growth"]),
+            "ebit": float(r["EBIT"]),
+            "ebit_margin": float(r["EBIT_Margin"]),
+            "nopat": float(r["NOPAT"]),
+            "da": float(r["D&A"]),
+            "capex": float(r["CapEx"]),
+            "dnwc": float(r["dNWC"]),
+            "sbc": float(r["SBC"]),
+            "fcf": float(r["FCF"]),
+            "ebitda": float(r["EBITDA"]),
+            "pv_fcf": float(pv_fcfs[i]) if i < len(pv_fcfs) else None,
+        })
+    return rows
+
+
+def _build_sensitivity(
+    fcf_table, wacc_result, terminal, bridge_inputs,
+    current_price, pf,
+) -> dict | None:
+    """Build serializable sensitivity grids."""
+    from lib.analysis.valuation.sensitivity import (
+        sensitivity_table, exit_sensitivity_table,
+    )
+    try:
+        g = terminal["terminal_growth"]
+        mult = terminal["exit_multiple"]
+        net_debt = bridge_inputs["net_debt"]
+        shares = bridge_inputs["shares"]
+        minority = bridge_inputs["minority"]
+        preferred = bridge_inputs["preferred"]
+
+        df_g = sensitivity_table(
+            fcf_table, wacc_result, g, terminal["method"], mult,
+            net_debt, shares, current_price, minority, preferred,
+        )
+        if pf != 1.0:
+            df_g = df_g / pf
+
+        result = {"wacc_vs_growth": _grid_to_dict(df_g)}
+
+        df_m = exit_sensitivity_table(
+            fcf_table, wacc_result, g, mult,
+            net_debt, shares, current_price, minority, preferred,
+        )
+        if pf != 1.0:
+            df_m = df_m / pf
+        result["wacc_vs_multiple"] = _grid_to_dict(df_m)
+        return result
+    except Exception:
+        return None
+
+
+def _grid_to_dict(df) -> dict:
+    """Convert sensitivity DataFrame to JSON-serializable dict."""
+    import math
+    rows = []
+    for idx, row_data in df.iterrows():
+        cells = []
+        for val in row_data:
+            if isinstance(val, (int, float)) and not math.isnan(val) and val > 0:
+                cells.append(round(float(val), 2))
+            else:
+                cells.append(None)
+        rows.append(cells)
+    return {
+        "row_labels": list(df.index),
+        "col_labels": list(df.columns),
+        "values": rows,
+    }
 
 
 def _render_customization_warning(results: dict) -> None:

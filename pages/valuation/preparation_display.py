@@ -228,3 +228,29 @@ _RATIO_FIELDS = [
 def render_ratios(ratios: list[dict]) -> None:
     """Render key ratios table."""
     render_financial_table(ratios, _RATIO_FIELDS, show_source=False)
+
+
+# ── 3yr Averages dashboard ──────────────────────────────────────────
+
+_AVG_ROWS = [
+    [("Gross Margin", "gross_margin_3yr", "pct"),
+     ("EBIT Margin", "ebit_margin_3yr", "pct"),
+     ("Rev Growth", "revenue_growth_3yr", "pct"),
+     ("CapEx/Rev", "capex_pct_3yr", "pct"),
+     ("ROIC", "roic_3yr", "pct")],
+    [("DSO", "dso_3yr", "days"), ("DIO", "dio_3yr", "days"),
+     ("DPO", "dpo_3yr", "days"), ("Int. Cov.", "interest_coverage_3yr", "ratio"),
+     ("Eff Tax", "eff_tax_3yr", "pct")],
+]
+
+
+def render_averages(avgs: dict) -> None:
+    """3yr averages dashboard."""
+    _fmt = {"days": lambda v: f"{v:.0f} days",
+            "ratio": lambda v: f"{v:.1f}x",
+            "pct": lambda v: f"{v*100:.1f}%"}
+    for row_def in _AVG_ROWS:
+        cols = st.columns(len(row_def))
+        for col, (label, key, fmt) in zip(cols, row_def):
+            v = avgs.get(key)
+            col.metric(f"3yr {label}", _fmt[fmt](v) if v is not None else "---")

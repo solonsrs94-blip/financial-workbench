@@ -32,6 +32,7 @@ def render_scenario_valuation(
     implied_values: dict,
     current_price: float,
     currency: str,
+    eps_info: dict | None = None,
 ) -> None:
     """Render scenario tabs for historical implied valuation."""
     # Find available multiples with valid implied values
@@ -92,7 +93,11 @@ def render_scenario_valuation(
     # ── Comparison + store results ────────────────────────────
     if results:
         _render_comparison(results, current_price, currency)
-        _store_results(results, current_price, summary, implied_values)
+        hist_output = _build_output(
+            results, current_price, summary, implied_values, eps_info,
+        )
+        from components.save_button import render_save_button
+        render_save_button("historical_result", "Historical", hist_output)
 
     render_historical_comparison_commentary()
 
@@ -204,8 +209,8 @@ def _render_comparison(results, current_price, currency):
         )
 
 
-def _store_results(results, current_price, summary, implied_values):
-    """Store scenario results in session state."""
+def _build_output(results, current_price, summary, implied_values, eps_info=None):
+    """Build scenario output dict (does not write to session_state)."""
     hist_output = {}
     for scenario, r in results.items():
         hist_output[scenario] = {
@@ -217,7 +222,10 @@ def _store_results(results, current_price, summary, implied_values):
     hist_output["summary"] = summary
     hist_output["implied_values"] = implied_values
     hist_output["current_price"] = current_price
-    st.session_state["historical_result"] = hist_output
+    if eps_info and eps_info.get("override"):
+        hist_output["eps_basis"] = eps_info.get("eps_basis")
+        hist_output["eps_used"] = eps_info.get("eps_used")
+    return hist_output
 
 
 def _compute_plus_1std_implied(stats, iv, current_price):

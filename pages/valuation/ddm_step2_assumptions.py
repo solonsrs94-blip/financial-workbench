@@ -1,12 +1,4 @@
-"""DDM Step 2: Dividend Assumptions — model selection, projections.
-
-Auto-fetches dividend data, shows warnings, lets analyst choose
-Gordon Growth vs 2-Stage and DPS Growth vs EPS x Payout.
-
-Sub-renderers:
-  ddm_step2_reference.py — warnings, reference data, history
-  ddm_step2_scenarios.py — Bull/Base/Bear tab orchestration
-"""
+"""DDM Step 2: Dividend Assumptions — model selection, projections."""
 
 import streamlit as st
 import pandas as pd
@@ -73,7 +65,7 @@ def _render_scenario(ddm_data: dict, scenario: str) -> dict | None:
     use_eps = method == "EPS x Payout Ratio"
     d0 = ddm_data["current_dps"]
     eps0 = ddm_data["trailing_eps"]
-    cagr = ddm_data["dps_cagr"]
+    cagr = ddm_data.get("dps_cagr_clean") or ddm_data["dps_cagr"]
 
     # ── Inputs ──────────────────────────────────────────────
     if is_gordon:
@@ -104,7 +96,7 @@ def _render_gordon(
     ke = ke_data["ke"] if ke_data else 0.10
 
     if use_eps:
-        default_eps_g = cagr.get("5y", 0.03)
+        default_eps_g = 0.025
         default_payout = ddm_data["payout_ratio"] or 0.40
 
         c1, c2 = st.columns(2)
@@ -130,7 +122,7 @@ def _render_gordon(
             "eps_growth": eps_g_dec, "payout": payout_dec,
         }
     else:
-        default_g = cagr.get("5y", 0.03)
+        default_g = 0.025
         g_input = st.number_input(
             "Perpetual DPS Growth Rate (%)",
             min_value=-10.0, max_value=20.0,
@@ -149,6 +141,11 @@ def _show_gordon_result(d1, ke, g) -> None:
     if g >= ke:
         st.error("Growth rate must be less than cost of equity (Ke).")
         return
+    if ke - g < 0.02:
+        st.warning(
+            f"Growth rate ({g*100:.1f}%) is within 2pp of Ke "
+            f"({ke*100:.1f}%). Small denominator produces extreme valuations."
+        )
     implied = d1 / (ke - g)
     st.markdown(
         f'<div style="font-size:14px;margin-top:8px;padding:8px 12px;'

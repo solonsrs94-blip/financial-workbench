@@ -52,11 +52,19 @@ def fetch_dividend_data(ticker: str) -> dict:
 
         has_dividend = current_dps > 0 or len(annual_dps) > 0
 
-        # DPS CAGR calculations
-        dps_cagr = _calc_dps_cagr(annual_dps)
+        # Anomaly detection (stock split artifacts, etc.)
+        anomalies = _detect_anomalies(annual_dps)
 
-        # Streak analysis
+        # DPS CAGR calculations (raw + clean)
+        dps_cagr = _calc_dps_cagr(annual_dps)
+        dps_cagr_clean = _calc_dps_cagr(annual_dps, anomalies) if anomalies else dps_cagr
+
+        # Streak analysis (raw + clean)
         years_paying, years_increasing, cuts = _analyze_streaks(annual_dps)
+        if anomalies:
+            _, yi_clean, cuts_clean = _analyze_streaks(annual_dps, anomalies)
+        else:
+            yi_clean, cuts_clean = years_increasing, cuts
 
         # Build history list (sorted chronologically)
         history = [
@@ -78,9 +86,13 @@ def fetch_dividend_data(ticker: str) -> dict:
             "dividend_history": history,
             "annual_dps": annual_dps,
             "dps_cagr": dps_cagr,
+            "dps_cagr_clean": dps_cagr_clean,
             "years_paying": years_paying,
             "years_increasing": years_increasing,
+            "years_increasing_clean": yi_clean,
             "dividend_cuts": cuts,
+            "dividend_cuts_clean": cuts_clean,
+            "dps_anomalies": anomalies,
             "has_dividend": has_dividend,
             "currency": currency,
             "financial_currency": fin_currency,
@@ -97,9 +109,13 @@ def fetch_dividend_data(ticker: str) -> dict:
             "dividend_history": [],
             "annual_dps": {},
             "dps_cagr": {},
+            "dps_cagr_clean": {},
             "years_paying": 0,
             "years_increasing": 0,
+            "years_increasing_clean": 0,
             "dividend_cuts": [],
+            "dividend_cuts_clean": [],
+            "dps_anomalies": [],
             "has_dividend": False,
         }
 
@@ -128,15 +144,44 @@ def _aggregate_annual_dps(dividends) -> dict[int, float]:
     return annual
 
 
-def _calc_dps_cagr(annual_dps: dict[int, float]) -> dict:
+def _detect_anomalies(annual_dps: dict[int, float]) -> list[int]:
+    """Flag years where DPS changes >3x vs both adjacent years.
+
+    Catches stock split artifacts (e.g. PEP 1997: $3.69 vs $0.45/$0.52).
+    Only flags if the spike is relative to BOTH neighbors (not trend shifts).
+    """
+    years = sorted(annual_dps.keys())
+    anomalies = []
+    for i in range(1, len(years) - 1):
+        prev_dps = annual_dps[years[i - 1]]
+        curr_dps = annual_dps[years[i]]
+        next_dps = annual_dps[years[i + 1]]
+        if prev_dps <= 0 or next_dps <= 0:
+            continue
+        ratio_prev = curr_dps / prev_dps
+        ratio_next = curr_dps / next_dps
+        if ratio_prev > 3.0 and ratio_next > 3.0:
+            anomalies.append(years[i])
+    return anomalies
+
+
+def _calc_dps_cagr(
+    annual_dps: dict[int, float],
+    exclude_years: list[int] | None = None,
+) -> dict:
     """Calculate DPS CAGR for 1Y, 3Y, 5Y, 10Y periods.
 
     Returns dict: {"1y": float, "3y": float, ...} (decimals).
+    When exclude_years is provided, those years are skipped as endpoints.
     """
     if not annual_dps:
         return {}
 
-    years_sorted = sorted(annual_dps.keys())
+    skip = set(exclude_years or [])
+    years_sorted = [y for y in sorted(annual_dps.keys()) if y not in skip]
+    if not years_sorted:
+        return {}
+
     latest_year = years_sorted[-1]
     latest_dps = annual_dps[latest_year]
 
@@ -146,6 +191,8 @@ def _calc_dps_cagr(annual_dps: dict[int, float]) -> dict:
     cagr = {}
     for label, lookback in [("1y", 1), ("3y", 3), ("5y", 5), ("10y", 10)]:
         target_year = latest_year - lookback
+        if target_year in skip:
+            continue
         if target_year in annual_dps and annual_dps[target_year] > 0:
             base = annual_dps[target_year]
             rate = (latest_dps / base) ** (1 / lookback) - 1
@@ -154,14 +201,19 @@ def _calc_dps_cagr(annual_dps: dict[int, float]) -> dict:
     return cagr
 
 
-def _analyze_streaks(annual_dps: dict[int, float]) -> tuple:
+def _analyze_streaks(
+    annual_dps: dict[int, float],
+    exclude_years: list[int] | None = None,
+) -> tuple:
     """Analyze dividend payment and increase streaks.
 
     Returns (years_paying, years_increasing, cuts_list).
+    When exclude_years is provided, those years are skipped in streak/cut analysis.
     """
     if not annual_dps:
         return 0, 0, []
 
+    skip = set(exclude_years or [])
     years_sorted = sorted(annual_dps.keys())
     current_year = datetime.now().year
 
@@ -174,18 +226,21 @@ def _analyze_streaks(annual_dps: dict[int, float]) -> tuple:
         else:
             break
 
+    # Filter out anomaly years for increase/cut analysis
+    clean_years = [y for y in years_sorted if y not in skip]
+
     # Consecutive years of increases
     years_increasing = 0
-    for i in range(len(years_sorted) - 1, 0, -1):
-        if annual_dps[years_sorted[i]] > annual_dps[years_sorted[i - 1]]:
+    for i in range(len(clean_years) - 1, 0, -1):
+        if annual_dps[clean_years[i]] > annual_dps[clean_years[i - 1]]:
             years_increasing += 1
         else:
             break
 
     # Find dividend cuts (year-over-year decreases)
     cuts = []
-    for i in range(1, len(years_sorted)):
-        if annual_dps[years_sorted[i]] < annual_dps[years_sorted[i - 1]]:
-            cuts.append(years_sorted[i])
+    for i in range(1, len(clean_years)):
+        if annual_dps[clean_years[i]] < annual_dps[clean_years[i - 1]]:
+            cuts.append(clean_years[i])
 
     return years_paying, years_increasing, cuts

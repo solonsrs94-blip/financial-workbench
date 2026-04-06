@@ -99,7 +99,9 @@ def render_scenario_valuation(
     # ── Store results ─────────────────────────────────────────
     if results:
         _render_comparison(results, current_price)
-        _store_results(results, current_price)
+        comps_output = _build_output(results, current_price)
+        from components.save_button import render_save_button
+        render_save_button("comps_valuation", "Comps", comps_output)
 
     render_comps_comparison_commentary()
 
@@ -215,8 +217,8 @@ def _render_comparison(results: dict, current_price: float) -> None:
         )
 
 
-def _store_results(results: dict, current_price: float) -> None:
-    """Store scenario results in session state."""
+def _build_output(results: dict, current_price: float) -> dict:
+    """Build scenario output dict (does not write to session_state)."""
     comps_output = {}
     for scenario, r in results.items():
         comps_output[scenario] = {
@@ -226,7 +228,7 @@ def _store_results(results: dict, current_price: float) -> None:
             "final_mult": r["final_mult"],
         }
     comps_output["current_price"] = current_price
-    st.session_state["comps_valuation"] = comps_output
+    return comps_output
 
 
 def _compute_percentiles(

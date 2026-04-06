@@ -32,7 +32,16 @@ def render_warnings(ddm_data: dict) -> None:
             f"Current dividend may not be sustainable."
         )
 
-    cuts = ddm_data["dividend_cuts"]
+    anomalies = ddm_data.get("dps_anomalies", [])
+    if anomalies:
+        yrs = ", ".join(str(y) for y in anomalies)
+        st.warning(
+            f"**Data anomaly detected in {yrs}.** "
+            f"DPS changed >3x vs adjacent years (likely stock split artifact). "
+            f"Adjusted metrics exclude these years."
+        )
+
+    cuts = ddm_data.get("dividend_cuts_clean", ddm_data["dividend_cuts"])
     if cuts:
         from datetime import datetime
         cutoff = datetime.now().year - 10
@@ -50,7 +59,8 @@ def render_reference(ddm_data: dict) -> None:
     dy = ddm_data["dividend_yield"]
     eps = ddm_data["trailing_eps"]
     payout = ddm_data["payout_ratio"]
-    cagr = ddm_data["dps_cagr"]
+    has_anomalies = bool(ddm_data.get("dps_anomalies"))
+    cagr = ddm_data.get("dps_cagr_clean", ddm_data["dps_cagr"]) if has_anomalies else ddm_data["dps_cagr"]
 
     # Current metrics
     c1, c2, c3, c4 = st.columns(4)
@@ -71,7 +81,8 @@ def render_reference(ddm_data: dict) -> None:
         )
 
     cols2[4].metric("Yrs Paying", ddm_data["years_paying"])
-    cols2[5].metric("Yrs Increasing", ddm_data["years_increasing"])
+    yi = ddm_data.get("years_increasing_clean", ddm_data["years_increasing"]) if has_anomalies else ddm_data["years_increasing"]
+    cols2[5].metric("Yrs Increasing", yi)
 
     # DPS history expander
     history = ddm_data["dividend_history"]

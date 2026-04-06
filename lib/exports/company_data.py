@@ -75,6 +75,59 @@ def extract_extended_meta(company) -> dict:
     return result
 
 
+def compute_weighted_fair_value(
+    football: dict, weights: dict,
+) -> dict | None:
+    """Compute weighted fair value for export from football field base prices.
+
+    Returns dict with weighted_fair_value, model_weights, weighted_components
+    or None if insufficient data.
+    """
+    if not weights or not football:
+        return None
+
+    _LABEL_TO_KEY = {
+        "dcf": "dcf", "comps": "comps",
+        "historical_multiples": "historical", "ddm": "ddm",
+    }
+    base_prices = {}
+    for label, scenarios in football.items():
+        if not scenarios or not isinstance(scenarios, dict):
+            continue
+        key = _LABEL_TO_KEY.get(label, label)
+        price = scenarios.get("base")
+        if price and price > 0:
+            base_prices[key] = price
+
+    if not base_prices:
+        return None
+
+    active = {k: weights[k] for k in base_prices if k in weights}
+    total = sum(active.values())
+    if total <= 0:
+        return None
+
+    components = {}
+    weighted = 0.0
+    for key, price in base_prices.items():
+        if key not in active:
+            continue
+        norm_w = active[key] / total
+        contrib = price * norm_w
+        weighted += contrib
+        components[key] = {
+            "price": price,
+            "weight": round(norm_w, 4),
+            "contribution": round(contrib, 2),
+        }
+
+    return {
+        "weighted_fair_value": round(weighted, 2),
+        "model_weights": {k: round(v / total, 4) for k, v in active.items()},
+        "weighted_components": components,
+    }
+
+
 def extract_historical_financials(prepared: dict) -> dict | None:
     """Extract standardized financial statements from prepared_data."""
     if not prepared:
@@ -98,4 +151,20 @@ def extract_historical_financials(prepared: dict) -> dict | None:
                 if isinstance(data, dict)
             }
 
+    return result
+
+
+def extract_industry_averages(prepared: dict) -> dict | None:
+    """Export Damodaran industry averages if available."""
+    ia = prepared.get("industry_averages")
+    if not ia or not isinstance(ia, dict):
+        return None
+    # Rename industry_name → damodaran_industry for clarity; pass rest through
+    result = {"damodaran_industry": ia.get("industry_name")}
+    for key in ("n_firms", "operating_margin", "net_margin", "gross_margin",
+                "ebitda_margin", "roe", "debt_ebitda", "debt_equity",
+                "payout_ratio", "dividend_yield"):
+        v = ia.get(key)
+        if v is not None:
+            result[key] = v
     return result

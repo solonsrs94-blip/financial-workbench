@@ -5,11 +5,14 @@ Pure Python — NO streamlit imports.
 
 from datetime import date
 
+from lib.analysis.flags_helpers import _get_company_category
 from lib.exports.company_data import (
     extract_company_description,
     extract_ratios,
     extract_extended_meta,
     extract_historical_financials,
+    extract_industry_averages,
+    compute_weighted_fair_value,
 )
 
 _SCENARIOS = ["base", "bull", "bear"]
@@ -33,6 +36,9 @@ def build_export_json(
     result["historical_financials"] = extract_historical_financials(prepared)
     result["historical_ratios"] = prepared.get("ratios")
     result["historical_averages"] = prepared.get("averages")
+    result["flags"] = _build_flags(prepared)
+    result["industry_averages"] = extract_industry_averages(prepared)
+    result["recommendations"] = state.get("recommendations")
 
     if included_modules.get("DCF"):
         result["dcf"] = _build_dcf(state, ticker, defaults)
@@ -48,9 +54,6 @@ def build_export_json(
     result["summary"] = _build_summary(state, included_modules, defaults)
     result["overrides"] = _build_overrides(state, ticker)
     return result
-
-
-# ── Meta ──────────────────────────────────────────────────────────
 
 
 def _build_meta(state: dict, ticker: str, company=None) -> dict:
@@ -69,12 +72,17 @@ def _build_meta(state: dict, ticker: str, company=None) -> dict:
         industry = getattr(info, "industry", "") or ""
         currency = getattr(price_obj, "currency", "USD") or "USD"
 
+    company_category = _get_company_category(
+        sector, industry, ctype.get("type", "normal"),
+    )
+
     meta = {
         "ticker": ticker,
         "company_name": name,
         "sector": sector,
         "industry": industry,
         "company_type": ctype.get("type", "normal"),
+        "company_category": company_category,
         "export_date": str(date.today()),
         "share_price": price,
         "market_cap": val_data.get("market_cap"),
@@ -82,12 +90,16 @@ def _build_meta(state: dict, ticker: str, company=None) -> dict:
         "enterprise_value": val_data.get("enterprise_value"),
         "currency": val_data.get("currency", currency),
         "financial_currency": val_data.get("financial_currency", currency),
+        "ebitda_ttm": val_data.get("ebitda_ttm"),
+        "ebitda_ttm_source": "ttm_quarterly" if val_data.get("ebitda_ttm") else None,
     }
     meta.update(extract_extended_meta(company))
     return meta
 
 
-# ── DCF ───────────────────────────────────────────────────────────
+def _build_flags(prepared: dict) -> list:
+    """Export triggered quality flags (already JSON-serializable dicts)."""
+    return list(prepared.get("flags") or [])
 
 
 def _build_dcf(state: dict, ticker: str, defaults: dict) -> dict:
@@ -127,9 +139,6 @@ def _build_dcf(state: dict, ticker: str, defaults: dict) -> dict:
     }
 
 
-# ── DDM ───────────────────────────────────────────────────────────
-
-
 def _build_ddm(state: dict, ticker: str, defaults: dict) -> dict:
     scenarios_data = state.get("ddm_scenarios") or {}
     output = state.get("ddm_output") or {}
@@ -157,9 +166,6 @@ def _build_ddm(state: dict, ticker: str, defaults: dict) -> dict:
             state, "commentary_ddm_step3", defaults,
         ),
     }
-
-
-# ── Comps ─────────────────────────────────────────────────────────
 
 
 def _build_comps(state: dict, ticker: str, defaults: dict) -> dict:
@@ -195,9 +201,6 @@ def _build_comps(state: dict, ticker: str, defaults: dict) -> dict:
     }
 
 
-# ── Historical ────────────────────────────────────────────────────
-
-
 def _build_historical(state: dict, ticker: str, defaults: dict) -> dict:
     hist = state.get("historical_result") or {}
 
@@ -215,7 +218,7 @@ def _build_historical(state: dict, ticker: str, defaults: dict) -> dict:
             ),
         }
 
-    return {
+    result = {
         "statistics": hist.get("summary"),
         "implied_values": hist.get("implied_values"),
         "scenarios": scenarios,
@@ -223,9 +226,10 @@ def _build_historical(state: dict, ticker: str, defaults: dict) -> dict:
             state, "commentary_historical_comparison", defaults,
         ),
     }
-
-
-# ── Summary ───────────────────────────────────────────────────────
+    if hist.get("eps_basis"):
+        result["eps_basis"] = hist["eps_basis"]
+        result["eps_used"] = hist.get("eps_used")
+    return result
 
 
 def _build_summary(
@@ -244,13 +248,20 @@ def _build_summary(
         if included.get(group):
             football[_LABEL[group]] = _extract_scenario_prices(state.get(key))
 
-    return {
+    # Weighted fair value from analyst-set weights
+    weights = state.get("summary_weights") or {}
+    weighted_result = compute_weighted_fair_value(football, weights)
+
+    result = {
         "models_used": models_used,
         "football_field": football,
         "commentary": _get_commentary(
             state, "commentary_summary", defaults,
         ),
     }
+    if weighted_result:
+        result.update(weighted_result)
+    return result
 
 
 def _extract_scenario_prices(data: dict | None) -> dict | None:
@@ -267,10 +278,6 @@ def _extract_scenario_prices(data: dict | None) -> dict | None:
         return {"base": data["implied_price"]}
     return None
 
-
-# ── Overrides ─────────────────────────────────────────────────────
-
-
 def _build_overrides(state: dict, ticker: str) -> dict:
     overrides = state.get(f"financial_overrides_{ticker}")
     has = bool(overrides and any(overrides.values()))
@@ -278,9 +285,6 @@ def _build_overrides(state: dict, ticker: str) -> dict:
         "has_overrides": has,
         "details": overrides if has else None,
     }
-
-
-# ── Commentary helper ─────────────────────────────────────────────
 
 
 def _get_commentary(

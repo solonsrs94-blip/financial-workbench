@@ -158,14 +158,14 @@ def _render_football(d0, ke, a, current_price, scenario="") -> dict:
         ke_steps=5, g_steps=5,
     )
     all_vals = df.values.flatten()
-    cap = current_price * 100 if current_price > 0 else float("inf")
     valid = [float(v) for v in all_vals
-             if not np.isnan(v) and 0 < v < cap]
+             if not np.isnan(v) and v > 0]
     if not valid:
         st.info("Not enough data for football field chart.")
         return {"min": 0, "max": 0, "median": 0}
-    low, high = min(valid), max(valid)
     median = float(np.median(valid))
+    low = float(np.percentile(valid, 10))
+    high = float(np.percentile(valid, 90))
     fig = go.Figure()
     fig.add_trace(go.Bar(
         y=["DDM"], x=[high - low], base=[low], orientation="h",

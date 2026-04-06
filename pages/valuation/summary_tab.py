@@ -8,6 +8,7 @@ import streamlit as st
 from pages.valuation.summary_table import render_valuation_table
 from pages.valuation.summary_football import render_combined_football
 from pages.valuation.summary_helpers import (
+    is_scenario_format,
     collect_dcf_rows,
     collect_dcf_bars,
     collect_ddm_rows,
@@ -17,6 +18,7 @@ from pages.valuation.summary_helpers import (
     collect_historical_rows,
     collect_historical_bars,
     render_summary_stats,
+    render_weight_inputs,
 )
 from components.commentary import render_commentary
 from lib.exports.analysis_export import build_export_json
@@ -46,6 +48,7 @@ def render(prepared: dict, ticker: str) -> None:
     # ── Model selector ─────────────────────────────────────
     available = _available_groups(all_rows)
     included = _render_model_selector(available)
+    weights = render_weight_inputs(included)
     rows = [r for r in all_rows if _row_group(r) in included]
     bars = [b for b in all_bars if _bar_group(b) in included]
     excluded = [r for r in all_rows if _row_group(r) not in included]
@@ -73,7 +76,7 @@ def render(prepared: dict, ticker: str) -> None:
     # ── Section 4: Summary statistics ──────────────────────
     if len(rows) > 1:
         st.markdown("---")
-        render_summary_stats(rows, current_price)
+        render_summary_stats(rows, current_price, weights)
 
     # ── Section 5: Excluded models (grayed out) ────────────
     if excluded:
@@ -161,9 +164,10 @@ def _collect_rows(current_price: float) -> list[dict]:
     ddm = st.session_state.get("ddm_output")
     if ddm:
         collect_ddm_rows(ddm, rows)
-    # Alt model (legacy only — not used in scenario format)
+    # Alt model (legacy only — skip when scenario output exists)
     ddm_alt = st.session_state.get("ddm_output_alt")
-    if ddm_alt and ddm_alt.get("implied_price") and ddm_alt["implied_price"] > 0:
+    if (ddm_alt and ddm_alt.get("implied_price") and ddm_alt["implied_price"] > 0
+            and not (ddm and is_scenario_format(ddm))):
         ml = "Gordon Growth" if ddm_alt.get("model") == "gordon" else "2-Stage"
         ke, g = ddm_alt.get("ke", 0), ddm_alt.get("g", 0)
         rows.append({"method": f"DDM ({ml})", "implied": ddm_alt["implied_price"],
@@ -194,9 +198,10 @@ def _collect_bars() -> list[dict]:
     ddm = st.session_state.get("ddm_output")
     if ddm:
         collect_ddm_bars(ddm, bars)
-    # Alt model (legacy only)
+    # Alt model (legacy only — skip when scenario output exists)
     ddm_alt = st.session_state.get("ddm_output_alt")
-    if ddm_alt and ddm_alt.get("implied_price") and ddm_alt["implied_price"] > 0:
+    if (ddm_alt and ddm_alt.get("implied_price") and ddm_alt["implied_price"] > 0
+            and not (ddm and is_scenario_format(ddm))):
         lo = ddm_alt.get("sensitivity_min", ddm_alt["implied_price"])
         hi = ddm_alt.get("sensitivity_max", ddm_alt["implied_price"])
         ml = "Gordon" if ddm_alt.get("model") == "gordon" else "2-Stage"

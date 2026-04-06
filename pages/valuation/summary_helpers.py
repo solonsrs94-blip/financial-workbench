@@ -4,7 +4,12 @@ Extracted from summary_tab.py to keep files under 300 lines.
 """
 
 import streamlit as st
-import numpy as np
+
+from pages.valuation.summary_weights import (  # noqa: F401 — re-export
+    render_weight_inputs,
+    compute_weighted_fair_value,
+    render_summary_stats,
+)
 
 
 def is_scenario_format(dcf: dict) -> bool:
@@ -49,6 +54,7 @@ def collect_dcf_bars(dcf: dict, bars: list) -> None:
             lo = min(lo, bear["sensitivity_min"])
         if bull and bull.get("sensitivity_max"):
             hi = max(hi, bull["sensitivity_max"])
+        lo = max(lo, 0)
         bars.append({
             "label": "DCF",
             "low": lo, "high": hi, "mid": mid,
@@ -58,6 +64,7 @@ def collect_dcf_bars(dcf: dict, bars: list) -> None:
     elif dcf.get("implied_price"):
         lo = dcf.get("sensitivity_min", dcf["implied_price"])
         hi = dcf.get("sensitivity_max", dcf["implied_price"])
+        lo = max(lo, 0)
         bars.append({
             "label": "DCF",
             "low": lo, "high": hi,
@@ -104,6 +111,7 @@ def collect_ddm_bars(ddm: dict, bars: list) -> None:
             lo = min(lo, bear["sensitivity_min"])
         if bull and bull.get("sensitivity_max"):
             hi = max(hi, bull["sensitivity_max"])
+        lo = max(lo, 0)
         bars.append({
             "label": "DDM",
             "low": lo, "high": hi, "mid": mid,
@@ -113,6 +121,7 @@ def collect_ddm_bars(ddm: dict, bars: list) -> None:
     elif ddm.get("implied_price") and ddm["implied_price"] > 0:
         lo = ddm.get("sensitivity_min", ddm["implied_price"])
         hi = ddm.get("sensitivity_max", ddm["implied_price"])
+        lo = max(lo, 0)
         bars.append({
             "label": "DDM",
             "low": lo, "high": hi,
@@ -166,6 +175,7 @@ def collect_comps_bars(comps: dict, bars: list) -> None:
             lo = min(lo, bear["implied_price"])
         if bull and bull.get("implied_price"):
             hi = max(hi, bull["implied_price"])
+        lo = max(lo, 0)
         bars.append({
             "label": "Comps",
             "low": lo, "high": hi, "mid": mid,
@@ -181,6 +191,7 @@ def collect_comps_bars(comps: dict, bars: list) -> None:
             med = data.get("median")
             if lo is None or hi is None or med is None:
                 continue
+            lo = max(lo, 0)
             label = data.get("label", key)
             bars.append({
                 "label": f"Comps ({label})",
@@ -235,6 +246,7 @@ def collect_historical_bars(hist: dict, bars: list) -> None:
             lo = min(lo, bear["implied_price"])
         if bull and bull.get("implied_price"):
             hi = max(hi, bull["implied_price"])
+        lo = max(lo, 0)
         bars.append({
             "label": "Historical",
             "low": lo, "high": hi, "mid": mid,
@@ -268,30 +280,3 @@ _HIST_MULT_LABELS = {
     "p_book": "P/Book",
     "p_tbv": "P/TBV",
 }
-
-
-def render_summary_stats(rows: list[dict], current_price: float) -> None:
-    """Cross-method summary statistics (included models only)."""
-    st.markdown("#### Summary Statistics")
-    prices = [r["implied"] for r in rows]
-    mean_p, median_p = float(np.mean(prices)), float(np.median(prices))
-    lo, hi = min(prices), max(prices)
-    spread = (hi - lo) / mean_p * 100 if mean_p > 0 else 0
-
-    c1, c2, c3, c4 = st.columns(4)
-    c1.metric("Mean", f"${mean_p:,.2f}")
-    c2.metric("Median", f"${median_p:,.2f}")
-    c3.metric("Range", f"${lo:,.0f} – ${hi:,.0f}")
-    c4.metric("Spread", f"{spread:.0f}%")
-
-    if current_price > 0:
-        up_mean = (mean_p / current_price - 1) * 100
-        up_med = (median_p / current_price - 1) * 100
-        cm = "#2ea043" if up_mean > 0 else "#f85149"
-        cd = "#2ea043" if up_med > 0 else "#f85149"
-        st.markdown(
-            f'<div style="font-size:13px;opacity:0.7;margin-top:4px">'
-            f'Consensus — Mean: <span style="color:{cm}">{up_mean:+.1f}%</span>'
-            f' · Median: <span style="color:{cd}">{up_med:+.1f}%</span></div>',
-            unsafe_allow_html=True,
-        )

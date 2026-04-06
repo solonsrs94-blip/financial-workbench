@@ -1,9 +1,4 @@
-"""Analyst Commentary — guided text areas for each valuation module.
-
-Each module gets an expander with a template of guiding questions.
-DCF Steps 2/4 and DDM Step 2 have per-scenario commentary.
-DCF Step 5 and DDM Step 3 have shared scenario comparison commentary.
-"""
+"""Analyst Commentary — guided text areas for each valuation module."""
 
 import streamlit as st
 
@@ -12,12 +7,13 @@ from components.commentary_templates import (
     healthcare, energy_utilities, real_estate,
     dcf_step4, dcf_step5,
     ddm_financial, ddm_step3,
+    ddm_consumer, ddm_utility, ddm_reit, ddm_cyclical,
     comps as comps_templates,
     historical as hist_templates,
     non_dcf,
 )
 
-# ── Sector registry (DCF Step 2) ─────────────────────────────────────
+# -- Sector registry (DCF Step 2) ----------------------------------------
 
 SECTOR_OPTIONS = [
     "Technology / Growth",
@@ -43,7 +39,7 @@ _SCENARIO_ATTRS = {
     "bear": "STEP2_BEAR",
 }
 
-# ── Step 4 templates (not sector-specific) ───────────────────────────
+# -- Step 4 templates (not sector-specific) -------------------------------
 
 _STEP4_TEMPLATES = {
     "base": dcf_step4.STEP4_BASE,
@@ -51,15 +47,25 @@ _STEP4_TEMPLATES = {
     "bear": dcf_step4.STEP4_BEAR,
 }
 
-# ── DDM Step 2 templates (financial sector only) ─────────────────────
+# -- DDM sector registry --------------------------------------------------
 
-_DDM_STEP2_TEMPLATES = {
-    "base": ddm_financial.STEP2_BASE,
-    "bull": ddm_financial.STEP2_BULL,
-    "bear": ddm_financial.STEP2_BEAR,
+DDM_SECTOR_OPTIONS = [
+    "Consumer / Dividend Aristocrat",
+    "Financial (Bank / Insurance)",
+    "Utility / Infrastructure",
+    "REIT",
+    "Cyclical Dividend",
+]
+
+_DDM_SECTOR_MODULES = {
+    "Consumer / Dividend Aristocrat": ddm_consumer,
+    "Financial (Bank / Insurance)": ddm_financial,
+    "Utility / Infrastructure": ddm_utility,
+    "REIT": ddm_reit,
+    "Cyclical Dividend": ddm_cyclical,
 }
 
-# ── Non-DCF templates ────────────────────────────────────────────────
+# -- Non-DCF templates ----------------------------------------------------
 
 TEMPLATES: dict[str, str] = {
     "commentary_dcf_step3": non_dcf.STEP3_WACC,
@@ -70,7 +76,7 @@ TEMPLATES: dict[str, str] = {
 }
 
 
-# ── Public API — standard modules ────────────────────────────────────
+# -- Public API: standard modules -----------------------------------------
 
 
 def render_commentary(key: str) -> None:
@@ -88,7 +94,7 @@ def render_commentary(key: str) -> None:
         )
 
 
-# ── Public API — DCF per-scenario ────────────────────────────────────
+# -- Public API: DCF per-scenario -----------------------------------------
 
 
 def get_step2_template(scenario: str) -> str:
@@ -142,14 +148,23 @@ def render_dcf_step5_commentary() -> None:
         )
 
 
-# ── Public API — DDM per-scenario ────────────────────────────────────
+# -- Public API: DDM per-scenario -----------------------------------------
+
+
+def _get_ddm_step2_template(scenario: str) -> str:
+    """Get the DDM Step 2 template for a scenario using selected sector."""
+    sector = st.session_state.get("ddm_sector_template", DDM_SECTOR_OPTIONS[0])
+    mod = _DDM_SECTOR_MODULES.get(sector, ddm_consumer)
+    attr = _SCENARIO_ATTRS.get(scenario, "STEP2_BASE")
+    return getattr(mod, attr, "")
 
 
 def render_ddm_step2_commentary(scenario: str) -> None:
-    """Render per-scenario DDM Step 2 commentary (financial sector)."""
+    """Render per-scenario DDM Step 2 commentary with sector selector."""
     key = f"commentary_ddm_step2_{scenario}"
-    template = _DDM_STEP2_TEMPLATES.get(scenario, ddm_financial.STEP2_BASE)
+    template = _get_ddm_step2_template(scenario)
     with st.expander("Analyst Commentary", expanded=False):
+        _render_ddm_sector_selector(scenario)
         st.text_area(
             label="Analyst Commentary",
             value=st.session_state.get(key, template),
@@ -173,7 +188,7 @@ def render_ddm_step3_commentary() -> None:
         )
 
 
-# ── Public API — Comps per-scenario ──────────────────────────────────
+# -- Public API: Comps per-scenario ---------------------------------------
 
 _COMPS_TEMPLATES = {
     "base": comps_templates.STEP3_BASE,
@@ -210,7 +225,7 @@ def render_comps_comparison_commentary() -> None:
         )
 
 
-# ── Public API — Historical per-scenario ─────────────────────────────
+# -- Public API: Historical per-scenario ----------------------------------
 
 _HIST_TEMPLATES = {
     "base": hist_templates.STEP_BASE,
@@ -247,33 +262,37 @@ def render_historical_comparison_commentary() -> None:
         )
 
 
-# ── Sector selector (DCF Step 2 only) ───────────────────────────────
+# -- Sector selectors (shared logic) --------------------------------------
 
 
 def _render_sector_selector(scenario: str) -> None:
-    """Sector dropdown with reset warning on change."""
-    prev = st.session_state.get("dcf_sector_template", SECTOR_OPTIONS[0])
-    current_idx = SECTOR_OPTIONS.index(prev) if prev in SECTOR_OPTIONS else 0
-    new_sector = st.selectbox(
-        "Analysis Template", options=SECTOR_OPTIONS,
-        index=current_idx, key=f"_dcf_sector_select_{scenario}",
-        help="Sector-specific prompts for your analysis.",
+    """DCF sector dropdown."""
+    _render_template_selector(
+        scenario, "dcf", SECTOR_OPTIONS,
+        "dcf_sector_template", "commentary_dcf_step2",
     )
-    if new_sector != prev:
-        st.warning(
-            "Changing template will reset commentary to new template "
-            "defaults for all scenarios."
-        )
-        if st.button("Confirm template change",
-                     key=f"_confirm_sector_{scenario}"):
-            st.session_state["dcf_sector_template"] = new_sector
-            _reset_step2_commentary()
+
+
+def _render_ddm_sector_selector(scenario: str) -> None:
+    """DDM sector dropdown."""
+    _render_template_selector(
+        scenario, "ddm", DDM_SECTOR_OPTIONS,
+        "ddm_sector_template", "commentary_ddm_step2",
+    )
+
+
+def _render_template_selector(scenario, prefix, options, state_key, commentary_prefix):
+    prev = st.session_state.get(state_key, options[0])
+    idx = options.index(prev) if prev in options else 0
+    new = st.selectbox("Analysis Template", options=options, index=idx,
+                       key=f"_{prefix}_sector_select_{scenario}",
+                       help="Sector-specific prompts for your analysis.")
+    if new != prev:
+        st.warning("Changing template will reset commentary for all scenarios.")
+        if st.button("Confirm template change", key=f"_confirm_{prefix}_sector_{scenario}"):
+            st.session_state[state_key] = new
+            for s in ["base", "bull", "bear"]:
+                k = f"{commentary_prefix}_{s}"
+                if k in st.session_state:
+                    del st.session_state[k]
             st.rerun()
-
-
-def _reset_step2_commentary() -> None:
-    """Clear all DCF Step 2 scenario commentary so new templates load."""
-    for s in ["base", "bull", "bear"]:
-        key = f"commentary_dcf_step2_{s}"
-        if key in st.session_state:
-            del st.session_state[key]

@@ -96,17 +96,93 @@ def render_scenario_output(
                 "g": g_label,
                 "sensitivity_min": ff_range.get("min", implied),
                 "sensitivity_max": ff_range.get("max", implied),
+                "projections": _build_ddm_projections(r["result"], model),
+                "sensitivity": _build_ddm_sensitivity(
+                    d0, ke, a, current_price,
+                ),
             }
 
-    st.session_state["ddm_output"] = ddm_output
+    # Save button — only writes to session_state when clicked
+    def _on_save():
+        st.session_state["ddm_output"] = ddm_output
+        base_a = scenarios.get("base")
+        if base_a:
+            store_alt_fn(
+                base_a["d0"], ke, base_a,
+                base_a["model"], pf, current_price,
+            )
 
-    # Store alt model for base scenario only
-    base_a = scenarios.get("base")
-    if base_a:
-        store_alt_fn(
-            base_a["d0"], ke, base_a,
-            base_a["model"], pf, current_price,
+    from components.save_button import render_save_button
+    render_save_button("ddm_output", "DDM", ddm_output, on_save=_on_save)
+
+
+def _build_ddm_projections(result: dict, model: str) -> dict:
+    """Extract DDM projection data for export."""
+    if model == "gordon":
+        return {
+            "model": "gordon",
+            "d0": result.get("d0"),
+            "d1": result.get("d1"),
+        }
+    # 2-Stage: extract projection table
+    proj_df = result.get("projection")
+    years = []
+    if proj_df is not None and len(proj_df) > 0:
+        for _, row in proj_df.iterrows():
+            entry = {
+                "year": int(row["Year"]),
+                "dps": round(float(row["DPS"]), 4),
+                "pv_factor": round(float(row["PV Factor"]), 6),
+                "pv_dividend": round(float(row["PV of Dividend"]), 4),
+            }
+            if "EPS" in row.index:
+                entry["eps"] = round(float(row["EPS"]), 4)
+            if "Payout" in row.index:
+                entry["payout"] = round(float(row["Payout"]), 4)
+            years.append(entry)
+    return {
+        "model": "two_stage",
+        "years": years,
+        "pv_stage1": result.get("pv_stage1"),
+        "pv_terminal": result.get("pv_terminal"),
+        "terminal_value": result.get("terminal_value"),
+        "terminal_dps": result.get("terminal_dps"),
+    }
+
+
+def _build_ddm_sensitivity(d0, ke, a, current_price) -> dict | None:
+    """Build DDM sensitivity grid for export."""
+    import math
+    from lib.analysis.valuation.ddm import ddm_sensitivity
+    try:
+        model = a["model"]
+        g_base = a.get("g") if model == "gordon" else a.get("g2", 0.025)
+        df = ddm_sensitivity(
+            d0=d0, ke_base=ke, g_base=g_base, model=model,
+            n=a.get("n", 5), g1=a.get("g1"),
+            eps0=a.get("eps0"), eps_growth1=a.get("eps_growth1"),
+            payout1=a.get("payout1"), eps_growth2=a.get("eps_growth2"),
+            payout2=a.get("payout2"), use_eps_method=a.get("use_eps", False),
         )
+        cap = current_price * 100 if current_price > 0 else float("inf")
+        rows = []
+        for _, row_data in df.iterrows():
+            cells = []
+            for val in row_data:
+                if isinstance(val, (int, float)) and not math.isnan(val) and 0 < val < cap:
+                    cells.append(round(float(val), 2))
+                else:
+                    cells.append(None)
+            rows.append(cells)
+        return {
+            "row_header": "ke",
+            "col_header": "growth",
+            "row_labels": list(df.index),
+            "col_labels": list(df.columns),
+            "values": rows,
+        }
+    except Exception:
+        return None
 
 
 # ── Comparison table ──────────────────────────────────────────────

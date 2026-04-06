@@ -120,7 +120,7 @@ def fetch_all_info(ticker: str) -> Optional[dict]:
             "ev_ebitda": info.get("enterpriseToEbitda"),
             "ev_revenue": info.get("enterpriseToRevenue"),
             "dividend_yield": div_yield,
-            "payout_ratio": info.get("payoutRatio"),
+            "payout_ratio": _calc_payout(info),
             "roe": info.get("returnOnEquity"),
             "roa": info.get("returnOnAssets"),
             "profit_margin": info.get("profitMargins"),
@@ -138,6 +138,18 @@ def fetch_all_info(ticker: str) -> Optional[dict]:
                                     or info.get("sharesOutstanding")),
         },
     }
+
+
+def _calc_payout(info: dict) -> Optional[float]:
+    """Canonical payout ratio = DPS / diluted EPS (equity research standard).
+
+    Replaces yfinance's info["payoutRatio"] which uses an unknown method.
+    """
+    dps = info.get("dividendRate") or 0.0
+    eps = info.get("trailingEps") or 0.0
+    if eps > 0 and dps > 0:
+        return dps / eps
+    return None
 
 
 def fetch_price_history(

@@ -82,6 +82,7 @@ SESSION_CACHE_PREFIXES = (
     "company_", "price_", "events_", "fin_data_",
     "holders_", "recs_", "news_", "peer_medians_",
     "val_", "comps_", "hist_mult_", "ddm_",
+    "dcf_", "historical_",
 )
 
 # --- Yahoo Screener categories for Browse ---

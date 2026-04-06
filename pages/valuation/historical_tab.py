@@ -50,6 +50,72 @@ MULT_LABELS = {
 MULT_KEYS_NORMAL = ["pe", "ev_ebitda", "ev_revenue"]
 MULT_KEYS_FINANCIAL = ["pe", "p_book", "p_tbv"]
 
+_EPS_OPTIONS = [
+    "Trailing EPS (TTM)",
+    "Forward EPS (Consensus)",
+    "Normalized EPS (Manual)",
+]
+
+
+def _render_eps_selector(ticker: str, data: dict, selected: list) -> dict:
+    """Render EPS basis selector. Returns dict with eps_basis, override, scale."""
+    if "pe" not in selected:
+        return {"eps_basis": "trailing", "override": False, "scale": 1.0}
+
+    company = st.session_state.get(f"company_{ticker}")
+    ratios = getattr(company, "ratios", None) if company else None
+    trailing = getattr(ratios, "eps_trailing", None) or 0.0
+    forward = getattr(ratios, "eps_forward", None) or 0.0
+
+    with st.expander("EPS Basis (for P/E implied values)", expanded=False):
+        ref_parts = []
+        if trailing:
+            ref_parts.append(f"Trailing: ${trailing:.2f}")
+        if forward:
+            ref_parts.append(f"Forward: ${forward:.2f}")
+        if ref_parts:
+            st.caption(" | ".join(ref_parts))
+
+        basis = st.selectbox(
+            "EPS Basis", _EPS_OPTIONS, index=0, key="hist_eps_basis",
+        )
+
+        if basis == _EPS_OPTIONS[1] and forward and forward > 0:
+            eps_used = forward
+        elif basis == _EPS_OPTIONS[2]:
+            eps_used = st.number_input(
+                "Normalized EPS",
+                min_value=0.01, max_value=9999.0,
+                value=None, step=0.10, format="%.2f",
+                key="hist_eps_manual",
+                placeholder="Enter analyst estimate",
+            )
+        else:
+            eps_used = None
+
+    if eps_used and trailing and trailing > 0:
+        return {
+            "eps_basis": basis, "override": True,
+            "scale": eps_used / trailing, "eps_used": eps_used,
+        }
+    return {"eps_basis": "trailing", "override": False, "scale": 1.0}
+
+
+def _scale_pe_implied(implied_values: dict, scale: float) -> dict:
+    """Scale P/E implied prices by EPS ratio (override / trailing)."""
+    result = dict(implied_values)
+    pe_iv = implied_values.get("pe")
+    if not pe_iv or not isinstance(pe_iv, dict):
+        return result
+    scaled = {}
+    for key, val in pe_iv.items():
+        if isinstance(val, (int, float)) and val > 0:
+            scaled[key] = val * scale
+        else:
+            scaled[key] = val
+    result["pe"] = scaled
+    return result
+
 
 # ── Main render ───────────────────────────────────────────────
 
@@ -139,6 +205,14 @@ def render(prepared: dict, ticker: str) -> None:
         f"Currency: {data['currency']}"
     )
 
+    # ── EPS Basis (for P/E implied values) ────────────────────
+    implied_values = data["implied_values"]
+    eps_info = _render_eps_selector(ticker, data, selected)
+    if eps_info.get("override") and "pe" in implied_values:
+        implied_values = _scale_pe_implied(
+            implied_values, eps_info["scale"],
+        )
+
     # ── Section 1: Charts ─────────────────────────────────────
     render_historical_charts(
         data["daily_multiples"], data["summary"], selected,
@@ -147,14 +221,14 @@ def render(prepared: dict, ticker: str) -> None:
     # ── Section 2: Summary + Implied Value ────────────────────
     st.divider()
     render_historical_summary(
-        data["summary"], data["implied_values"],
+        data["summary"], implied_values,
         data["current_price"], data["currency"],
     )
 
     # ── Section 3: Football Field ─────────────────────────────
     st.divider()
     render_historical_football(
-        data["summary"], data["implied_values"],
+        data["summary"], implied_values,
         data["current_price"], data["currency"],
     )
 
@@ -166,6 +240,7 @@ def render(prepared: dict, ticker: str) -> None:
         "based on historical statistics."
     )
     render_scenario_valuation(
-        data["summary"], data["implied_values"],
+        data["summary"], implied_values,
         data["current_price"], data["currency"],
+        eps_info=eps_info,
     )

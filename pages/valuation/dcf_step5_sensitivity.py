@@ -11,6 +11,8 @@ Base case cell highlighted.
 import streamlit as st
 import pandas as pd
 
+import numpy as np
+
 from lib.analysis.valuation.sensitivity import (
     sensitivity_table,
     exit_sensitivity_table,
@@ -75,9 +77,11 @@ def render_sensitivity(
     all_vals = df_g.values.flatten().tolist() + df_m.values.flatten().tolist()
     valid = [v for v in all_vals if isinstance(v, (int, float))
              and not math.isnan(v) and v > 0]
+    if not valid:
+        return {"min": 0, "max": 0}
     return {
-        "min": min(valid) if valid else 0,
-        "max": max(valid) if valid else 0,
+        "min": float(np.percentile(valid, 10)),
+        "max": float(np.percentile(valid, 90)),
     }
 
 

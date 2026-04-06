@@ -16,11 +16,7 @@ venv/
 env/
 
 # Local data and cache
-data/cache/
-data/portfolio/
-data/experiments/
-data/sessions/
-data/education/
+data/
 
 # IDE
 .vscode/
@@ -42,6 +38,14 @@ firebase-service-account.json
 
 # Saved valuations (local-only, moved to Firestore)
 saved_valuations/
+
+# Generated reports and test outputs
+*_test.json
+*_report.md
+test_results/
+scripts/industry_mapping_output.py
+scripts/industry_mapping_raw.csv
+scripts/peer_suggestions_test.txt
 
 # Misc
 *.log

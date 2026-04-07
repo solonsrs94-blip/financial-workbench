@@ -117,7 +117,7 @@ def _render_table(
         return ""
 
     # Apply styling
-    styled = formatted.style.applymap(_style)
+    styled = formatted.style.map(_style)
 
     # Highlight base case cell
     styles = []

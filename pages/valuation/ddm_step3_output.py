@@ -133,7 +133,7 @@ def _render_sensitivity(d0, ke, a, current_price, scenario=""):
             return "background-color: rgba(46,160,67,0.25); color: #2ea043"
         return "background-color: rgba(248,81,73,0.2); color: #f85149"
 
-    styled = formatted.style.applymap(_style)
+    styled = formatted.style.map(_style)
     g_label = "Growth Rate" if model == "gordon" else "Terminal Growth"
     st.markdown(
         f'<div style="font-size:12px;opacity:0.5;margin-bottom:4px">'

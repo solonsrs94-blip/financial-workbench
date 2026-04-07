@@ -40,7 +40,7 @@ def render_valuation_table(
             return "color: #2ea043; font-weight: 600"
         return "color: #f85149; font-weight: 600"
 
-    styled = df.style.applymap(
+    styled = df.style.map(
         _style_upside, subset=["Upside / Downside"],
     ).set_properties(
         **{"font-size": "13px"},

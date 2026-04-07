@@ -155,16 +155,17 @@ def extract_historical_financials(prepared: dict) -> dict | None:
 
 
 def extract_industry_averages(prepared: dict) -> dict | None:
-    """Export Damodaran industry averages if available."""
+    """Export Damodaran industry averages if available.
+
+    Passes through all keys from the fetched dict so new Damodaran fields
+    (debt_capital, interest_coverage, eff_tax_rate, etc.) flow through
+    automatically. Keeps both `industry_name` and a `damodaran_industry`
+    alias for downstream consumers.
+    """
     ia = prepared.get("industry_averages")
     if not ia or not isinstance(ia, dict):
         return None
-    # Rename industry_name → damodaran_industry for clarity; pass rest through
-    result = {"damodaran_industry": ia.get("industry_name")}
-    for key in ("n_firms", "operating_margin", "net_margin", "gross_margin",
-                "ebitda_margin", "roe", "debt_ebitda", "debt_equity",
-                "payout_ratio", "dividend_yield"):
-        v = ia.get(key)
-        if v is not None:
-            result[key] = v
+    result = dict(ia)
+    if ia.get("industry_name"):
+        result["damodaran_industry"] = ia["industry_name"]
     return result

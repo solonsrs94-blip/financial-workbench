@@ -220,12 +220,14 @@ def _render_comparison(results: dict, current_price: float) -> None:
 def _build_output(results: dict, current_price: float) -> dict:
     """Build scenario output dict (does not write to session_state)."""
     comps_output = {}
+    primary = st.session_state.get("comps_scenario_mult")
     for scenario, r in results.items():
         comps_output[scenario] = {
             "implied_price": r["implied_price"],
             "applied_mult": r["applied_mult"],
             "premium": r["premium"],
             "final_mult": r["final_mult"],
+            "primary_multiple": primary,
         }
     comps_output["current_price"] = current_price
     return comps_output

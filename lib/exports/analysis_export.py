@@ -16,6 +16,16 @@ from lib.exports.company_data import (
 )
 
 _SCENARIOS = ["base", "bull", "bear"]
+_BRIDGE_MAP = {"net_debt": "net_debt", "minority_interest": "minority",
+               "preferred_equity": "preferred", "diluted_shares": "shares"}
+
+
+def _merge_bridge(results: dict, state: dict, s: str) -> dict:
+    for out_k, in_k in _BRIDGE_MAP.items():
+        v = state.get(f"bridge_{s}_{in_k}")
+        if v is not None:
+            results[out_k] = v
+    return results
 
 
 def build_export_json(
@@ -27,7 +37,7 @@ def build_export_json(
     """Build structured export dict from session state."""
     defaults = default_templates or {}
     company = state.get(f"company_{ticker}")
-    prepared = state.get("prepared_data") or {}
+    prepared = state.get(f"prepared_data_{ticker}") or {}
 
     # Build in specified section order
     result = {"meta": _build_meta(state, ticker, company)}
@@ -58,7 +68,7 @@ def build_export_json(
 
 def _build_meta(state: dict, ticker: str, company=None) -> dict:
     val_data = state.get(f"val_data_{ticker}") or {}
-    prepared = state.get("prepared_data") or {}
+    prepared = state.get(f"prepared_data_{ticker}") or {}
     ctype = prepared.get("company_type", {})
 
     price = 0
@@ -114,6 +124,8 @@ def _build_dcf(state: dict, ticker: str, defaults: dict) -> dict:
         results = output.get(s) if isinstance(output, dict) else None
         if not assumptions and not results:
             continue
+        if results is not None:
+            results = _merge_bridge(dict(results), state, s)
         scenarios[s] = {
             "assumptions": assumptions,
             "terminal": terminal,
@@ -171,6 +183,7 @@ def _build_ddm(state: dict, ticker: str, defaults: dict) -> dict:
 def _build_comps(state: dict, ticker: str, defaults: dict) -> dict:
     comps_table = state.get("comps_table") or {}
     valuation = state.get("comps_valuation") or {}
+    primary_mult = state.get("comps_scenario_mult")
 
     scenarios = {}
     for s in _SCENARIOS:
@@ -178,6 +191,7 @@ def _build_comps(state: dict, ticker: str, defaults: dict) -> dict:
         if not sv or not isinstance(sv, dict):
             continue
         scenarios[s] = {
+            "primary_multiple": primary_mult,
             "applied_multiple": sv.get("applied_mult"),
             "premium_discount": sv.get("premium"),
             "final_multiple": sv.get("final_mult"),
@@ -232,35 +246,27 @@ def _build_historical(state: dict, ticker: str, defaults: dict) -> dict:
     return result
 
 
-def _build_summary(
-    state: dict, included: dict, defaults: dict,
-) -> dict:
-    models_used = [
-        k.lower() for k, v in included.items() if v
-    ]
+_SUMMARY_KEYS = {"DCF": ("dcf_output", "dcf"),
+                 "Comps": ("comps_valuation", "comps"),
+                 "Historical": ("historical_result", "historical_multiples"),
+                 "DDM": ("ddm_output", "ddm")}
 
-    _KEY_MAP = {"DCF": "dcf_output", "Comps": "comps_valuation",
-                "Historical": "historical_result", "DDM": "ddm_output"}
-    _LABEL = {"DCF": "dcf", "Comps": "comps",
-              "Historical": "historical_multiples", "DDM": "ddm"}
-    football = {}
-    for group, key in _KEY_MAP.items():
-        if included.get(group):
-            football[_LABEL[group]] = _extract_scenario_prices(state.get(key))
 
-    # Weighted fair value from analyst-set weights
-    weights = state.get("summary_weights") or {}
-    weighted_result = compute_weighted_fair_value(football, weights)
-
-    result = {
-        "models_used": models_used,
-        "football_field": football,
-        "commentary": _get_commentary(
-            state, "commentary_summary", defaults,
-        ),
+def _build_summary(state: dict, included: dict, defaults: dict) -> dict:
+    football = {
+        label: _extract_scenario_prices(state.get(key))
+        for grp, (key, label) in _SUMMARY_KEYS.items() if included.get(grp)
     }
-    if weighted_result:
-        result.update(weighted_result)
+    weighted = compute_weighted_fair_value(
+        football, state.get("summary_weights") or {},
+    )
+    result = {
+        "models_used": [k.lower() for k, v in included.items() if v],
+        "football_field": football,
+        "commentary": _get_commentary(state, "commentary_summary", defaults),
+    }
+    if weighted:
+        result.update(weighted)
     return result
 
 
@@ -281,20 +287,14 @@ def _extract_scenario_prices(data: dict | None) -> dict | None:
 def _build_overrides(state: dict, ticker: str) -> dict:
     overrides = state.get(f"financial_overrides_{ticker}")
     has = bool(overrides and any(overrides.values()))
-    return {
-        "has_overrides": has,
-        "details": overrides if has else None,
-    }
+    return {"has_overrides": has, "details": overrides if has else None}
 
 
-def _get_commentary(
-    state: dict, key: str, defaults: dict,
-) -> str | None:
+def _get_commentary(state: dict, key: str, defaults: dict) -> str | None:
     """Get commentary text. Returns None if unchanged from default."""
     text = state.get(key)
     if not text:
         return None
-    default = defaults.get(key, "")
-    if text.strip() == default.strip():
+    if text.strip() == defaults.get(key, "").strip():
         return None
     return text

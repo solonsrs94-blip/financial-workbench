@@ -21,6 +21,11 @@ from pages.valuation import (
 )
 
 from components.auth_guard import require_auth, show_user_sidebar
+from lib.storage.autosave import (
+    write_autosave, read_autosave, delete_autosave,
+    autosave_age_seconds, format_age,
+)
+from lib.exports.session_restorer import restore_valuation_state
 
 load_css()
 require_auth()
@@ -43,11 +48,44 @@ if ticker != saved_ticker:
 force_refresh = is_force_refresh()
 
 # Detect loaded-from-save: skip cache clearing, use pre-loaded state
-_loaded = st.session_state.pop("_loaded_ticker", None)
+# Use get() not pop() to survive reruns; clear guard keys only after success
+_loaded = st.session_state.get("_loaded_ticker")
 if _loaded and _loaded == ticker:
-    st.session_state.pop("_loaded_from_save", None)
     force_refresh = False
     st.session_state["_val_cached_ticker"] = ticker
+    st.session_state.pop("_loaded_ticker", None)
+    st.session_state.pop("_loaded_from_save", None)
+
+# --- Auto-restore prompt (once per ticker per session) ---
+_autosave_flag = f"_autosave_checked_{ticker}"
+if (
+    not st.session_state.get(_autosave_flag)
+    and not st.session_state.get("_loaded_from_save")
+    and st.session_state.get("_val_cached_ticker") != ticker
+):
+    _age = autosave_age_seconds(ticker)
+    if _age is not None:
+        _payload = read_autosave(ticker)
+        if _payload:
+            st.info(
+                f"💾 Previous session found for **{ticker}** "
+                f"(saved {format_age(_age)}). Restore your work?"
+            )
+            _c1, _c2, _c3 = st.columns([1, 1, 6])
+            with _c1:
+                if st.button("Restore", key=f"_autosave_restore_{ticker}"):
+                    _state, _t = restore_valuation_state(_payload)
+                    for _k, _v in _state.items():
+                        st.session_state[_k] = _v
+                    st.session_state[_autosave_flag] = True
+                    st.rerun()
+            with _c2:
+                if st.button("Discard", key=f"_autosave_discard_{ticker}"):
+                    delete_autosave(ticker)
+                    st.session_state[_autosave_flag] = True
+                    st.rerun()
+            st.stop()
+    st.session_state[_autosave_flag] = True
 
 # Clear session cache on ticker change
 if force_refresh or st.session_state.get("_val_cached_ticker") != ticker:
@@ -116,3 +154,7 @@ if prepared and not prepared.get("error"):
 
     with tab_summary:
         summary_tab.render(prepared, ticker)
+
+# --- Auto-save on every rerun (safety net against session loss) ---
+if ticker and st.session_state.get("prepared_data"):
+    write_autosave(dict(st.session_state), ticker)

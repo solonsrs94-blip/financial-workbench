@@ -7,9 +7,9 @@ show_user_sidebar() — call after auth check to display user info.
 
 import streamlit as st
 
-from config.settings import get_firebase_service_account
+from config.settings import get_firebase_service_account, FIREBASE_API_KEY
 from lib.auth.firebase_init import init_firebase
-from lib.auth.firebase_auth import check_user_approved
+from lib.auth.firebase_auth import check_user_approved, refresh_id_token, AuthError
 
 
 def _ensure_firebase() -> None:
@@ -29,6 +29,7 @@ def require_auth() -> str:
     Shows login redirect and calls st.stop() otherwise.
     """
     _ensure_firebase()
+    _try_refresh_token()
 
     uid = st.session_state.get("auth_uid")
     if not uid:
@@ -59,6 +60,86 @@ def show_user_sidebar() -> None:
         if st.button("Sign Out", key="_auth_signout"):
             _sign_out()
             st.rerun()
+        _render_autosave_controls()
+
+
+def _render_autosave_controls() -> None:
+    """Manual save/restore buttons for the current ticker's autosave."""
+    ticker = (
+        st.session_state.get("_val_cached_ticker")
+        or st.query_params.get("ticker", "")
+    )
+    if not ticker:
+        return
+    ticker = ticker.upper()
+    from lib.storage.autosave import (
+        write_autosave, delete_autosave,
+        autosave_age_seconds, format_age, read_autosave,
+    )
+    from lib.exports.session_restorer import restore_valuation_state
+
+    st.divider()
+    st.caption(f"Session — {ticker}")
+    age = autosave_age_seconds(ticker)
+    if age is not None:
+        st.caption(f"Autosave: {format_age(age)}")
+
+    if st.button("💾 Save session now", key="_autosave_manual"):
+        if write_autosave(dict(st.session_state), ticker):
+            st.toast(f"Session saved for {ticker}")
+        else:
+            st.toast("Save failed")
+
+    if age is not None:
+        if st.button("📂 Restore autosave", key="_autosave_manual_restore"):
+            payload = read_autosave(ticker)
+            if payload:
+                state, _ = restore_valuation_state(payload)
+                for k, v in state.items():
+                    st.session_state[k] = v
+                st.session_state[f"_autosave_checked_{ticker}"] = True
+                st.rerun()
+        if st.button("🗑 Clear autosave", key="_autosave_manual_clear"):
+            delete_autosave(ticker)
+            st.toast(f"Cleared autosave for {ticker}")
+            st.rerun()
+
+
+def _try_refresh_token() -> None:
+    """Verify the stored ID token; refresh it if expired.
+
+    Silent on success. On unrecoverable failure, clears auth so that
+    require_auth() bounces the user to login — but only after the
+    refresh attempt fails, so live sessions are preserved across the
+    1-hour token expiry window.
+    """
+    id_token = st.session_state.get("auth_id_token")
+    refresh_tok = st.session_state.get("auth_refresh_token")
+    if not id_token or not refresh_tok:
+        return
+    try:
+        from firebase_admin import auth as fb_auth
+        try:
+            fb_auth.verify_id_token(id_token, check_revoked=False)
+            return  # still valid
+        except fb_auth.ExpiredIdTokenError:
+            pass
+        except Exception:
+            return  # unknown — don't break the session
+    except Exception:
+        return
+
+    if not FIREBASE_API_KEY:
+        return
+    try:
+        result = refresh_id_token(refresh_tok, FIREBASE_API_KEY)
+        if result.get("id_token"):
+            st.session_state["auth_id_token"] = result["id_token"]
+            st.session_state["auth_refresh_token"] = result.get(
+                "refresh_token", refresh_tok
+            )
+    except AuthError:
+        _sign_out()
 
 
 def _sign_out() -> None:

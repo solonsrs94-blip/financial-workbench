@@ -1,0 +1,9 @@
+[server]
+enableWebsocketCompression = true
+enableStaticServing = true
+
+[browser]
+gatherUsageStats = false
+
+[runner]
+fastReruns = true

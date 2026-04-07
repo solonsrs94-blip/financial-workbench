@@ -16,7 +16,31 @@ from lib.auth.firebase_init import get_firestore_client
 logger = logging.getLogger(__name__)
 
 _AUTH_BASE = "https://identitytoolkit.googleapis.com/v1/accounts"
+_TOKEN_BASE = "https://securetoken.googleapis.com/v1/token"
 _TIMEOUT = 10
+
+
+def refresh_id_token(refresh_token: str, api_key: str) -> dict:
+    """Exchange a refresh token for a fresh ID token.
+
+    Returns:
+        {"id_token": str, "refresh_token": str, "uid": str}
+
+    Raises:
+        AuthError on failure.
+    """
+    url = f"{_TOKEN_BASE}?key={api_key}"
+    body = {"grant_type": "refresh_token", "refresh_token": refresh_token}
+    resp = requests.post(url, data=body, timeout=_TIMEOUT)
+    data = resp.json()
+    if "error" in data:
+        msg = _friendly_error(data["error"].get("message", "Unknown error"))
+        raise AuthError(msg, data["error"].get("message", ""))
+    return {
+        "id_token": data.get("id_token", ""),
+        "refresh_token": data.get("refresh_token", refresh_token),
+        "uid": data.get("user_id", ""),
+    }
 
 
 class AuthError(Exception):

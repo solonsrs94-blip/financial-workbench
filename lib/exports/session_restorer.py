@@ -18,7 +18,7 @@ def restore_valuation_state(saved: dict) -> tuple[dict, str]:
 
     # Drop widget keys that Streamlit forbids pre-seeding (data_editor etc.).
     # Old saves may contain these; strip on load for backward compat.
-    _FORBIDDEN_SUFFIXES = ("_editor", "_btn", "_reset")
+    _FORBIDDEN_SUFFIXES = ("_editor", "_btn", "_reset", "_generate")
     _FORBIDDEN_EXACT = {
         "comps_peer_editor", "comps_exclude_select",
         "wacc_peer_add_input", "ddm_peer_add_input", "comps_manual_add",

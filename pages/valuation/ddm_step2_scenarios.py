@@ -131,7 +131,7 @@ def render_scenario_tabs(
             )
             if st.button(
                 btn_label,
-                key=f"ddm_{scenario}_generate",
+                key=f"ddm_{scenario}_generate_btn",
                 type="primary",
                 disabled=(result is None),
             ):

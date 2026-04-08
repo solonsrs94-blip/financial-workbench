@@ -233,6 +233,7 @@ def _build_historical(state: dict, ticker: str, defaults: dict) -> dict:
         }
 
     result = {
+        "eps_basis": "diluted",  # yfinance trailingEps / EDGAR diluted
         "statistics": hist.get("summary"),
         "implied_values": hist.get("implied_values"),
         "scenarios": scenarios,
@@ -241,10 +242,9 @@ def _build_historical(state: dict, ticker: str, defaults: dict) -> dict:
         ),
     }
     if hist.get("eps_basis"):
-        result["eps_basis"] = hist["eps_basis"]
+        result["eps_basis_mode"] = hist["eps_basis"]
         result["eps_used"] = hist.get("eps_used")
     return result
-
 
 _SUMMARY_KEYS = {"DCF": ("dcf_output", "dcf"),
                  "Comps": ("comps_valuation", "comps"),

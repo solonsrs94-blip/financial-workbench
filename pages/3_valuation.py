@@ -96,6 +96,9 @@ if force_refresh or st.session_state.get("_val_cached_ticker") != ticker:
     for key in list(st.session_state.keys()):
         if key.startswith("prepared_data"):
             del st.session_state[key]
+    # Reset fetch-status tracker so warnings don't leak across tickers
+    from components.fetch_warnings import clear_fetch_status
+    clear_fetch_status()
     st.session_state["_val_cached_ticker"] = ticker
 
 # --- Load Company Data ---

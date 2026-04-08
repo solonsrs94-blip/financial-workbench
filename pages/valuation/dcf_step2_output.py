@@ -69,8 +69,23 @@ def render_calculated_output(
         st.warning("No base revenue available.")
         return
 
-    # COGS % from historical data (for DIO/DPO projections)
-    base_cogs_pct = hist.get("base_cogs_pct", 0.60)
+    # COGS % from historical data (for DIO/DPO projections). No silent
+    # 60% fallback — surface a warning and skip when data is missing.
+    base_cogs_pct = hist.get("base_cogs_pct")
+    from components.fetch_warnings import record_fetch
+    record_fetch(
+        "cogs_pct",
+        base_cogs_pct is not None,
+        source="standardized income statement",
+        message="COGS % could not be computed — enter a baseline manually",
+    )
+    if base_cogs_pct is None:
+        st.warning(
+            "COGS % could not be computed from historical data — "
+            "projections that depend on COGS cannot be generated.",
+            icon="⚠️",
+        )
+        return
 
     proj = compute_projections(assumptions, base_revenue, base_cogs_pct)
 

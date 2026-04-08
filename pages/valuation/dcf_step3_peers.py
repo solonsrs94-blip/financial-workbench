@@ -168,13 +168,18 @@ def _refresh_peer_data(state: dict) -> None:
 
     raw = get_peer_data(tickers)
 
-    # Compute unlevered beta for each
+    # Compute unlevered beta for each; skip peers with missing tax data
+    # (no silent 21% fallback — see fetch_status audit).
+    filtered = []
     for p in raw:
+        if p.get("tax_rate") is None:
+            continue
         p["unlevered_beta"] = unlever_beta(
             p["beta"], p["de_ratio"], p["tax_rate"],
         )
+        filtered.append(p)
 
-    state["peer_data"] = raw
+    state["peer_data"] = filtered
 
 
 # ── Table rendering ───────────────────────────────────────────────

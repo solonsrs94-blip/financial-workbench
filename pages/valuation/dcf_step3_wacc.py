@@ -15,6 +15,7 @@ from pages.valuation.dcf_step3_ke import render_cost_of_equity
 from pages.valuation.dcf_step3_kd import render_cost_of_debt
 from pages.valuation.dcf_step3_structure import render_structure_and_output
 from components.commentary import render_commentary
+from components.fetch_warnings import record_fetch
 
 
 def render(prepared: dict, ticker: str) -> None:
@@ -27,6 +28,25 @@ def render(prepared: dict, ticker: str) -> None:
 
     # ── Extract inputs from session state ─────────────────────
     inputs = _extract_inputs(prepared, ticker)
+    if inputs is not None:
+        record_fetch(
+            "beta",
+            inputs.get("raw_beta") is not None,
+            source="Yahoo",
+            message="Beta fetch failed — enter beta manually",
+        )
+        record_fetch(
+            "total_debt",
+            inputs.get("total_debt") is not None,
+            source="Balance sheet",
+            message="Total debt not available — balance sheet data missing",
+        )
+        record_fetch(
+            "tax_rate",
+            inputs.get("effective_tax_rate") is not None,
+            source="Income statement",
+            message="Effective tax rate not available — enter tax rate manually",
+        )
     if inputs is None:
         st.warning(
             "Missing valuation data. Ensure Financial Preparation "
@@ -56,7 +76,10 @@ def render(prepared: dict, ticker: str) -> None:
     wacc_result = render_structure_and_output(inputs, ke_result, kd_result)
 
     # ── Store in session state for Step 4 + 5 ─────────────────
-    st.session_state["dcf_wacc"] = wacc_result
+    if wacc_result.get("wacc") is not None:
+        st.session_state["dcf_wacc"] = wacc_result
+    else:
+        st.session_state.pop("dcf_wacc", None)
 
     # ── Analyst Commentary ────────────────────────────────────────
     render_commentary("commentary_dcf_step3")
@@ -78,24 +101,23 @@ def _extract_inputs(prepared: dict, ticker: str) -> dict | None:
     inc = val_data.get("income_detail", {})
     bs = val_data.get("balance_sheet", {})
 
-    # Risk-free rate (loaded by 3_valuation.py)
-    rf = st.session_state.get("val_risk_free_rate", 0.04)
+    # Risk-free rate (loaded by 3_valuation.py) — may be None if fetch
+    # failed. Page layer records status and surfaces a warning.
+    rf = st.session_state.get("val_risk_free_rate")
 
-    # Extract with safe defaults
     raw_beta = (
         getattr(company.price, "beta", None)
         or val_data.get("beta")
-        or 1.0
     )
     market_cap = (
         getattr(company.price, "market_cap", None)
         or val_data.get("market_cap")
         or 0
     )
-    total_debt = bs.get("total_debt", 0) or 0
+    total_debt = bs.get("total_debt")
     interest = inc.get("interest_expense") or 0
     ebit = inc.get("ebit") or 0
-    eff_tax = inc.get("effective_tax_rate") or 0.21
+    eff_tax = inc.get("effective_tax_rate")
 
     # Fallback: use prepared_data standardized if val_data missing fields
     if not interest or not ebit:

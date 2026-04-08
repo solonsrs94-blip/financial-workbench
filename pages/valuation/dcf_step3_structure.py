@@ -75,6 +75,29 @@ def render_structure_and_output(
     tax = kd_result["tax_rate"]
     kd_after = kd_result["kd_after_tax"]
 
+    can_wacc = all(
+        v is not None for v in (ke, kd_pretax, tax, kd_after)
+    )
+    if not can_wacc:
+        st.info(
+            "WACC cannot be computed — complete Ke and Kd inputs above.",
+            icon="ℹ️",
+        )
+        return {
+            "wacc": None, "ke": ke, "kd_after_tax": kd_after,
+            "weight_equity": e_weight, "weight_debt": d_weight,
+            "rf": ke_result.get("rf"),
+            "beta": ke_result.get("beta"),
+            "beta_method": ke_result.get("beta_method"),
+            "erp": ke_result.get("erp"),
+            "size_premium": ke_result.get("size_premium"),
+            "crp": ke_result.get("crp"),
+            "kd_pre_tax": kd_pretax,
+            "kd_method": kd_result.get("kd_method"),
+            "tax_rate": tax,
+            "cap_structure_method": "market",
+        }
+
     wacc = calc_wacc(ke, kd_pretax, tax, e_weight, d_weight)
 
     ke_contrib = ke * e_weight

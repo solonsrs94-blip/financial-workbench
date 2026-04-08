@@ -14,6 +14,7 @@ from lib.analysis.valuation.wacc import (
 )
 from lib.data.valuation_data import get_spread
 from components.layout import format_large_number
+from components.fetch_warnings import record_fetch, render_fetch_warnings
 
 
 # ── Helpers ────────────────────────────────────────────────────────
@@ -34,6 +35,10 @@ def render_cost_of_debt(inputs: dict) -> dict:
     st.markdown("#### B. Cost of Debt (Kd)")
     st.caption("Pre-tax cost of debt, then apply tax shield")
 
+    render_fetch_warnings(
+        ["credit_spread", "tax_rate", "interest_expense", "total_debt"]
+    )
+
     rf = inputs["rf"]
     interest = inputs["interest_expense"]
     total_debt = inputs["total_debt"]
@@ -45,13 +50,22 @@ def render_cost_of_debt(inputs: dict) -> dict:
     # ── Compute both methods ──────────────────────────────────
     kd_actual = cost_of_debt_from_interest(interest, total_debt)
 
-    # Synthetic: ICR → rating → spread
+    # Synthetic: ICR → rating → spread. No silent 2% fallback.
     icr = ebit / interest if interest and interest > 0 else None
     firm_type = _get_firm_type(market_cap, company_type)
     spread_result = get_spread(icr, firm_type) if icr else None
+    record_fetch(
+        "credit_spread",
+        spread_result is not None,
+        source="Damodaran ratings",
+        message=(
+            "Credit-spread lookup failed — synthetic Kd cannot be "
+            "computed, use the Actual method or enter Kd manually"
+        ),
+    )
     rating = spread_result[0] if spread_result else "N/A"
-    spread = spread_result[1] if spread_result else 0.02
-    kd_synth = synthetic_kd(rf, spread)
+    spread = spread_result[1] if spread_result else None
+    kd_synth = synthetic_kd(rf, spread) if (spread is not None and rf is not None) else None
 
     # ── Method selector ───────────────────────────────────────
     c1, c2 = st.columns([1, 2])
@@ -86,14 +100,20 @@ def render_cost_of_debt(inputs: dict) -> dict:
         _selected = " **[Selected]**" if not is_actual else ""
         st.markdown(f"**Synthetic Method**{_selected}")
         if icr is not None:
-            st.markdown(
-                f'<div style="{_INFO}">'
-                f'ICR (EBIT/Interest): {icr:.2f}x<br>'
-                f'Rating: {rating} | Spread: {_pct(spread)}<br>'
-                f'<b>Kd = Rf ({_pct(rf)}) + Spread = {_pct(kd_synth)}</b>'
-                f'</div>',
-                unsafe_allow_html=True,
-            )
+            if spread is not None and kd_synth is not None:
+                st.markdown(
+                    f'<div style="{_INFO}">'
+                    f'ICR (EBIT/Interest): {icr:.2f}x<br>'
+                    f'Rating: {rating} | Spread: {_pct(spread)}<br>'
+                    f'<b>Kd = Rf ({_pct(rf or 0)}) + Spread = {_pct(kd_synth)}</b>'
+                    f'</div>',
+                    unsafe_allow_html=True,
+                )
+            else:
+                st.warning(
+                    "Credit spread unavailable — enter Kd manually",
+                    icon="⚠️",
+                )
         else:
             st.warning("Cannot compute ICR (no interest expense)", icon="⚠️")
 
@@ -134,16 +154,23 @@ def render_cost_of_debt(inputs: dict) -> dict:
     tax_val = tax_input / 100
 
     # ── After-tax Kd ──────────────────────────────────────────
-    kd_after = kd_selected * (1 - tax_val)
+    kd_after = (kd_selected * (1 - tax_val)) if kd_selected is not None else None
     with t3:
-        st.metric("After-tax Kd", _pct(kd_after))
+        st.metric("After-tax Kd", _pct(kd_after) if kd_after is not None else "—")
 
-    st.markdown(
-        f'<div style="font-size:14px">'
-        f'<b>Kd(1-t) = </b>{_pct(kd_selected)} × (1 - {_pct(tax_val)})'
-        f' = <b style="color:#1c83e1">{_pct(kd_after)}</b></div>',
-        unsafe_allow_html=True,
-    )
+    if kd_after is None:
+        st.info(
+            "Kd cannot be computed — required inputs (interest/debt or "
+            "credit spread) are missing. See warnings above.",
+            icon="ℹ️",
+        )
+    else:
+        st.markdown(
+            f'<div style="font-size:14px">'
+            f'<b>Kd(1-t) = </b>{_pct(kd_selected)} × (1 - {_pct(tax_val)})'
+            f' = <b style="color:#1c83e1">{_pct(kd_after)}</b></div>',
+            unsafe_allow_html=True,
+        )
 
     return {
         "kd_pretax": kd_selected,

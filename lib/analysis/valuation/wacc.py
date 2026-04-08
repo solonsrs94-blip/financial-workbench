@@ -1,8 +1,12 @@
 """
-WACC calculation engine — auto-calculates with smart defaults.
+WACC calculation engine.
 
-Pure Python — NO Streamlit imports.
+Pure Python — NO Streamlit imports. Functions return ``None`` when
+required inputs are missing; callers must surface a warning instead of
+silently substituting a hardcoded default.
 """
+
+from typing import Optional
 
 from models.valuation import WACCResult
 from config.constants import DEFAULT_MRP, DEFAULT_TAX_RATE
@@ -62,11 +66,18 @@ def size_premium_bracket(market_cap: float) -> tuple[float, str]:
 # ── Cost of Debt ──────────────────────────────────────────────────
 
 
-def cost_of_debt_from_interest(interest_expense: float, total_debt: float) -> float:
-    """Method A: Interest Expense / Total Debt."""
+def cost_of_debt_from_interest(
+    interest_expense: Optional[float],
+    total_debt: Optional[float],
+) -> Optional[float]:
+    """Method A: Interest Expense / Total Debt.
+
+    Returns ``None`` when either input is missing — callers must
+    surface a warning instead of applying a hardcoded fallback.
+    """
     if total_debt and total_debt > 0 and interest_expense:
         return interest_expense / total_debt
-    return 0.05  # fallback
+    return None
 
 
 def synthetic_kd(rf: float, spread: float) -> float:
@@ -100,12 +111,13 @@ def auto_wacc(rf: float, raw_beta: float, market_cap: float,
     # Cost of equity
     re = calc_capm(rf, beta, erp)
 
-    # Cost of debt
+    # Cost of debt — no silent fallback. If interest/debt is missing
+    # the caller is expected to use the synthetic-spread path instead.
     rd_pretax = cost_of_debt_from_interest(interest_expense, total_debt)
     rd_method = "interest_debt"
-    if not interest_expense or not total_debt or total_debt <= 0:
-        rd_pretax = rf + 0.02  # fallback: Rf + 200bps
-        rd_method = "estimated"
+    if rd_pretax is None:
+        rd_method = "unavailable"
+        rd_pretax = 0.0
     rd_aftertax = rd_pretax * (1 - tax_rate)
 
     # Capital structure (market weights)

@@ -84,7 +84,9 @@ def build_ratios_table(
         eff_tax = None
         if pretax and pretax > 0 and tax is not None:
             eff_tax = _safe_div(abs(tax), pretax)
-        nopat = ebit * (1 - (eff_tax or 0.21)) if ebit else None
+        # NOPAT: no silent 21% fallback. If tax rate is unknown, NOPAT
+        # is left as None and ROIC displays as "—".
+        nopat = ebit * (1 - eff_tax) if ebit and eff_tax is not None else None
         invested_cap = None
         if total_equity is not None and total_debt is not None:
             cash = bs.get("cash") or 0

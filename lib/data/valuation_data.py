@@ -20,18 +20,22 @@ from lib.data.providers import ddm_provider
 logger = logging.getLogger(__name__)
 
 
-def get_risk_free_rate(force_refresh: bool = False) -> float:
+def get_risk_free_rate(force_refresh: bool = False) -> Optional[float]:
     """Get 10-year US Treasury yield as decimal (e.g. 0.045 = 4.5%).
 
     Always uses ^TNX (US 10Y). Country risk is handled via CRP.
-    Analyst can override in the WACC UI.
+    Analyst can override in the WACC UI. Returns ``None`` when both
+    the live fetch and the cache fail — callers must surface a warning
+    instead of applying a silent default.
     """
     cache_key = "yahoo:^TNX:yield"
 
     if not force_refresh:
         cached = cache.get(cache_key)
         if cached is not None:
-            return cached.get("rate", 0.04)
+            rate = cached.get("rate")
+            if rate is not None:
+                return rate
 
     data = yahoo.fetch_all_info("^TNX")
     if data and data.get("price", {}).get("price"):
@@ -41,8 +45,10 @@ def get_risk_free_rate(force_refresh: bool = False) -> float:
 
     stale = cache.get_stale(cache_key)
     if stale is not None:
-        return stale.get("rate", 0.04)
-    return 0.04
+        rate = stale.get("rate")
+        if rate is not None:
+            return rate
+    return None
 
 
 def get_valuation_data(

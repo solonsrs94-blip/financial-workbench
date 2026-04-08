@@ -74,9 +74,10 @@ def _get_projections(prepared: dict, assumptions: dict) -> dict | None:
     base_revenue = raw_revs[-1] if raw_revs else None
     if base_revenue is None:
         return None
-    return compute_projections(
-        assumptions, base_revenue, hist.get("base_cogs_pct", 0.60),
-    )
+    base_cogs_pct = hist.get("base_cogs_pct")
+    if base_cogs_pct is None:
+        return None
+    return compute_projections(assumptions, base_revenue, base_cogs_pct)
 
 
 def _build_fcf_df(proj: dict, assumptions: dict) -> pd.DataFrame:
@@ -103,23 +104,27 @@ def _build_fcf_df(proj: dict, assumptions: dict) -> pd.DataFrame:
 
 
 def _to_wacc_result(d: dict) -> WACCResult:
-    """Convert Step 3 dict to WACCResult for lib/ engine."""
+    """Convert Step 3 dict to WACCResult for lib/ engine.
+
+    All values come from a completed Step 3 (gated upstream). size_premium
+    legitimately defaults to 0.0 (neutral for large caps).
+    """
     return WACCResult(
-        rf=d.get("rf", 0.04),
-        beta=d.get("beta", 1.0),
-        erp=d.get("erp", 0.055),
+        rf=d["rf"],
+        beta=d["beta"],
+        erp=d["erp"],
         size_premium=d.get("size_premium", 0.0),
-        crp=d.get("crp", 0.0),
-        cost_of_equity=d.get("ke", 0.10),
+        crp=d.get("crp") or 0.0,
+        cost_of_equity=d["ke"],
         beta_method=d.get("beta_method", "blume"),
-        cost_of_debt_pretax=d.get("kd_pre_tax", 0.05),
-        tax_rate=d.get("tax_rate", 0.21),
-        cost_of_debt_aftertax=d.get("kd_after_tax", 0.04),
+        cost_of_debt_pretax=d["kd_pre_tax"],
+        tax_rate=d["tax_rate"],
+        cost_of_debt_aftertax=d["kd_after_tax"],
         rd_method=d.get("kd_method", "interest_debt"),
         equity_weight=d.get("weight_equity", 1.0),
         debt_weight=d.get("weight_debt", 0.0),
         cap_structure_method=d.get("cap_structure_method", "market"),
-        wacc=d.get("wacc", 0.10),
+        wacc=d["wacc"],
     )
 
 

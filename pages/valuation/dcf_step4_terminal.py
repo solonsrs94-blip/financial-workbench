@@ -39,7 +39,13 @@ def render(prepared: dict, ticker: str) -> None:
         st.warning("Complete Step 2 Base Case first.")
         return
 
-    wacc = wacc_data.get("wacc", 0.10)
+    wacc = wacc_data.get("wacc")
+    if wacc is None:
+        st.info(
+            "Complete Step 3 (WACC) before running Step 4.",
+            icon="ℹ️",
+        )
+        return
 
     # Render scenario tabs (each computes its own terminal value)
     render_terminal_scenarios(
@@ -137,7 +143,9 @@ def _get_projections(prepared: dict, assumptions: dict) -> dict | None:
     base_revenue = raw_revs[-1] if raw_revs else None
     if base_revenue is None:
         return None
-    base_cogs_pct = hist.get("base_cogs_pct", 0.60)
+    base_cogs_pct = hist.get("base_cogs_pct")
+    if base_cogs_pct is None:
+        return None
     return compute_projections(assumptions, base_revenue, base_cogs_pct)
 
 

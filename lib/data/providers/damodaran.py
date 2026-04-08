@@ -106,23 +106,21 @@ def _fetch_crp_table() -> Optional[dict]:
     return result
 
 
-from lib.data.providers.damodaran_spreads_fallback import FALLBACK_SPREADS as _FALLBACK_SPREADS
-
-
 def fetch_spread(
     icr: float, firm_type: str = "small",
 ) -> Optional[tuple[str, float]]:
     """Look up credit rating + default spread from interest coverage.
 
     firm_type: "large", "small" (default), or "financial".
-    Returns (rating, spread) e.g. ("A2/A", 0.0078). Falls back to a
-    hardcoded Damodaran table if the live fetch fails or is incomplete.
+    Returns (rating, spread) e.g. ("A2/A", 0.0078), or ``None`` when
+    the live Damodaran fetch fails. Callers must surface a warning
+    instead of applying a silent hardcoded fallback.
     """
     key = firm_type.lower()
     table = _fetch_spread_table()
     rows = (table or {}).get(key) if table else None
     if not rows:
-        rows = _FALLBACK_SPREADS.get(key) or _FALLBACK_SPREADS["small"]
+        return None
 
     for lower, upper, rating, spread in rows:
         if lower <= icr < upper:

@@ -78,15 +78,16 @@ def fetch_peer_data(tickers: list[str]) -> list[dict]:
     return results
 
 
-def _estimate_tax_rate(ticker: str) -> float:
+def _estimate_tax_rate(ticker: str) -> Optional[float]:
     """Estimate effective tax rate from income statement.
 
-    Falls back to 21% (US marginal) if data unavailable.
+    Returns ``None`` when data is unavailable — callers must surface
+    a warning instead of applying a hardcoded fallback.
     """
     try:
         inc = yf.Ticker(ticker).income_stmt
         if inc is None or inc.empty:
-            return 0.21
+            return None
 
         def _val(row, col=0):
             if row in inc.index:
@@ -103,4 +104,4 @@ def _estimate_tax_rate(ticker: str) -> float:
                 return rate
     except Exception:
         pass
-    return 0.21
+    return None

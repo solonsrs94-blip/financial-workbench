@@ -123,7 +123,7 @@ def build_historical_data(
     if last_rev and last_cogs and last_rev != 0:
         base_cogs_pct = abs(last_cogs) / abs(last_rev)
     else:
-        base_cogs_pct = 0.60  # fallback only when data is missing
+        base_cogs_pct = None  # no silent 60% fallback — UI must warn
 
     result = {
         "years": display_years,

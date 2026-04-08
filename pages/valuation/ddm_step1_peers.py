@@ -123,9 +123,13 @@ def _refresh(state: dict) -> None:
         state["peer_data"] = []
         return
     raw = get_peer_data(state["peer_tickers"])
+    filtered = []
     for p in raw:
+        if p.get("tax_rate") is None:
+            continue
         p["unlevered_beta"] = unlever_beta(p["beta"], p["de_ratio"], p["tax_rate"])
-    state["peer_data"] = raw
+        filtered.append(p)
+    state["peer_data"] = filtered
 
 
 def _render_table(peers: list[dict]) -> None:

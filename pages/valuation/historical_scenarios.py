@@ -143,10 +143,10 @@ def _render_scenario_tab(
     applied = st.number_input(
         f"Applied {mult_label}",
         min_value=0.1, max_value=500.0,
-        value=None,
+        value=st.session_state.get(widget_key),
         step=0.1, format="%.1f",
         placeholder="—",
-        key=f"hist_{scenario}_applied_mult",
+        key=widget_key,
     )
 
     if applied is None:

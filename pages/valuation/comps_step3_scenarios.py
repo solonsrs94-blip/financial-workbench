@@ -119,15 +119,17 @@ def _render_scenario_tab(
         st.info(f"No peer data available for {label}.")
         return None
 
+    _k_applied = f"comps_{scenario}_applied_mult"
+    _k_prem = f"comps_{scenario}_premium"
     c1, c2 = st.columns(2)
     with c1:
         applied = st.number_input(
             f"Applied {mult_labels.get(mult_key, mult_key)}",
             min_value=0.1, max_value=200.0,
-            value=None,
+            value=st.session_state.get(_k_applied),
             step=0.1, format="%.1f",
             placeholder="—",
-            key=f"comps_{scenario}_applied_mult",
+            key=_k_applied,
         )
         ref_parts = []
         if median is not None:
@@ -142,8 +144,9 @@ def _render_scenario_tab(
         prem_pct = st.number_input(
             "Premium / Discount (%)",
             min_value=-50.0, max_value=100.0,
-            value=0.0, step=1.0, format="%.1f",
-            key=f"comps_{scenario}_premium",
+            value=st.session_state.get(_k_prem, 0.0),
+            step=1.0, format="%.1f",
+            key=_k_prem,
             help="Positive = premium, Negative = discount",
         )
 

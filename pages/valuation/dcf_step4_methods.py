@@ -23,13 +23,14 @@ def render_gordon(
     st.markdown(f"#### {label}")
 
     c1, c2, c3 = st.columns([1, 1, 2])
+    _k = f"dcf_{scenario}_terminal_g"
     with c1:
         g_pct = st.number_input(
             "Terminal Growth Rate (%)",
             min_value=-2.0, max_value=8.0,
-            value=None,
+            value=st.session_state.get(_k),
             step=0.25, format="%.2f",
-            key=f"dcf_{scenario}_terminal_g",
+            key=_k,
             placeholder="—",
             help="Long-run perpetual growth. ~2-3% = inflation + real GDP.",
         )
@@ -84,13 +85,18 @@ def render_exit_multiple(
     default = current_ev_ebitda or sector_multiple
 
     c1, c2, c3 = st.columns([1, 1, 2])
+    _k = f"dcf_{scenario}_exit_multiple"
     with c1:
+        _stored = st.session_state.get(_k)
+        _default_v = _stored if _stored is not None else (
+            round(default, 1) if default else None
+        )
         multiple = st.number_input(
             "EV/EBITDA Multiple",
             min_value=1.0, max_value=50.0,
-            value=round(default, 1) if default else None,
+            value=_default_v,
             step=0.5, format="%.1f",
-            key=f"dcf_{scenario}_exit_multiple",
+            key=_k,
             placeholder="—",
             help="Applied to final-year EBITDA.",
         )

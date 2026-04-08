@@ -38,10 +38,29 @@ _TICKER_KEYS = [
     "ddm_data_{ticker}",
 ]
 
-# Prefix-matched keys
+# Prefix-matched keys — capture widget keys so Streamlit re-hydrates them on load
 _PREFIX_KEYS = [
     "commentary_",
+    "dcf_",
+    "ddm_",
+    "wacc_",
+    "comps_",
+    "hist_",
+    "historical_",
+    "bridge_",
+    "summary_",
+    "_dcf_sector_select_",
+    "_ddm_sector_select_",
 ]
+
+# Widget keys we never want to persist (transient buttons, add-peer inputs)
+_SKIP_KEYS = {
+    "wacc_peer_add_input", "wacc_peer_add_btn", "wacc_peer_remove", "wacc_peer_rm_btn",
+    "ddm_peer_add_input", "ddm_peer_add_btn", "ddm_peer_remove", "ddm_peer_rm_btn",
+    "comps_manual_add", "comps_add_btn", "comps_generate_btn", "comps_exclude_select",
+    "_save_valuation",
+}
+_SKIP_SUFFIXES = ("_btn", "_reset")
 
 
 def collect_valuation_state(state: dict, ticker: str) -> dict:
@@ -63,10 +82,13 @@ def collect_valuation_state(state: dict, ticker: str) -> dict:
             collected[key] = state[key]
 
     # Prefix-matched keys
-    for prefix in _PREFIX_KEYS:
-        for key in state:
-            if isinstance(key, str) and key.startswith(prefix):
-                collected[key] = state[key]
+    for key in state:
+        if not isinstance(key, str):
+            continue
+        if key in _SKIP_KEYS or key.endswith(_SKIP_SUFFIXES):
+            continue
+        if any(key.startswith(prefix) for prefix in _PREFIX_KEYS):
+            collected[key] = state[key]
 
     # Make everything JSON-safe
     safe_state = _make_json_safe(collected)

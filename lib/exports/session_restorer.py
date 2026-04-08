@@ -113,13 +113,12 @@ _DDM_SCALAR = [
 def _seed_scenario_widgets(state: dict) -> None:
     """Write per-scenario widget keys from stored aggregate dicts.
 
-    Only sets keys that are missing — never overwrites already-restored
-    widget values. Safe to call after _restore_types.
+    Overwrites only when the existing state value is missing or None —
+    we explicitly want to rescue saves where widget keys were persisted
+    as None but the aggregate dict still has good values.
     """
-    print("[SEED] _seed_scenario_widgets called")
-    print(f"[SEED] ddm_scenarios present: {'ddm_scenarios' in state}")
-    _ddm_in = {k: v for k, v in state.items() if k.startswith('ddm_') and '_' in k[4:]}
-    print(f"[SEED] ddm_* keys already in state before seeding: {list(_ddm_in.keys())}")
+    def _needs_seed(key: str) -> bool:
+        return state.get(key) is None
     # ── DCF Step 2 driver grid ──────────────────────────────────────
     dcf_scen = state.get("dcf_scenarios") or {}
     for scenario in _SCENARIOS:
@@ -130,14 +129,14 @@ def _seed_scenario_widgets(state: dict) -> None:
             vals = assumptions.get(akey) or []
             for i, v in enumerate(vals):
                 k = f"dcf_{scenario}_{akey}_{i}"
-                if k in state or v is None:
+                if v is None or not _needs_seed(k):
                     continue
                 state[k] = v * 100.0
         for akey in _DCF_DAYS_KEYS:
             vals = assumptions.get(akey) or []
             for i, v in enumerate(vals):
                 k = f"dcf_{scenario}_{akey}_{i}"
-                if k in state or v is None:
+                if v is None or not _needs_seed(k):
                     continue
                 state[k] = float(v)
 
@@ -150,16 +149,16 @@ def _seed_scenario_widgets(state: dict) -> None:
         g = term.get("g") or term.get("terminal_growth")
         if g is not None:
             k = f"dcf_{scenario}_terminal_g"
-            state.setdefault(k, g * 100.0)
+            if _needs_seed(k):
+                state[k] = g * 100.0
         m = term.get("multiple") or term.get("exit_multiple")
         if m is not None:
             k = f"dcf_{scenario}_exit_multiple"
-            state.setdefault(k, float(m))
+            if _needs_seed(k):
+                state[k] = float(m)
 
     # ── DDM Step 2 scenario inputs ──────────────────────────────────
     ddm_scen = state.get("ddm_scenarios") or {}
-    print(f"[SEED] ddm_scenarios dict: {ddm_scen}")
-    _ddm_written = []
     for scenario in _SCENARIOS:
         assumptions = ddm_scen.get(scenario)
         if not isinstance(assumptions, dict):
@@ -169,11 +168,9 @@ def _seed_scenario_widgets(state: dict) -> None:
             if v is None:
                 continue
             k = f"ddm_{scenario}_{suffix}"
-            if k in state:
+            if not _needs_seed(k):
                 continue
             state[k] = v * scale if scale != 1.0 else v
-            _ddm_written.append((k, state[k]))
-    print(f"[SEED] DDM widget keys written by seeder: {_ddm_written}")
 
     # ── Comps Step 3 scenario inputs ────────────────────────────────
     comps = state.get("comps_valuation") or {}
@@ -182,13 +179,13 @@ def _seed_scenario_widgets(state: dict) -> None:
         if not isinstance(sc, dict):
             continue
         if sc.get("applied_mult") is not None:
-            state.setdefault(
-                f"comps_{scenario}_applied_mult", float(sc["applied_mult"]),
-            )
+            k = f"comps_{scenario}_applied_mult"
+            if _needs_seed(k):
+                state[k] = float(sc["applied_mult"])
         if sc.get("premium") is not None:
-            state.setdefault(
-                f"comps_{scenario}_premium", float(sc["premium"]),
-            )
+            k = f"comps_{scenario}_premium"
+            if _needs_seed(k):
+                state[k] = float(sc["premium"])
 
     # ── Historical Step 2 scenario inputs ───────────────────────────
     hist = state.get("historical_result") or {}
@@ -197,9 +194,9 @@ def _seed_scenario_widgets(state: dict) -> None:
         if not isinstance(sc, dict):
             continue
         if sc.get("applied_mult") is not None:
-            state.setdefault(
-                f"hist_{scenario}_applied_mult", float(sc["applied_mult"]),
-            )
+            k = f"hist_{scenario}_applied_mult"
+            if _needs_seed(k):
+                state[k] = float(sc["applied_mult"])
 
 
 def _restore_types(obj):

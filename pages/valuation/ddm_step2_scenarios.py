@@ -59,11 +59,18 @@ def init_ddm_scenario(scenario: str) -> dict | None:
     return scenarios.get(scenario)
 
 
-def store_ddm_scenario(scenario: str, assumptions: dict) -> None:
-    """Store a scenario's assumptions dict."""
+def store_ddm_scenario(scenario: str, assumptions: dict | None) -> None:
+    """Store a scenario's assumptions dict.
+
+    Never overwrites an existing good value with None — a transient
+    None result (missing widget during partial render) must not wipe
+    previously-filled scenario data.
+    """
     scenarios = st.session_state.setdefault(
         "ddm_scenarios", {"base": None, "bull": None, "bear": None},
     )
+    if assumptions is None:
+        return
     scenarios[scenario] = assumptions
 
 

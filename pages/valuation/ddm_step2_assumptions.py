@@ -1,14 +1,28 @@
 """DDM Step 2: Dividend Assumptions — model selection, projections."""
 
 import streamlit as st
-import pandas as pd
 
-from lib.data.valuation_data import get_ddm_data
 from pages.valuation.ddm_step2_reference import render_warnings, render_reference
 from pages.valuation.ddm_step2_scenarios import (
     migrate_ddm_legacy,
     render_scenario_tabs,
 )
+from pages.valuation.ddm_step2_projection import (
+    build_dps_projection as _build_dps_projection,
+    build_eps_projection as _build_eps_projection,
+    show_projection_table as _show_projection_table,
+    show_gordon_result as _show_gordon_result,
+    get_ddm_data_cached as _get_ddm_data,
+)
+
+_INCOMPLETE = "Fill in all required fields to compute valuation."
+
+
+def _missing(*vals) -> bool:
+    if any(v is None for v in vals):
+        st.info(_INCOMPLETE)
+        return True
+    return False
 
 
 def render(prepared: dict, ticker: str) -> dict | None:
@@ -96,23 +110,25 @@ def _render_gordon(
     ke = ke_data["ke"] if ke_data else 0.10
 
     if use_eps:
-        default_eps_g = 0.025
-        default_payout = ddm_data["payout_ratio"] or 0.40
+        default_payout = ddm_data["payout_ratio"]
 
         c1, c2 = st.columns(2)
         with c1:
             eps_g = st.number_input(
                 "EPS Growth Rate (%)", min_value=-20.0, max_value=30.0,
-                value=default_eps_g * 100, step=0.5, format="%.2f",
+                value=None, step=0.5, format="%.2f",
                 key=f"ddm_{scenario}_gordon_eps_g",
             )
         with c2:
             payout = st.number_input(
                 "Payout Ratio (%)", min_value=0.0, max_value=200.0,
-                value=default_payout * 100, step=1.0, format="%.1f",
+                value=default_payout * 100 if default_payout is not None else None,
+                step=1.0, format="%.1f",
                 key=f"ddm_{scenario}_gordon_payout",
             )
 
+        if _missing(eps_g, payout):
+            return None
         eps_g_dec = eps_g / 100
         payout_dec = payout / 100
         d1 = eps0 * (1 + eps_g_dec) * payout_dec
@@ -122,40 +138,19 @@ def _render_gordon(
             "eps_growth": eps_g_dec, "payout": payout_dec,
         }
     else:
-        default_g = 0.025
         g_input = st.number_input(
             "Perpetual DPS Growth Rate (%)",
             min_value=-10.0, max_value=20.0,
-            value=default_g * 100, step=0.25, format="%.2f",
+            value=None, step=0.25, format="%.2f",
             key=f"ddm_{scenario}_gordon_g",
             help="Long-term dividend growth rate",
         )
+        if _missing(g_input):
+            return None
         g = g_input / 100
         d1 = d0 * (1 + g)
         _show_gordon_result(d1, ke, g)
         return {"g": g, "d1": d1}
-
-
-def _show_gordon_result(d1, ke, g) -> None:
-    """Show live Gordon Growth implied price."""
-    if g >= ke:
-        st.error("Growth rate must be less than cost of equity (Ke).")
-        return
-    if ke - g < 0.02:
-        st.warning(
-            f"Growth rate ({g*100:.1f}%) is within 2pp of Ke "
-            f"({ke*100:.1f}%). Small denominator produces extreme valuations."
-        )
-    implied = d1 / (ke - g)
-    st.markdown(
-        f'<div style="font-size:14px;margin-top:8px;padding:8px 12px;'
-        f'background:rgba(28,131,225,0.08);border-radius:6px">'
-        f'D\u2081 = ${d1:,.2f} &nbsp;|&nbsp; '
-        f'Ke = {ke*100:.2f}% &nbsp;|&nbsp; '
-        f'g = {g*100:.2f}% &nbsp;\u2192&nbsp; '
-        f'<b>Implied Price = ${implied:,.2f}</b></div>',
-        unsafe_allow_html=True,
-    )
 
 
 # ── 2-Stage inputs ───────────────────────────────────────────
@@ -178,20 +173,23 @@ def _render_two_stage(d0, eps0, cagr, ddm_data, use_eps, scenario):
 
 def _two_stage_dps(d0, cagr, ke, n, scenario):
     """2-Stage with Direct DPS Growth."""
-    default_g1 = cagr.get("3y", cagr.get("5y", 0.05))
+    default_g1 = cagr.get("3y") or cagr.get("5y")
     c1, c2 = st.columns(2)
     with c1:
         g1_input = st.number_input(
             "Stage 1 DPS Growth (%)", min_value=-10.0, max_value=30.0,
-            value=default_g1 * 100, step=0.5, format="%.2f",
+            value=default_g1 * 100 if default_g1 is not None else None,
+            step=0.5, format="%.2f",
             key=f"ddm_{scenario}_g1",
         )
     with c2:
         g2_input = st.number_input(
             "Terminal Growth (%)", min_value=-5.0, max_value=10.0,
-            value=2.50, step=0.25, format="%.2f",
+            value=None, step=0.25, format="%.2f",
             key=f"ddm_{scenario}_g2",
         )
+    if _missing(g1_input, g2_input):
+        return None
     g1, g2 = g1_input / 100, g2_input / 100
     rows = _build_dps_projection(d0, g1, g2, ke, n)
     _show_projection_table(rows)
@@ -200,31 +198,35 @@ def _two_stage_dps(d0, cagr, ke, n, scenario):
 
 def _two_stage_eps(d0, eps0, cagr, ddm_data, ke, n, scenario):
     """2-Stage with EPS x Payout Ratio."""
-    default_eg1 = cagr.get("3y", 0.05)
-    default_po1 = ddm_data["payout_ratio"] or 0.40
+    default_eg1 = cagr.get("3y")
+    default_po1 = ddm_data["payout_ratio"]
     c1, c2 = st.columns(2)
     with c1:
         eg1 = st.number_input(
             "Stage 1 EPS Growth (%)", min_value=-20.0, max_value=40.0,
-            value=default_eg1 * 100, step=0.5, format="%.2f",
+            value=default_eg1 * 100 if default_eg1 is not None else None,
+            step=0.5, format="%.2f",
             key=f"ddm_{scenario}_eps_g1",
         )
         po1 = st.number_input(
             "Stage 1 Payout Ratio (%)", min_value=0.0, max_value=200.0,
-            value=default_po1 * 100, step=1.0, format="%.1f",
+            value=default_po1 * 100 if default_po1 is not None else None,
+            step=1.0, format="%.1f",
             key=f"ddm_{scenario}_payout1",
         )
     with c2:
         eg2 = st.number_input(
             "Terminal EPS Growth (%)", min_value=-5.0, max_value=10.0,
-            value=2.50, step=0.25, format="%.2f",
+            value=None, step=0.25, format="%.2f",
             key=f"ddm_{scenario}_eps_g2",
         )
         po2 = st.number_input(
             "Terminal Payout Ratio (%)", min_value=0.0, max_value=200.0,
-            value=default_po1 * 100, step=1.0, format="%.1f",
+            value=None, step=1.0, format="%.1f",
             key=f"ddm_{scenario}_payout2",
         )
+    if _missing(eg1, po1, eg2, po2):
+        return None
     eg1_d, eg2_d = eg1 / 100, eg2 / 100
     po1_d, po2_d = po1 / 100, po2 / 100
     rows = _build_eps_projection(eps0, eg1_d, eg2_d, po1_d, po2_d, ke, n)
@@ -239,58 +241,3 @@ def _two_stage_eps(d0, eps0, cagr, ddm_data, ke, n, scenario):
 # ── Projection builders ─────────────────────────────────────
 
 
-def _build_dps_projection(d0, g1, g2, ke, n):
-    rows, dps = [], d0
-    for t in range(1, n + 1):
-        dps = dps * (1 + g1)
-        pv_f = 1 / (1 + ke) ** t
-        rows.append({"Year": t, "DPS": f"${dps:.2f}",
-                      "PV Factor": f"{pv_f:.4f}",
-                      "PV of Dividend": f"${dps*pv_f:.2f}"})
-    if g2 < ke:
-        td = dps * (1 + g2)
-        tv = td / (ke - g2)
-        pvtv = tv / (1 + ke) ** n
-        rows.append({"Year": f"TV (Yr {n})", "DPS": f"${td:.2f}",
-                      "PV Factor": f"{(1/(1+ke)**n):.4f}",
-                      "PV of Dividend": f"${pvtv:,.2f}"})
-    return rows
-
-
-def _build_eps_projection(eps0, eg1, eg2, po1, po2, ke, n):
-    rows, eps = [], eps0
-    for t in range(1, n + 1):
-        eps = eps * (1 + eg1)
-        dps = eps * po1
-        pv_f = 1 / (1 + ke) ** t
-        rows.append({"Year": t, "EPS": f"${eps:.2f}", "Payout": f"{po1:.0%}",
-                      "DPS": f"${dps:.2f}", "PV Factor": f"{pv_f:.4f}",
-                      "PV of Dividend": f"${dps*pv_f:.2f}"})
-    if eg2 < ke:
-        te = eps * (1 + eg2)
-        td = te * po2
-        tv = td / (ke - eg2)
-        pvtv = tv / (1 + ke) ** n
-        rows.append({"Year": f"TV (Yr {n})", "EPS": f"${te:.2f}",
-                      "Payout": f"{po2:.0%}", "DPS": f"${td:.2f}",
-                      "PV Factor": f"{(1/(1+ke)**n):.4f}",
-                      "PV of Dividend": f"${pvtv:,.2f}"})
-    return rows
-
-
-def _show_projection_table(rows):
-    if not rows:
-        return
-    df = pd.DataFrame(rows)
-    st.dataframe(df, use_container_width=True, hide_index=True,
-                 height=min(400, 40 + len(rows) * 35))
-
-
-def _get_ddm_data(ticker):
-    key = f"ddm_data_{ticker}"
-    if key in st.session_state:
-        return st.session_state[key]
-    data = get_ddm_data(ticker)
-    if data:
-        st.session_state[key] = data
-    return data

@@ -6,7 +6,6 @@ Pure rendering + calculation display. Called by dcf_step4_terminal.py.
 import streamlit as st
 
 from lib.analysis.valuation.dcf import calc_terminal_value
-from config.constants import DEFAULT_TERMINAL_GROWTH
 
 
 # ── Gordon Growth ──────────────────────────────────────────────
@@ -16,8 +15,8 @@ def render_gordon(
     fcf_final: float, ebitda_final: float, wacc: float,
     is_primary: bool,
     scenario: str = "base",
-) -> tuple[float, float]:
-    """Render Gordon Growth inputs + output. Returns (tv, g)."""
+) -> tuple[float | None, float | None]:
+    """Render Gordon Growth inputs + output. Returns (tv, g) or (None, None)."""
     label = "A. Gordon Growth Model"
     if is_primary:
         label += " *(primary)*"
@@ -28,11 +27,16 @@ def render_gordon(
         g_pct = st.number_input(
             "Terminal Growth Rate (%)",
             min_value=-2.0, max_value=8.0,
-            value=DEFAULT_TERMINAL_GROWTH * 100,
+            value=None,
             step=0.25, format="%.2f",
             key=f"dcf_{scenario}_terminal_g",
+            placeholder="—",
             help="Long-run perpetual growth. ~2-3% = inflation + real GDP.",
         )
+    if g_pct is None:
+        with c3:
+            st.info("Enter terminal growth rate to compute TV.")
+        return None, None
     g = g_pct / 100
 
     with c2:
@@ -70,23 +74,24 @@ def render_exit_multiple(
     sector: str, sector_multiple: float | None,
     is_primary: bool,
     scenario: str = "base",
-) -> tuple[float, float]:
-    """Render Exit Multiple inputs + output. Returns (tv, multiple)."""
+) -> tuple[float | None, float | None]:
+    """Render Exit Multiple inputs + output. Returns (tv, multiple) or (None, None)."""
     label = "B. Exit Multiple"
     if is_primary:
         label += " *(primary)*"
     st.markdown(f"#### {label}")
 
-    default = current_ev_ebitda or sector_multiple or 12.0
+    default = current_ev_ebitda or sector_multiple
 
     c1, c2, c3 = st.columns([1, 1, 2])
     with c1:
         multiple = st.number_input(
             "EV/EBITDA Multiple",
             min_value=1.0, max_value=50.0,
-            value=round(default, 1),
+            value=round(default, 1) if default else None,
             step=0.5, format="%.1f",
             key=f"dcf_{scenario}_exit_multiple",
+            placeholder="—",
             help="Applied to final-year EBITDA.",
         )
 
@@ -102,6 +107,11 @@ def render_exit_multiple(
                 + " &nbsp;|&nbsp; ".join(refs) + "</div>",
                 unsafe_allow_html=True,
             )
+
+    if multiple is None:
+        with c3:
+            st.info("Enter exit multiple to compute TV.")
+        return None, None
 
     tv = calc_terminal_value(
         fcf_final, ebitda_final, 0, wacc, "exit_multiple", multiple,

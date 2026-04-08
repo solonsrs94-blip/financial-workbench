@@ -94,24 +94,29 @@ def render_terminal_scenarios(
             primary_tv = gordon_tv if is_gordon else exit_tv
 
             _hr()
-            render_cross_checks_fn(
-                gordon_tv, exit_tv, fcf_final, ebitda_final, wacc,
-            )
-            render_warnings_fn(g, multiple, wacc, sector_multiple)
+            if gordon_tv is not None and exit_tv is not None:
+                render_cross_checks_fn(
+                    gordon_tv, exit_tv, fcf_final, ebitda_final, wacc,
+                )
+                render_warnings_fn(g, multiple, wacc, sector_multiple)
 
-            # Store terminal for this scenario
-            scenarios_terminal[scenario] = {
-                "method": "gordon" if is_gordon else "exit_multiple",
-                "terminal_value": primary_tv,
-                "terminal_growth": g,
-                "exit_multiple": multiple,
-                "gordon_tv": gordon_tv,
-                "exit_tv": exit_tv,
-                "fcf_final": fcf_final,
-                "ebitda_final": ebitda_final,
-                "n_years": n_years,
-            }
-            initialized.add(scenario)
+            # Store terminal only when primary method has valid inputs
+            if primary_tv is None:
+                scenarios_terminal[scenario] = None
+                st.warning("Fill in all required fields to compute terminal value.")
+            else:
+                scenarios_terminal[scenario] = {
+                    "method": "gordon" if is_gordon else "exit_multiple",
+                    "terminal_value": primary_tv,
+                    "terminal_growth": g if g is not None else 0.0,
+                    "exit_multiple": multiple if multiple is not None else 0.0,
+                    "gordon_tv": gordon_tv,
+                    "exit_tv": exit_tv,
+                    "fcf_final": fcf_final,
+                    "ebitda_final": ebitda_final,
+                    "n_years": n_years,
+                }
+                initialized.add(scenario)
 
             # Per-scenario commentary
             render_dcf_step4_commentary(scenario)

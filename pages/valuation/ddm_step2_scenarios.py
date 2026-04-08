@@ -106,8 +106,7 @@ def render_scenario_tabs(
                 prepared, ticker, scenario,
             )
 
-            if result is not None:
-                store_ddm_scenario(scenario, result)
+            store_ddm_scenario(scenario, result)
 
             # Per-scenario commentary
             render_ddm_step2_commentary(scenario)

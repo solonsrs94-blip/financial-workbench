@@ -129,9 +129,18 @@ def render_scenario_tabs(
             btn_label = (
                 "Regenerate" if already_matches else "Generate DDM Valuation"
             )
+            # Defensive: strip any lingering legacy key (from saves or
+            # hot-reloads before the _btn rename) so Streamlit doesn't
+            # raise StreamlitValueAssignmentNotAllowedError.
+            _btn_key = f"ddm_{scenario}_generate_btn"
+            st.session_state.pop(f"ddm_{scenario}_generate", None)
+            if _btn_key in st.session_state and not isinstance(
+                st.session_state[_btn_key], bool,
+            ):
+                st.session_state.pop(_btn_key, None)
             if st.button(
                 btn_label,
-                key=f"ddm_{scenario}_generate_btn",
+                key=_btn_key,
                 type="primary",
                 disabled=(result is None),
             ):

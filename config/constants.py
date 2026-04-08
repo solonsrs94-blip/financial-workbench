@@ -93,6 +93,7 @@ SESSION_CACHE_PREFIXES = (
 # never reuse these as silent fallbacks for missing data.
 DEFAULT_MRP = 0.055          # Market risk premium (Damodaran long-run avg)
 DEFAULT_TAX_RATE = 0.21      # US corporate tax rate
+DEFAULT_TERMINAL_GROWTH = 0.025  # Long-run GDP growth proxy (analyst default)
 
 SECTOR_EXIT_MULTIPLES = {
     "Technology": 18.0,

@@ -116,6 +116,10 @@ def _seed_scenario_widgets(state: dict) -> None:
     Only sets keys that are missing — never overwrites already-restored
     widget values. Safe to call after _restore_types.
     """
+    print("[SEED] _seed_scenario_widgets called")
+    print(f"[SEED] ddm_scenarios present: {'ddm_scenarios' in state}")
+    _ddm_in = {k: v for k, v in state.items() if k.startswith('ddm_') and '_' in k[4:]}
+    print(f"[SEED] ddm_* keys already in state before seeding: {list(_ddm_in.keys())}")
     # ── DCF Step 2 driver grid ──────────────────────────────────────
     dcf_scen = state.get("dcf_scenarios") or {}
     for scenario in _SCENARIOS:
@@ -154,6 +158,8 @@ def _seed_scenario_widgets(state: dict) -> None:
 
     # ── DDM Step 2 scenario inputs ──────────────────────────────────
     ddm_scen = state.get("ddm_scenarios") or {}
+    print(f"[SEED] ddm_scenarios dict: {ddm_scen}")
+    _ddm_written = []
     for scenario in _SCENARIOS:
         assumptions = ddm_scen.get(scenario)
         if not isinstance(assumptions, dict):
@@ -166,6 +172,8 @@ def _seed_scenario_widgets(state: dict) -> None:
             if k in state:
                 continue
             state[k] = v * scale if scale != 1.0 else v
+            _ddm_written.append((k, state[k]))
+    print(f"[SEED] DDM widget keys written by seeder: {_ddm_written}")
 
     # ── Comps Step 3 scenario inputs ────────────────────────────────
     comps = state.get("comps_valuation") or {}

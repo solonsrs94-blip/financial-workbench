@@ -24,12 +24,15 @@ def render(prepared: dict, ticker: str) -> None:
 
     ke_data = st.session_state.get("ddm_ke")
     scenarios = st.session_state.get("ddm_scenarios", {})
+    print(f"[DDM STEP3] ke_data present: {ke_data is not None}")
+    print(f"[DDM STEP3] scenarios: {scenarios}")
 
     if not ke_data:
         st.warning("Complete Step 1 first.")
         return
 
     base = scenarios.get("base")
+    print(f"[DDM STEP3] base: {base}")
     if not base or not base.get("model"):
         st.warning("Complete Step 2 Base Case first.")
         return

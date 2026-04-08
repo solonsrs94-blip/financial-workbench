@@ -72,9 +72,15 @@ def render(prepared: dict, ticker: str) -> dict | None:
 # ── Per-scenario assumption rendering ───────────────────────────
 
 
-@st.fragment
 def _render_scenario(ddm_data: dict, scenario: str) -> dict | None:
     """Render assumption inputs for one scenario. Returns dict or None."""
+    _dbg_keys = [k for k in st.session_state.keys()
+                 if isinstance(k, str) and k.startswith(f"ddm_{scenario}_")]
+    print(f"[DDM RENDER] scenario={scenario} existing ddm_{scenario}_* keys in session_state:")
+    for k in sorted(_dbg_keys):
+        print(f"  {k} = {st.session_state.get(k)!r}")
+    print(f"[DDM RENDER] ddm_scenarios in session_state: "
+          f"{st.session_state.get('ddm_scenarios')}")
     # ── Model selection ─────────────────────────────────────
     c_model, c_method = st.columns(2)
     with c_model:

@@ -166,6 +166,7 @@ def render(prepared: dict, ticker: str) -> None:
 # ── Driver table ────────────────────────────────────────────────────
 
 
+@st.fragment
 def _render_driver_table(
     hist: dict,
     assumptions: dict,

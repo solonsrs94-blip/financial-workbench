@@ -72,6 +72,7 @@ def render(prepared: dict, ticker: str) -> dict | None:
 # ── Per-scenario assumption rendering ───────────────────────────
 
 
+@st.fragment
 def _render_scenario(ddm_data: dict, scenario: str) -> dict | None:
     """Render assumption inputs for one scenario. Returns dict or None."""
     # ── Model selection ─────────────────────────────────────
@@ -109,6 +110,13 @@ def _render_scenario(ddm_data: dict, scenario: str) -> dict | None:
     result["use_eps"] = use_eps
     result["d0"] = d0
     result["eps0"] = eps0
+    # Write inside the fragment so partial reruns also update the
+    # aggregate scenarios dict (the outer caller doesn't re-execute
+    # on fragment-scoped reruns).
+    scenarios = st.session_state.setdefault(
+        "ddm_scenarios", {"base": None, "bull": None, "bear": None},
+    )
+    scenarios[scenario] = result
     return result
 
 

@@ -33,6 +33,11 @@ def restore_valuation_state(saved: dict) -> tuple[dict, str]:
     # Restore Python types (sets, DataFrames)
     state = _restore_types(raw_state)
 
+    # Backstop: seed per-scenario widget keys from stored aggregate dicts
+    # for scenarios whose individual widget keys weren't saved (old saves
+    # or scenarios that were never opened in the original session).
+    _seed_scenario_widgets(state)
+
     # Reconstruct Company dataclass from serialized dict
     company_key = f"company_{ticker}"
     if company_key in state:
@@ -78,6 +83,115 @@ def _build_dataclass(cls, data: dict):
     valid_fields = {f.name for f in dataclasses.fields(cls)}
     filtered = {k: v for k, v in data.items() if k in valid_fields}
     return cls(**filtered)
+
+
+_SCENARIOS = ("base", "bull", "bear")
+
+# DCF Step 2 driver lists stored as decimals → widget percent
+_DCF_PCT_KEYS = (
+    "growth_rates", "ebit_margins", "tax_rates",
+    "capex_pcts", "da_pcts", "sbc_pcts", "nwc_pcts",
+)
+# DCF Step 2 driver lists stored as days (no scaling)
+_DCF_DAYS_KEYS = ("dso", "dio", "dpo")
+
+# DDM scalar fields: (assumption_key, widget_suffix, scale)
+_DDM_SCALAR = [
+    ("g", "gordon_g", 100.0),
+    ("g1", "g1", 100.0),
+    ("g2", "g2", 100.0),
+    ("eps_growth", "gordon_eps_g", 100.0),
+    ("payout", "gordon_payout", 100.0),
+    ("eps_growth1", "eps_g1", 100.0),
+    ("eps_growth2", "eps_g2", 100.0),
+    ("payout1", "payout1", 100.0),
+    ("payout2", "payout2", 100.0),
+    ("n", "n_years", 1.0),
+]
+
+
+def _seed_scenario_widgets(state: dict) -> None:
+    """Write per-scenario widget keys from stored aggregate dicts.
+
+    Only sets keys that are missing — never overwrites already-restored
+    widget values. Safe to call after _restore_types.
+    """
+    # ── DCF Step 2 driver grid ──────────────────────────────────────
+    dcf_scen = state.get("dcf_scenarios") or {}
+    for scenario in _SCENARIOS:
+        assumptions = dcf_scen.get(scenario)
+        if not isinstance(assumptions, dict):
+            continue
+        for akey in _DCF_PCT_KEYS:
+            vals = assumptions.get(akey) or []
+            for i, v in enumerate(vals):
+                k = f"dcf_{scenario}_{akey}_{i}"
+                if k in state or v is None:
+                    continue
+                state[k] = v * 100.0
+        for akey in _DCF_DAYS_KEYS:
+            vals = assumptions.get(akey) or []
+            for i, v in enumerate(vals):
+                k = f"dcf_{scenario}_{akey}_{i}"
+                if k in state or v is None:
+                    continue
+                state[k] = float(v)
+
+    # ── DCF Step 4 terminal value ───────────────────────────────────
+    dcf_term = state.get("dcf_scenarios_terminal") or {}
+    for scenario in _SCENARIOS:
+        term = dcf_term.get(scenario)
+        if not isinstance(term, dict):
+            continue
+        g = term.get("g") or term.get("terminal_growth")
+        if g is not None:
+            k = f"dcf_{scenario}_terminal_g"
+            state.setdefault(k, g * 100.0)
+        m = term.get("multiple") or term.get("exit_multiple")
+        if m is not None:
+            k = f"dcf_{scenario}_exit_multiple"
+            state.setdefault(k, float(m))
+
+    # ── DDM Step 2 scenario inputs ──────────────────────────────────
+    ddm_scen = state.get("ddm_scenarios") or {}
+    for scenario in _SCENARIOS:
+        assumptions = ddm_scen.get(scenario)
+        if not isinstance(assumptions, dict):
+            continue
+        for akey, suffix, scale in _DDM_SCALAR:
+            v = assumptions.get(akey)
+            if v is None:
+                continue
+            k = f"ddm_{scenario}_{suffix}"
+            if k in state:
+                continue
+            state[k] = v * scale if scale != 1.0 else v
+
+    # ── Comps Step 3 scenario inputs ────────────────────────────────
+    comps = state.get("comps_valuation") or {}
+    for scenario in _SCENARIOS:
+        sc = comps.get(scenario)
+        if not isinstance(sc, dict):
+            continue
+        if sc.get("applied_mult") is not None:
+            state.setdefault(
+                f"comps_{scenario}_applied_mult", float(sc["applied_mult"]),
+            )
+        if sc.get("premium") is not None:
+            state.setdefault(
+                f"comps_{scenario}_premium", float(sc["premium"]),
+            )
+
+    # ── Historical Step 2 scenario inputs ───────────────────────────
+    hist = state.get("historical_result") or {}
+    for scenario in _SCENARIOS:
+        sc = hist.get(scenario)
+        if not isinstance(sc, dict):
+            continue
+        if sc.get("applied_mult") is not None:
+            state.setdefault(
+                f"hist_{scenario}_applied_mult", float(sc["applied_mult"]),
+            )
 
 
 def _restore_types(obj):

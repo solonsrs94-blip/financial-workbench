@@ -119,6 +119,17 @@ def _render_scenario_tab(
 
     mult_label = _MULT_LABELS.get(mult_key, mult_key)
 
+    # Hydrate widget from saved historical_result on first render after load.
+    widget_key = f"hist_{scenario}_applied_mult"
+    if widget_key not in st.session_state:
+        saved = (
+            st.session_state.get("historical_result", {})
+            .get(scenario, {})
+            .get("applied_mult")
+        )
+        if saved is not None:
+            st.session_state[widget_key] = float(saved)
+
     ref_parts = []
     if mean_mult:
         ref_parts.append(f"Mean: {mean_mult:.1f}x")

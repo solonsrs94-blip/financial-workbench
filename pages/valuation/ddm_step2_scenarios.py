@@ -27,28 +27,6 @@ def migrate_ddm_legacy() -> None:
             "bear": None,
         }
         st.session_state["ddm_scenarios_initialized"] = {"base"}
-    _cleanup_legacy_025_defaults()
-
-
-def _cleanup_legacy_025_defaults() -> None:
-    """One-shot: wipe widget keys still carrying the old 0.025 default.
-
-    Wave 1 moved growth inputs to value=None but users with pre-Wave-1
-    saves may still have 2.5 sitting in their session_state widget keys.
-    Runs once per session (guarded by flag).
-    """
-    if st.session_state.get("_ddm_025_cleanup_done"):
-        return
-    stale_keys = ("_g2", "_gordon_g", "_eps_g2")
-    for key in list(st.session_state.keys()):
-        if not key.startswith("ddm_"):
-            continue
-        if not any(key.endswith(s) for s in stale_keys):
-            continue
-        val = st.session_state.get(key)
-        if isinstance(val, (int, float)) and abs(val - 2.5) < 1e-9:
-            del st.session_state[key]
-    st.session_state["_ddm_025_cleanup_done"] = True
 
 
 # ── Scenario init ─────────────────────────────────────────────────

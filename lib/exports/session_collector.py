@@ -58,9 +58,10 @@ _SKIP_KEYS = {
     "wacc_peer_add_input", "wacc_peer_add_btn", "wacc_peer_remove", "wacc_peer_rm_btn",
     "ddm_peer_add_input", "ddm_peer_add_btn", "ddm_peer_remove", "ddm_peer_rm_btn",
     "comps_manual_add", "comps_add_btn", "comps_generate_btn", "comps_exclude_select",
+    "comps_peer_editor",
     "_save_valuation",
 }
-_SKIP_SUFFIXES = ("_btn", "_reset")
+_SKIP_SUFFIXES = ("_btn", "_reset", "_editor")
 
 
 def collect_valuation_state(state: dict, ticker: str) -> dict:

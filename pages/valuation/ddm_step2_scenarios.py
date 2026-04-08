@@ -113,7 +113,37 @@ def render_scenario_tabs(
                 prepared, ticker, scenario,
             )
 
-            store_ddm_scenario(scenario, result)
+            # Explicit commit: user clicks Generate to write the current
+            # inputs into ddm_scenarios[scenario]. Step 3 gates on that
+            # dict, so this button is what "unlocks" Step 3.
+            stored = st.session_state.get("ddm_scenarios", {}).get(scenario)
+            already_matches = (
+                result is not None
+                and stored is not None
+                and stored.get("model") == result.get("model")
+                and stored.get("g1") == result.get("g1")
+                and stored.get("g2") == result.get("g2")
+                and stored.get("g") == result.get("g")
+                and stored.get("n") == result.get("n")
+            )
+            btn_label = (
+                "Regenerate" if already_matches else "Generate DDM Valuation"
+            )
+            if st.button(
+                btn_label,
+                key=f"ddm_{scenario}_generate",
+                type="primary",
+                disabled=(result is None),
+            ):
+                store_ddm_scenario(scenario, result)
+                st.rerun()
+
+            if result is None:
+                st.caption("Fill in all required inputs above, then click Generate.")
+            elif already_matches:
+                st.caption("✓ Current inputs saved to scenario.")
+            else:
+                st.caption("Inputs changed — click Regenerate to update.")
 
             # Per-scenario commentary
             render_ddm_step2_commentary(scenario)

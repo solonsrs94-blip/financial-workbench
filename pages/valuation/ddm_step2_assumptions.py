@@ -25,6 +25,19 @@ def _missing(*vals) -> bool:
     return False
 
 
+def _caption_cagr(cagr: dict | None) -> None:
+    """Show historical DPS CAGR as reference caption (not pre-filled)."""
+    if not cagr:
+        return
+    parts = []
+    for label, key in (("3Y", "3y"), ("5Y", "5y"), ("10Y", "10y")):
+        val = cagr.get(key)
+        if val is not None:
+            parts.append(f"{label}: {val * 100:.2f}%")
+    if parts:
+        st.caption("DPS CAGR — " + " | ".join(parts))
+
+
 def render(prepared: dict, ticker: str) -> dict | None:
     """Render DDM Step 2. Returns base assumptions dict or None."""
     migrate_ddm_legacy()
@@ -110,22 +123,26 @@ def _render_gordon(
     ke = ke_data["ke"] if ke_data else 0.10
 
     if use_eps:
-        default_payout = ddm_data["payout_ratio"]
+        default_payout = ddm_data.get("payout_ratio")
 
         c1, c2 = st.columns(2)
         with c1:
             eps_g = st.number_input(
                 "EPS Growth Rate (%)", min_value=-20.0, max_value=30.0,
                 value=None, step=0.5, format="%.2f",
+                placeholder="—",
                 key=f"ddm_{scenario}_gordon_eps_g",
             )
+            _caption_cagr(cagr)
         with c2:
             payout = st.number_input(
                 "Payout Ratio (%)", min_value=0.0, max_value=200.0,
-                value=default_payout * 100 if default_payout is not None else None,
-                step=1.0, format="%.1f",
+                value=None, step=1.0, format="%.1f",
+                placeholder="—",
                 key=f"ddm_{scenario}_gordon_payout",
             )
+            if default_payout is not None:
+                st.caption(f"Current payout: {default_payout * 100:.1f}%")
 
         if _missing(eps_g, payout):
             return None
@@ -142,9 +159,11 @@ def _render_gordon(
             "Perpetual DPS Growth Rate (%)",
             min_value=-10.0, max_value=20.0,
             value=None, step=0.25, format="%.2f",
+            placeholder="—",
             key=f"ddm_{scenario}_gordon_g",
             help="Long-term dividend growth rate",
         )
+        _caption_cagr(cagr)
         if _missing(g_input):
             return None
         g = g_input / 100
@@ -173,19 +192,20 @@ def _render_two_stage(d0, eps0, cagr, ddm_data, use_eps, scenario):
 
 def _two_stage_dps(d0, cagr, ke, n, scenario):
     """2-Stage with Direct DPS Growth."""
-    default_g1 = cagr.get("3y") or cagr.get("5y")
     c1, c2 = st.columns(2)
     with c1:
         g1_input = st.number_input(
             "Stage 1 DPS Growth (%)", min_value=-10.0, max_value=30.0,
-            value=default_g1 * 100 if default_g1 is not None else None,
-            step=0.5, format="%.2f",
+            value=None, step=0.5, format="%.2f",
+            placeholder="—",
             key=f"ddm_{scenario}_g1",
         )
+        _caption_cagr(cagr)
     with c2:
         g2_input = st.number_input(
             "Terminal Growth (%)", min_value=-5.0, max_value=10.0,
             value=None, step=0.25, format="%.2f",
+            placeholder="—",
             key=f"ddm_{scenario}_g2",
         )
     if _missing(g1_input, g2_input):
@@ -198,31 +218,35 @@ def _two_stage_dps(d0, cagr, ke, n, scenario):
 
 def _two_stage_eps(d0, eps0, cagr, ddm_data, ke, n, scenario):
     """2-Stage with EPS x Payout Ratio."""
-    default_eg1 = cagr.get("3y")
-    default_po1 = ddm_data["payout_ratio"]
+    default_po = ddm_data.get("payout_ratio")
     c1, c2 = st.columns(2)
     with c1:
         eg1 = st.number_input(
             "Stage 1 EPS Growth (%)", min_value=-20.0, max_value=40.0,
-            value=default_eg1 * 100 if default_eg1 is not None else None,
-            step=0.5, format="%.2f",
+            value=None, step=0.5, format="%.2f",
+            placeholder="—",
             key=f"ddm_{scenario}_eps_g1",
         )
+        _caption_cagr(cagr)
         po1 = st.number_input(
             "Stage 1 Payout Ratio (%)", min_value=0.0, max_value=200.0,
-            value=default_po1 * 100 if default_po1 is not None else None,
-            step=1.0, format="%.1f",
+            value=None, step=1.0, format="%.1f",
+            placeholder="—",
             key=f"ddm_{scenario}_payout1",
         )
+        if default_po is not None:
+            st.caption(f"Current payout: {default_po * 100:.1f}%")
     with c2:
         eg2 = st.number_input(
             "Terminal EPS Growth (%)", min_value=-5.0, max_value=10.0,
             value=None, step=0.25, format="%.2f",
+            placeholder="—",
             key=f"ddm_{scenario}_eps_g2",
         )
         po2 = st.number_input(
             "Terminal Payout Ratio (%)", min_value=0.0, max_value=200.0,
             value=None, step=1.0, format="%.1f",
+            placeholder="—",
             key=f"ddm_{scenario}_payout2",
         )
     if _missing(eg1, po1, eg2, po2):

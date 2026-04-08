@@ -91,7 +91,10 @@ SESSION_CACHE_PREFIXES = (
 # ``lib.analysis.valuation.wacc.auto_wacc``. Page layer must pass
 # freshly fetched values and surface a warning when the fetch fails —
 # never reuse these as silent fallbacks for missing data.
-DEFAULT_MRP = 0.055          # Market risk premium (Damodaran long-run avg)
+# DEFAULT_MRP removed — no silent ERP fallback. Fetch from Damodaran
+# or require analyst input. Historical long-run US ERP ≈ 5.5% is kept
+# only as a commented reference below.
+# DEFAULT_MRP = 0.055  # (historical long-run avg — DO NOT use as fallback)
 DEFAULT_TAX_RATE = 0.21      # US corporate tax rate
 DEFAULT_TERMINAL_GROWTH = 0.025  # Long-run GDP growth proxy (analyst default)
 

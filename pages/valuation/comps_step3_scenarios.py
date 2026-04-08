@@ -112,8 +112,10 @@ def _render_scenario_tab(
     current_price, summary, initialized, mult_labels,
 ) -> dict | None:
     """Render one scenario tab. Returns result dict or None."""
-    default_val = defaults.get(scenario)
-    if default_val is None:
+    p25 = defaults.get("bear")
+    median = defaults.get("base")
+    p75 = defaults.get("bull")
+    if median is None and p25 is None and p75 is None:
         st.info(f"No peer data available for {label}.")
         return None
 
@@ -122,10 +124,20 @@ def _render_scenario_tab(
         applied = st.number_input(
             f"Applied {mult_labels.get(mult_key, mult_key)}",
             min_value=0.1, max_value=200.0,
-            value=round(default_val, 1),
+            value=None,
             step=0.1, format="%.1f",
+            placeholder="—",
             key=f"comps_{scenario}_applied_mult",
         )
+        ref_parts = []
+        if median is not None:
+            ref_parts.append(f"Peer median: {median:.1f}x")
+        if p25 is not None:
+            ref_parts.append(f"P25: {p25:.1f}x")
+        if p75 is not None:
+            ref_parts.append(f"P75: {p75:.1f}x")
+        if ref_parts:
+            st.caption(" | ".join(ref_parts))
     with c2:
         prem_pct = st.number_input(
             "Premium / Discount (%)",
@@ -134,6 +146,10 @@ def _render_scenario_tab(
             key=f"comps_{scenario}_premium",
             help="Positive = premium, Negative = discount",
         )
+
+    if applied is None:
+        st.info("Fill in the Applied multiple to compute implied price.")
+        return None
 
     final_mult = applied * (1 + prem_pct / 100)
 

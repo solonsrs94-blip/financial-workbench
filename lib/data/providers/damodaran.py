@@ -15,19 +15,27 @@ from config.constants import DAMODARAN_URLS
 from lib import cache
 
 logger = logging.getLogger(__name__)
-_TIMEOUT = 15
+_TIMEOUT = 30
+_HEADERS = {"User-Agent": "Mozilla/5.0 (Vision)"}
 _CACHE_TTL = "damodaran"
 
 
 def _download_excel(url: str, **kwargs) -> Optional[pd.DataFrame]:
-    """Download Excel file, return DataFrame. None on failure."""
-    try:
-        resp = requests.get(url, timeout=_TIMEOUT)
-        resp.raise_for_status()
-        return pd.read_excel(io.BytesIO(resp.content), **kwargs)
-    except Exception as exc:
-        logger.warning("Damodaran download failed (%s): %s", url, exc)
-        return None
+    """Download Excel file with 1 retry. Returns None on failure."""
+    last_exc = None
+    for attempt in (1, 2):
+        try:
+            resp = requests.get(url, timeout=_TIMEOUT, headers=_HEADERS)
+            resp.raise_for_status()
+            return pd.read_excel(io.BytesIO(resp.content), **kwargs)
+        except requests.exceptions.RequestException as exc:
+            last_exc = exc
+            logger.warning("Damodaran attempt %d (%s): %s", attempt, url, exc)
+        except Exception as exc:
+            logger.error("Damodaran parse failed (%s): %s", url, exc)
+            return None
+    logger.error("Damodaran fetch failed (%s): %s", url, last_exc)
+    return None
 
 
 def _safe_float(val) -> Optional[float]:
@@ -174,11 +182,7 @@ def _fetch_spread_table() -> Optional[dict]:
     return result
 
 
-_BETA_REGION_KEYS = {
-    "us": "betas_us",
-    "global": "betas_global",
-    "emerging": "betas_emerging",
-}
+_BETA_REGION_KEYS = {"us": "betas_us", "global": "betas_global", "emerging": "betas_emerging"}
 
 
 def fetch_industry_beta(

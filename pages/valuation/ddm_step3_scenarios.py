@@ -87,7 +87,7 @@ def render_scenario_output(
             st.markdown("---")
             ff_range = render_football_fn(d0, ke, a, current_price, scenario)
 
-            g_label = a.get("g") if model == "gordon" else a.get("g2", 0.025)
+            g_label = a.get("g") if model == "gordon" else a.get("g2")
             ddm_output[scenario] = {
                 "implied_price": implied,
                 "current_price": current_price,
@@ -156,7 +156,7 @@ def _build_ddm_sensitivity(d0, ke, a, current_price) -> dict | None:
     from lib.analysis.valuation.ddm import ddm_sensitivity
     try:
         model = a["model"]
-        g_base = a.get("g") if model == "gordon" else a.get("g2", 0.025)
+        g_base = a.get("g") if model == "gordon" else a.get("g2")
         df = ddm_sensitivity(
             d0=d0, ke_base=ke, g_base=g_base, model=model,
             n=a.get("n", 5), g1=a.get("g1"),

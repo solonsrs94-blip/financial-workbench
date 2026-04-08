@@ -66,7 +66,7 @@ def _run_gordon(d0, ke, a):
 
 def _run_two_stage(d0, ke, a):
     return two_stage_ddm(
-        d0=d0, ke=ke, g1=a.get("g1", 0.05), g2=a.get("g2", 0.025),
+        d0=d0, ke=ke, g1=a.get("g1", 0.05), g2=a.get("g2"),
         n=a.get("n", 5), eps0=a.get("eps0"),
         eps_growth1=a.get("eps_growth1"), payout1=a.get("payout1"),
         eps_growth2=a.get("eps_growth2"), payout2=a.get("payout2"),
@@ -110,7 +110,7 @@ def _render_breakdown(result: dict) -> None:
 def _render_sensitivity(d0, ke, a, current_price, scenario=""):
     st.markdown("#### Sensitivity Analysis")
     model = a["model"]
-    g_base = a.get("g") if model == "gordon" else a.get("g2", 0.025)
+    g_base = a.get("g") if model == "gordon" else a.get("g2")
     df = ddm_sensitivity(
         d0=d0, ke_base=ke, g_base=g_base, model=model,
         n=a.get("n", 5), g1=a.get("g1"),
@@ -148,7 +148,7 @@ def _render_sensitivity(d0, ke, a, current_price, scenario=""):
 def _render_football(d0, ke, a, current_price, scenario="") -> dict:
     st.markdown("#### Football Field")
     model = a["model"]
-    g_base = a.get("g") if model == "gordon" else a.get("g2", 0.025)
+    g_base = a.get("g") if model == "gordon" else a.get("g2")
     df = ddm_sensitivity(
         d0=d0, ke_base=ke, g_base=g_base, model=model,
         n=a.get("n", 5), g1=a.get("g1"),

@@ -108,36 +108,46 @@ def _render_scenario_tab(
 ) -> dict | None:
     """Render one scenario tab. Returns result dict or None."""
     default_mult = mult_defaults.get(scenario, 0)
-    default_price = defaults.get(scenario, 0)
 
-    if not default_mult or default_mult <= 0:
+    mean_mult = mult_defaults.get("base")
+    minus_1std = mult_defaults.get("bear")
+    plus_1std = mult_defaults.get("bull")
+
+    if not mean_mult or mean_mult <= 0:
         st.info(f"No data for {label}.")
         return None
 
     mult_label = _MULT_LABELS.get(mult_key, mult_key)
-    anchor_labels = {
-        "bear": f"-1\u03c3 ({default_mult:.1f}x)",
-        "base": f"Mean ({default_mult:.1f}x)",
-        "bull": f"+1\u03c3 ({default_mult:.1f}x)",
-    }
 
-    st.caption(f"Default: {anchor_labels.get(scenario, '')}")
+    ref_parts = []
+    if mean_mult:
+        ref_parts.append(f"Mean: {mean_mult:.1f}x")
+    if minus_1std:
+        ref_parts.append(f"-1\u03c3: {minus_1std:.1f}x")
+    if plus_1std:
+        ref_parts.append(f"+1\u03c3: {plus_1std:.1f}x")
+    if ref_parts:
+        st.caption(" | ".join(ref_parts))
 
     applied = st.number_input(
         f"Applied {mult_label}",
         min_value=0.1, max_value=500.0,
-        value=round(default_mult, 1),
+        value=None,
         step=0.1, format="%.1f",
+        placeholder="—",
         key=f"hist_{scenario}_applied_mult",
     )
 
-    # Compute implied price from the applied multiple
-    # Use the ratio between implied price and multiple from the data
+    if applied is None:
+        st.info("Fill in the Applied multiple to compute implied price.")
+        return None
+
+    # Compute implied price from the applied multiple.
     if stats.get("mean") and stats["mean"] > 0 and iv.get("at_mean"):
         price_per_unit = iv["at_mean"] / stats["mean"]
         implied_price = applied * price_per_unit
     else:
-        implied_price = default_price
+        implied_price = 0
 
     if implied_price <= 0:
         st.warning("Implied price is non-positive.")

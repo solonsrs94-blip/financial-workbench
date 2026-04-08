@@ -9,7 +9,7 @@ silently substituting a hardcoded default.
 from typing import Optional
 
 from models.valuation import WACCResult
-from config.constants import DEFAULT_MRP, DEFAULT_TAX_RATE
+from config.constants import DEFAULT_TAX_RATE
 
 
 # ── Beta ──────────────────────────────────────────────────────────
@@ -98,13 +98,16 @@ def calc_wacc(
 
 def auto_wacc(rf: float, raw_beta: float, market_cap: float,
               total_debt: float, interest_expense: float,
-              tax_rate: float = DEFAULT_TAX_RATE,
-              erp: float = DEFAULT_MRP) -> WACCResult:
+              erp: float,
+              tax_rate: float = DEFAULT_TAX_RATE) -> WACCResult:
     """Calculate WACC with smart defaults.
 
     Uses: adjusted beta, interest/debt for Rd, market weights.
+    Caller must supply ``erp`` explicitly — no silent fallback.
     Returns WACCResult with all intermediates for display.
     """
+    if erp is None:
+        raise ValueError("auto_wacc: erp is required (no silent fallback)")
     # Beta
     beta = adjusted_beta(raw_beta) if raw_beta and raw_beta > 0 else 1.0
 

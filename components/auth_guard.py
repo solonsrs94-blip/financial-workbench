@@ -5,11 +5,15 @@ require_auth() — call at the top of every page to enforce login.
 show_user_sidebar() — call after auth check to display user info.
 """
 
+import logging
+
 import streamlit as st
 
 from config.settings import get_firebase_service_account, FIREBASE_API_KEY
 from lib.auth.firebase_init import init_firebase
 from lib.auth.firebase_auth import check_user_approved, refresh_id_token, AuthError
+
+logger = logging.getLogger(__name__)
 
 
 def _ensure_firebase() -> None:
@@ -123,13 +127,21 @@ def _try_refresh_token() -> None:
             fb_auth.verify_id_token(id_token, check_revoked=False)
             return  # still valid
         except fb_auth.ExpiredIdTokenError:
-            pass
-        except Exception:
-            return  # unknown — don't break the session
-    except Exception:
+            logger.info("ID token expired; attempting refresh")
+        except fb_auth.RevokedIdTokenError:
+            logger.warning("ID token revoked; signing out")
+            _sign_out()
+            return
+        except Exception as exc:
+            # Unknown verify error — preserve session, log and bail
+            logger.warning("Token verify raised %s: %s", type(exc).__name__, exc)
+            return
+    except Exception as exc:
+        logger.warning("firebase_admin import failed: %s", exc)
         return
 
     if not FIREBASE_API_KEY:
+        logger.warning("FIREBASE_API_KEY missing; cannot refresh token")
         return
     try:
         result = refresh_id_token(refresh_tok, FIREBASE_API_KEY)
@@ -138,8 +150,18 @@ def _try_refresh_token() -> None:
             st.session_state["auth_refresh_token"] = result.get(
                 "refresh_token", refresh_tok
             )
-    except AuthError:
+            logger.info("ID token refreshed successfully")
+        else:
+            logger.warning("Refresh returned no id_token; keeping session")
+    except AuthError as exc:
+        logger.warning("Refresh failed (%s); signing out", exc)
         _sign_out()
+    except Exception as exc:
+        # Network blip, JSON decode error, etc. — do NOT sign out
+        logger.warning(
+            "Refresh raised %s: %s; keeping session",
+            type(exc).__name__, exc,
+        )
 
 
 def _sign_out() -> None:

@@ -91,17 +91,49 @@ def init_scenario(scenario: str, n_years: int, nwc_method: str) -> dict:
     return scenarios[scenario]
 
 
+_ASSUMPTION_FIELDS = [
+    ("growth_rates", 100.0),    # decimal → %
+    ("ebit_margins", 100.0),
+    ("tax_rates", 100.0),
+    ("capex_pcts", 100.0),
+    ("da_pcts", 100.0),
+    ("sbc_pcts", 100.0),
+    ("nwc_pcts", 100.0),
+    ("dso", 1.0),               # days, no divisor
+    ("dio", 1.0),
+    ("dpo", 1.0),
+]
+
+
 def _reset_to_base(scenario: str) -> None:
-    """Reset a non-base scenario by clearing its widget keys."""
-    # Remove widget keys for this scenario
-    for key in list(st.session_state.keys()):
-        if key.startswith(f"dcf_{scenario}_"):
-            del st.session_state[key]
-    # Mark as not initialized so next visit re-copies from Base
-    initialized = st.session_state.get("dcf_scenarios_initialized", set())
-    initialized.discard(scenario)
+    """Reset a non-base scenario to base values by overwriting both the
+    scenarios dict and the per-cell widget session_state keys.
+
+    Streamlit widgets ignore their `value=` parameter if the key already
+    exists in session_state, so we must write widget display values
+    (scaled by each field's divisor) directly into session_state.
+    """
     scenarios = st.session_state.get("dcf_scenarios", {})
-    scenarios[scenario] = None
+    base = scenarios.get("base")
+    if not base:
+        return
+
+    scenarios[scenario] = copy.deepcopy(base)
+    initialized = st.session_state.setdefault(
+        "dcf_scenarios_initialized", set(),
+    )
+    initialized.add(scenario)
+
+    n_years = base.get("n_years", 0)
+    for field, divisor in _ASSUMPTION_FIELDS:
+        vals = base.get(field) or []
+        for i in range(n_years):
+            k = f"dcf_{scenario}_{field}_{i}"
+            cur = vals[i] if i < len(vals) else None
+            if cur is None:
+                st.session_state.pop(k, None)
+            else:
+                st.session_state[k] = cur * divisor
 
 
 # ── Tab rendering ─────────────────────────────────────────────────

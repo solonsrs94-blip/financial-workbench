@@ -104,16 +104,18 @@ def render_cost_of_debt(inputs: dict) -> dict:
     eff_label = f"Effective ({_pct(eff_tax)})" if eff_tax else "Effective (N/A)"
     tax_options = [eff_label, "Marginal (21%)"]
 
+    def _on_tax_choice_change():
+        choice = st.session_state.get("wacc_tax_choice", "")
+        if "Effective" in choice and eff_tax:
+            st.session_state["wacc_tax_rate"] = round(eff_tax * 100, 2)
+        else:
+            st.session_state["wacc_tax_rate"] = 21.0
+
     with t1:
         tax_choice = st.selectbox(
             "Tax Rate", tax_options, key="wacc_tax_choice",
+            on_change=_on_tax_choice_change,
         )
-
-    # Reset tax input when tax choice changes
-    prev_tax_choice = st.session_state.get("_wacc_prev_tax_choice")
-    if prev_tax_choice and prev_tax_choice != tax_choice:
-        st.session_state.pop("wacc_tax_rate", None)
-    st.session_state["_wacc_prev_tax_choice"] = tax_choice
 
     default_tax = eff_tax if "Effective" in tax_choice and eff_tax else 0.21
     with t2:

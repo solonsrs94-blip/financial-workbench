@@ -44,16 +44,15 @@ def collect_dcf_bars(dcf: dict, bars: list) -> None:
         base = dcf.get("base", {})
         if not base or not base.get("implied_price"):
             return
-        # Spanning bar: bear low → bull high, base as mid
-        lo = base.get("sensitivity_min", base["implied_price"])
-        hi = base.get("sensitivity_max", base["implied_price"])
+        # Spanning bar: bear low → bull high, base as mid (scenario range)
         mid = base["implied_price"]
+        lo, hi = mid, mid
         bear = dcf.get("bear", {})
         bull = dcf.get("bull", {})
-        if bear and bear.get("sensitivity_min"):
-            lo = min(lo, bear["sensitivity_min"])
-        if bull and bull.get("sensitivity_max"):
-            hi = max(hi, bull["sensitivity_max"])
+        if bear and bear.get("implied_price"):
+            lo = min(lo, bear["implied_price"])
+        if bull and bull.get("implied_price"):
+            hi = max(hi, bull["implied_price"])
         lo = max(lo, 0)
         bars.append({
             "label": "DCF",
@@ -102,15 +101,14 @@ def collect_ddm_bars(ddm: dict, bars: list) -> None:
         base = ddm.get("base", {})
         if not base or not base.get("implied_price"):
             return
-        lo = base.get("sensitivity_min", base["implied_price"])
-        hi = base.get("sensitivity_max", base["implied_price"])
         mid = base["implied_price"]
+        lo, hi = mid, mid
         bear = ddm.get("bear", {})
         bull = ddm.get("bull", {})
-        if bear and bear.get("sensitivity_min"):
-            lo = min(lo, bear["sensitivity_min"])
-        if bull and bull.get("sensitivity_max"):
-            hi = max(hi, bull["sensitivity_max"])
+        if bear and bear.get("implied_price"):
+            lo = min(lo, bear["implied_price"])
+        if bull and bull.get("implied_price"):
+            hi = max(hi, bull["implied_price"])
         lo = max(lo, 0)
         bars.append({
             "label": "DDM",

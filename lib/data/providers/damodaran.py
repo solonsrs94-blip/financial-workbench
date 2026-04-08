@@ -46,7 +46,7 @@ def fetch_erp() -> Optional[float]:
     Returns decimal (e.g. 0.046 for 4.6%), or None.
     """
     cached = cache.get("damodaran_erp")
-    if cached is not None:
+    if cached is not None and cached.get("erp") is not None:
         return cached.get("erp")
 
     df = _download_excel(DAMODARAN_URLS["erp_monthly"], header=None)
@@ -106,31 +106,31 @@ def _fetch_crp_table() -> Optional[dict]:
     return result
 
 
+from lib.data.providers.damodaran_spreads_fallback import FALLBACK_SPREADS as _FALLBACK_SPREADS
+
+
 def fetch_spread(
     icr: float, firm_type: str = "small",
 ) -> Optional[tuple[str, float]]:
     """Look up credit rating + default spread from interest coverage.
 
     firm_type: "large", "small" (default), or "financial".
-    Returns (rating, spread) e.g. ("A2/A", 0.0078), or None.
+    Returns (rating, spread) e.g. ("A2/A", 0.0078). Falls back to a
+    hardcoded Damodaran table if the live fetch fails or is incomplete.
     """
-    table = _fetch_spread_table()
-    if table is None:
-        return None
-
     key = firm_type.lower()
-    if key not in table:
-        key = "small"
+    table = _fetch_spread_table()
+    rows = (table or {}).get(key) if table else None
+    if not rows:
+        rows = _FALLBACK_SPREADS.get(key) or _FALLBACK_SPREADS["small"]
 
-    for lower, upper, rating, spread in table[key]:
+    for lower, upper, rating, spread in rows:
         if lower <= icr < upper:
             return (rating, spread)
 
-    # ICR above highest bracket → best rating
-    if table[key]:
-        last = table[key][-1]
-        return (last[2], last[3])
-    return None
+    # ICR above highest bracket → best rating (last row)
+    last = rows[-1]
+    return (last[2], last[3])
 
 
 def _fetch_spread_table() -> Optional[dict]:

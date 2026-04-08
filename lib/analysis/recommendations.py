@@ -94,6 +94,13 @@ def _build_context(prepared_data: dict, dividend_data: dict | None) -> dict:
     averages = prepared_data.get("averages", {})
     ratios = prepared_data.get("ratios", [])
     ind_avg = prepared_data.get("industry_averages")
+    # Fallback: re-fetch if missing (covers cache misses / transient failures)
+    if not ind_avg and industry:
+        try:
+            from lib.data.valuation_data import get_industry_averages
+            ind_avg = get_industry_averages(industry)
+        except Exception:
+            ind_avg = None
 
     # FCF analysis
     cf_table = prepared_data.get("tables", {}).get("cashflow", [])

@@ -163,8 +163,18 @@ def extract_industry_averages(prepared: dict) -> dict | None:
     alias for downstream consumers.
     """
     ia = prepared.get("industry_averages")
+    # Fallback: re-fetch if missing (covers cache misses at prep time)
     if not ia or not isinstance(ia, dict):
-        return None
+        ctype = prepared.get("company_type") or {}
+        industry = (ctype.get("signals") or {}).get("industry", "")
+        if industry:
+            try:
+                from lib.data.valuation_data import get_industry_averages
+                ia = get_industry_averages(industry)
+            except Exception:
+                ia = None
+        if not ia or not isinstance(ia, dict):
+            return None
     result = dict(ia)
     if ia.get("industry_name"):
         result["damodaran_industry"] = ia["industry_name"]

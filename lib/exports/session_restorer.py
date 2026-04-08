@@ -16,6 +16,20 @@ def restore_valuation_state(saved: dict) -> tuple[dict, str]:
     ticker = meta.get("ticker", "")
     raw_state = saved.get("state", {})
 
+    # Drop widget keys that Streamlit forbids pre-seeding (data_editor etc.).
+    # Old saves may contain these; strip on load for backward compat.
+    _FORBIDDEN_SUFFIXES = ("_editor", "_btn", "_reset")
+    _FORBIDDEN_EXACT = {
+        "comps_peer_editor", "comps_exclude_select",
+        "wacc_peer_add_input", "ddm_peer_add_input", "comps_manual_add",
+    }
+    raw_state = {
+        k: v for k, v in raw_state.items()
+        if not (isinstance(k, str) and (
+            k in _FORBIDDEN_EXACT or k.endswith(_FORBIDDEN_SUFFIXES)
+        ))
+    }
+
     # Restore Python types (sets, DataFrames)
     state = _restore_types(raw_state)
 

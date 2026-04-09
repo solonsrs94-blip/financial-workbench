@@ -102,6 +102,7 @@ Vision/
 │   ╚═══════════════════════════════════════╝
 │
 ├── pages/                              ← Hver skjár er sín skrá
+│   ├── 0_guide.py                      ← How to Use (quick-start + module guides) ✅
 │   ├── 1_company.py                    ← Fyrirtækjayfirlit ✅
 │   ├── 2_saved.py                      ← Vistuð virðismöt (save/load) ✅
 │   ├── 3_valuation.py                  ← Virðismat (DCF, comps) ✅

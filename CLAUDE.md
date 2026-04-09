@@ -20,6 +20,7 @@ Read VISION.md for project philosophy. Read ARCHITECTURE.md for full structure, 
 ```
 app.py              → Main Streamlit entry point
 pages/              → Streamlit pages (one screen = one file)
+  0_guide.py        → How to Use guide (quick-start + detailed module walkthroughs)
   2_saved.py        → Saved Valuations page (browse, load, delete saved analyses)
   4_charts.py       → Technical Charts (placeholder 🚧)
   5_screener.py     → Stock Screener (placeholder 🚧)

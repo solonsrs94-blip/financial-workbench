@@ -21,6 +21,13 @@ Read VISION.md for project philosophy. Read ARCHITECTURE.md for full structure, 
 app.py              → Main Streamlit entry point
 pages/              → Streamlit pages (one screen = one file)
   2_saved.py        → Saved Valuations page (browse, load, delete saved analyses)
+  4_charts.py       → Technical Charts (placeholder 🚧)
+  5_screener.py     → Stock Screener (placeholder 🚧)
+  6_watchlist.py    → Watchlists (placeholder 🚧)
+  7_portfolio.py    → Portfolio & Risk (placeholder 🚧)
+  8_macro.py        → Macro Overview (placeholder 🚧)
+  9_ai.py           → AI Assistant (placeholder 🚧)
+  10_academy.py     → Academy (placeholder 🚧)
   pages/valuation/  → Valuation sub-pages (preparation, dcf steps 2-5, comps, ddm)
     preparation_editor.py → Editable data_editor for override values
     preparation_overrides.py → Rebuild cascade after overrides
@@ -59,7 +66,7 @@ pages/              → Streamlit pages (one screen = one file)
     summary_football.py → Summary: Combined football field chart (all models)
     summary_helpers.py → Summary: DCF scenario format handling + re-exports
     summary_weights.py → Summary: Model weighting inputs + weighted fair value + stats
-components/         → Reusable UI components (ticker search, charts, tables, explainer, commentary, save_button)
+components/         → Reusable UI components (ticker search, charts, tables, explainer, commentary, save_button, placeholder)
   auth_guard.py     → require_auth() guard + show_user_sidebar() (call at top of every page)
   auth_forms.py     → Login/sign-up forms (email/password, tabs)
   commentary_templates/ → Sector-specific commentary templates (tech, industrials, consumer, healthcare, energy, real estate, dcf_step4, dcf_step5)

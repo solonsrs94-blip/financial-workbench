@@ -102,25 +102,16 @@ Vision/
 │   ╚═══════════════════════════════════════╝
 │
 ├── pages/                              ← Hver skjár er sín skrá
-│   ├── 1_company.py                    ← Fyrirtækjayfirlit
-│   ├── 2_saved.py                      ← Vistuð virðismöt (save/load)
-│   ├── 3_valuation.py                  ← Virðismat (DCF, comps)
-│   ├── 4_screener.py                   ← Almenn hlutabréfasía
-│   ├── 5_analysis.py                   ← Greiningarvinnusvæði
-│   ├── 6_chart.py                      ← Tæknigraf og sjónræn greining
-│   ├── 7_macro.py                      ← Þjóðhagsyfirlit
-│   ├── 8_portfolio.py                  ← Eignasafn
-│   ├── 9_sandbox.py                    ← AI tilraunastöð
-│   ├── 10_watchlist.py                 ← Vaktlistar
-│   ├── 11_comparison.py                ← Hlið við hlið samanburður
-│   ├── 12_heatmap.py                   ← Hitakort markaðarins
-│   ├── 13_calendar.py                  ← Afkoma + efnahagsdagatal
-│   ├── 14_options.py                   ← Valréttargreining
-│   ├── 15_backtest.py                  ← Prófun á aðferðum
-│   ├── 16_risk.py                      ← Áhættugreining
-│   ├── 17_insiders.py                  ← Innherjaviðskipti
-│   ├── 18_chat.py                      ← AI spjall — spyrðu gögnin hvað sem er
-│   └── 19_learn.py                     ← Námsmiðstöð / Academy
+│   ├── 1_company.py                    ← Fyrirtækjayfirlit ✅
+│   ├── 2_saved.py                      ← Vistuð virðismöt (save/load) ✅
+│   ├── 3_valuation.py                  ← Virðismat (DCF, comps) ✅
+│   ├── 4_charts.py                     ← Tæknigröf (placeholder 🚧)
+│   ├── 5_screener.py                   ← Hlutabréfasía (placeholder 🚧)
+│   ├── 6_watchlist.py                  ← Vaktlistar (placeholder 🚧)
+│   ├── 7_portfolio.py                  ← Eignasafn og áhætta (placeholder 🚧)
+│   ├── 8_macro.py                      ← Þjóðhagsyfirlit (placeholder 🚧)
+│   ├── 9_ai.py                         ← AI aðstoðarmaður (placeholder 🚧)
+│   └── 10_academy.py                   ← Námsmiðstöð (placeholder 🚧)
 │
 │   (Undirhlutar — verða til þegar skjár stækka)
 │   ├── valuation/
@@ -194,6 +185,7 @@ Vision/
 │   ├── annotations.py                  ← Textaboxar fyrir rökstuðning
 │   ├── commentary.py                   ← Analyst Commentary expanderar með sniðmátum
 │   ├── commentary_templates/           ← Sector-specific + per-scenario sniðmát
+│   ├── placeholder.py                  ← Reusable coming-soon page renderer
 │   ├── layout.py                       ← Sameiginlegt útlit (header, sidebar)
 │   ├── explainer.py                    ← ? hnappur við hverja tölu/forsendu
 │   │                                      • Stig 1-3 útskýring

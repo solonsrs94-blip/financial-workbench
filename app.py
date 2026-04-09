@@ -68,7 +68,17 @@ st.markdown("""
 
 Use the **sidebar** to navigate between pages:
 
-- **Company Overview** — Search any publicly traded company and see key metrics, price charts, and financials
+**Live now:**
+- **Company Overview** — Search any company, see key metrics, price charts, and financials
+- **Saved Valuations** — Browse and load your previously saved analyses
+- **Valuation** — Full valuation workbench (DCF, Comps, Historical Multiples, DDM, Summary)
 
-More pages coming soon.
+**Coming soon:**
+- **Technical Charts** — Candlestick charts with indicators and drawing tools
+- **Stock Screener** — Filter the market by any financial metric
+- **Watchlists** — Track companies and set price alerts
+- **Portfolio & Risk** — Holdings, returns, VaR, stress tests, backtesting
+- **Macro Overview** — Interest rates, inflation, economic calendar
+- **AI Assistant** — Chat with your data, sandbox experiments, AI reports
+- **Academy** — Learning paths, exercises, and AI tutor
 """)

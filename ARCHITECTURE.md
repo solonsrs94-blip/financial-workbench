@@ -91,28 +91,45 @@ Banks/Insurance:
 
 ## Möppuskipulag
 
+**Skeleton-first:** Öll fyrirhuguð folders og skrár eru til staðar sem stubs. Ekki-byggð lib-föll kasta `NotImplementedError` þar til útfærð. Ekki-byggð UI síður nota `render_placeholder()`. Status dashboard í [components/status_dashboard.py](components/status_dashboard.py) er single source of truth um hvað er `done`/`partial`/`placeholder`.
+
+**Tier arkitektúr:** Allar Personal tier síður eru synilegar öllum notendum. Professional tier síður (`20_lbo.py`, `21_ma.py`, `22_precedents.py`) sjást aðeins í nav þegar `st.session_state["user_tier"] == "professional"`. Tier toggle er í Settings → Tier tab.
+
+**Navigation:** [app.py](app.py) notar `st.navigation()` með grouped dict (Research / Portfolio / Context / Tools / Professional). File-númer stýra EKKI nav-röð — navigation dict gerir það.
+
 ```
 Vision/
 │
-├── app.py                              ← Ræsir appið
+├── app.py                              ← Ræsir appið + st.navigation() + tier gating
 │
 │
 │   ╔═══════════════════════════════════════╗
 │   ║           SKJÁIR (UI LAG)            ║
 │   ╚═══════════════════════════════════════╝
 │
-├── pages/                              ← Hver skjár er sín skrá
-│   ├── 0_guide.py                      ← How to Use (quick-start + module guides) ✅
+├── pages/                              ← Hver skjár er sín skrá. Grouping: Research/Portfolio/Context/Tools/Professional í app.py via st.navigation().
+│   │
+│   │   PERSONAL TIER
+│   ├── 0_guide.py                      ← How to Use + Status Dashboard ✅
 │   ├── 1_company.py                    ← Fyrirtækjayfirlit ✅
 │   ├── 2_saved.py                      ← Vistuð virðismöt (save/load) ✅
-│   ├── 3_valuation.py                  ← Virðismat (DCF, comps) ✅
+│   ├── 3_valuation.py                  ← Virðismat (DCF, Comps, DDM, Historical, Summary) ✅
 │   ├── 4_charts.py                     ← Tæknigröf (placeholder 🚧)
 │   ├── 5_screener.py                   ← Hlutabréfasía (placeholder 🚧)
 │   ├── 6_watchlist.py                  ← Vaktlistar (placeholder 🚧)
-│   ├── 7_portfolio.py                  ← Eignasafn og áhætta (placeholder 🚧)
+│   ├── 7_portfolio.py                  ← Eignasafn + tax + planning (placeholder 🚧)
 │   ├── 8_macro.py                      ← Þjóðhagsyfirlit (placeholder 🚧)
 │   ├── 9_ai.py                         ← AI aðstoðarmaður (placeholder 🚧)
-│   └── 10_academy.py                   ← Námsmiðstöð (placeholder 🚧)
+│   ├── 10_academy.py                   ← Námsmiðstöð (placeholder 🚧)
+│   ├── 11_journal.py                   ← Fjárfestingadagbók (placeholder 🚧)
+│   ├── 12_settings.py                  ← Settings (tier toggle functional, rest placeholder 🟡)
+│   ├── 13_calendars.py                 ← Earnings + economic + filings + dividends calendars (placeholder 🚧)
+│   ├── 14_news.py                      ← News feed (placeholder 🚧)
+│   │
+│   │   PROFESSIONAL TIER (hidden unless user_tier == "professional")
+│   ├── 20_lbo.py                       ← LBO módel (placeholder 🚧, professional)
+│   ├── 21_ma.py                        ← M&A accretion/dilution (placeholder 🚧, professional)
+│   └── 22_precedents.py                ← M&A precedents DB (placeholder 🚧, professional)
 │
 │   (Undirhlutar — verða til þegar skjár stækka)
 │   ├── valuation/
@@ -155,23 +172,21 @@ Vision/
 │   │   ├── summary_tab.py              ← Summary tab orchestrator (reads all model outputs)
 │   │   ├── summary_table.py           ← Summary: Valuation overview table
 │   │   └── summary_football.py        ← Summary: Combined football field chart (all models)
-│   ├── chart/
-│   │   ├── candlestick.py              ← Kertastjakagraf
-│   │   ├── indicators.py              ← RSI, MACD, Volume panels
-│   │   ├── overlays.py                ← SMA, EMA, Bollinger á grafinu
-│   │   ├── comparison.py              ← Bera saman mörg hlutabréf
-│   │   └── drawing.py                 ← Trendlínur, stuðningur/viðnám
-│   ├── screener/
-│   │   ├── filters.py                  ← Síunarviðmót
-│   │   └── results.py                  ← Niðurstöðubirting
-│   ├── sandbox/
-│   │   ├── input.py                    ← Textainnsláttarsvæði
-│   │   ├── results.py                  ← Niðurstöðubirting
-│   │   └── history.py                  ← Tilraunasaga
-│   └── learn/
-│       ├── curriculum.py              ← Námsleiðayfirlit
-│       ├── lesson.py                  ← Einn kennslutími
-│       └── exercises.py               ← Gagnvirkar æfingar
+│   │
+│   │   SKELETON SUBFOLDERS (tab stubs — populated as features get built)
+│   ├── charts/                        ← Technical charts tabs (price, indicators, patterns, compare)
+│   ├── screener/                      ← Screener tabs (fundamental, technical, thematic, ipo, saved)
+│   ├── watchlist/                     ← Watchlist tabs (lists, alerts, alert_editor)
+│   ├── portfolio/                     ← Portfolio tabs (holdings, transactions, performance, tax, planning, rebalance, cash_flow)
+│   ├── macro/                         ← Macro tabs (overview, sectors, yield_curve, currencies, commodities, sentiment)
+│   ├── journal/                       ← Journal tabs (notes, theses, ideas, library)
+│   ├── ai/                            ← AI tabs (chat, research, documents, sandbox)
+│   ├── academy/                       ← Academy tabs (paths, modules, glossary, references)
+│   ├── settings/                      ← Settings tabs (profile, data_sources, preferences, tier, export, feature_flags)
+│   ├── calendars/                     ← Calendars tabs (earnings, economic, filings, dividends)
+│   ├── lbo/                           ← LBO tabs (entry, projection, debt_schedule, exit, summary)  [professional]
+│   ├── ma/                            ← M&A tabs (target, synergies, financing, accretion)           [professional]
+│   └── precedents/                    ← Precedents tabs (browser, filters, comparables)              [professional]
 │
 │
 │   ╔═══════════════════════════════════════╗

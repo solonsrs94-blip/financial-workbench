@@ -1,9 +1,11 @@
-"""How to Use — quick-start guide and detailed module walkthroughs."""
+"""How to Use — quick-start guide, module walkthroughs, and feature status dashboard."""
 
 import streamlit as st
 
 from components.layout import load_css
 from components.auth_guard import require_auth, show_user_sidebar
+from components.status_dashboard import render_status_dashboard
+from components.tier_guard import is_professional
 
 load_css()
 require_auth()
@@ -26,6 +28,10 @@ The typical workflow is:
 You can jump to any page directly from the sidebar. Each valuation model
 is independent — use one, some, or all depending on the company.
 """)
+
+# ── Feature Status Dashboard ────────────────────────────────
+st.markdown("---")
+render_status_dashboard(show_professional=is_professional())
 
 # ── Page Guide ──────────────────────────────────────────────
 st.markdown("---")

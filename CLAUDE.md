@@ -144,16 +144,26 @@ tests/              → Tests for data, analysis, and cache
 - Data passes through `models/` for standardized format.
 - Handle API failures gracefully — show cached data if available, clear error message if not.
 
-### 3. File size
-- No file should exceed 300 lines (enforced by pre-commit hook). If it does, split into submodules.
-- Pure data files (concept maps, templates) are split by statement type (IS/BS/CF).
-- Pages that grow large get their own subfolder (e.g., pages/valuation/).
+### 3. File size — tiered limits
+- **Logic files** (`lib/`, engine, analysis, middleware): **300 línur max**
+- **UI files** (`pages/`, `components/`): **400 línur max** (Streamlit rendering is verbose)
+- **Pure data files** (concept maps, templates, prompts, industry data): **no hard limit**, but split by topic when natural (IS/BS/CF, per-sector, per-layout)
+- **Test files**: no limit
+
+If a file wants more than the limit:
+  - First check: is this one concern or two? Split if two.
+  - If legitimately single concern (e.g., a long LLM prompt template, a complex algorithm), add `# file-size-exception: <reason>` on line 1.
+  - Pre-commit hook warns at limit; exception comment allows override.
+
+Pages that grow large get their own subfolder (e.g., `pages/valuation/`). See Skeleton-First Architecture section for when to pre-create subfolders.
 
 ### 4. Adding new things
-- New data source → new file in `lib/data/providers/`, update middleware file.
-- New analysis method → new file in `lib/analysis/strategies/`.
-- New screen → new file in `pages/`.
-- New AI feature → new file in `lib/ai/`.
+- **New data source** → new file in `lib/data/providers/`, update middleware file in `lib/data/`.
+- **New analysis method** → new file in `lib/analysis/<domain>/` (valuation, technical, portfolio, planning, screener).
+- **New screen** → new file in `pages/` with appropriate number prefix. Use `render_placeholder()` if not yet implemented.
+- **New AI feature** → new file in `lib/ai/`.
+- **New normalization** (lease-adjusted EBITDA, marginal tax, etc.) → goes in `lib/data/normalization/`, never inline in consumer.
+- **New tier-gated feature** → use `require_professional()` guard; never hide via ad-hoc if-checks.
 
 ### 5. No hardcoded secrets
 - API keys go in `st.secrets` (Streamlit Cloud) or `.env` (local dev), read via `config/settings.py._get_secret()`.
@@ -165,6 +175,31 @@ tests/              → Tests for data, analysis, and cache
 - `lib/storage/local.py` implements SQLite (current).
 - `lib/storage/cloud.py` implements Firebase/PostgreSQL (later).
 - Nothing else in the app knows which storage backend is active.
+
+### 7. Tier enforcement
+- Every page calls `require_auth()` AND checks tier when relevant.
+- Professional-only pages/features use `require_professional()` guard from `components/tier_guard.py` — never ad-hoc if-checks.
+- Tier flag lives in `st.session_state["user_tier"]` — single source of truth.
+- When building a professional-only feature, the placeholder version still lives in `pages/20+_*.py`; it just renders `render_placeholder()` until built.
+
+### 8. Placeholder convention
+- Non-built features MUST use `render_placeholder()` from `components/placeholder.py` — no ad-hoc "coming soon" text.
+- Placeholder pages render ONLY the placeholder component + feature list. Do NOT stub business logic.
+- When starting to build a placeholder feature: flip its status in `FEATURE_STATUS` (status dashboard) from `placeholder` → `partial` BEFORE writing code.
+- When finishing: flip to `done`, progress 100%, remove `render_placeholder()` call.
+- Feature list in placeholder MUST match `FEATURE_STATUS` entry — they are mirrored.
+
+### 9. Normalization-first
+- ANY calculation depending on "adjusted" financials (lease-adjusted EBITDA, excess cash, marginal tax rate, pension-adjusted debt, unlevered beta) reads from `lib/data/normalization/`.
+- DCF, DDM, Comps, Historical, LBO all consume the SAME normalized data — never adjust in the consumer module.
+- When adding a new adjustment, update the normalization layer, not each consumer.
+- Normalization outputs are cached with the underlying data — same TTL as source.
+
+### 10. No silent fallbacks for critical inputs
+- In DCF bridge, WACC, valuation calcs: if a required input is missing, surface an error to the UI.
+- Never use `or 0`, `or 1`, `or DEFAULT_VALUE` fallbacks for user-visible calculations.
+- `lib/` functions return `None` (not silently-wrong values) when inputs are missing. UI layer handles the `None` with a user-facing warning.
+- Acceptable silent fallbacks: UI display defaults (e.g., chart title), not numerical calculations.
 
 ## Commands
 - `streamlit run app.py` — Run the app locally
@@ -236,6 +271,146 @@ tests/              → Tests for data, analysis, and cache
 - **Firebase init:** Singleton via `lib/auth/firebase_init.py`. Service account from `st.secrets["firebase_service_account"]` (cloud) or `firebase-service-account.json` (local).
 - **Config:** All API keys read via `config/settings.py._get_secret()` which tries `st.secrets` first, then `.env` fallback.
 
+## Tier System
+The app serves two tiers from a single codebase:
+
+- **Personal tier** — default. Full analytical toolkit for sophisticated individual investor: all DCF depth (including Monte Carlo, Reverse DCF, Tornado), valuation suite, screener, watchlist, portfolio management, tax, planning, macro, journal, AI assistant, academy.
+- **Professional tier** — adds deal-oriented tools: LBO, M&A accretion/dilution, SOTP mode, M&A precedents DB, pitch-book output, Excel with live formulas, collaboration, industry overlays.
+
+**Key principle:** Personal tier is NOT a crippled version. It is full pro-grade valuation toolkit. Professional tier adds deal-work-only features on top.
+
+**Implementation:**
+- Tier flag: `st.session_state["user_tier"]` with values `"personal"` (default) or `"professional"`
+- Toggle in Settings page (`pages/12_settings.py`)
+- Navigation: `st.navigation()` groups hide Professional section unless tier is `professional`
+- Per-feature gating: `require_professional()` from `components/tier_guard.py`
+- Same engine, divergent UI — `lib/` is tier-agnostic
+
+**Current focus:** Personal tier first, perfect it. Professional tier lives as placeholders until personal is complete.
+
+## Placeholder Convention
+Non-built features use a standardized placeholder UI so the user always sees the full app layout.
+
+**Usage:**
+```python
+from components.placeholder import render_placeholder
+
+render_placeholder(
+    title="Stock Screener",
+    description="Multi-criteria screening — fundamental + technical + thematic.",
+    phase="Fasi 3a — Discovery & tracking",
+    target_quarter="Q2 2026",
+    progress_pct=0,
+    tier="personal",
+    features=[
+        "Fundamental filters (PE, margin, growth, debt)",
+        "Technical filters (breakouts, patterns)",
+        "Thematic baskets",
+        "IPO calendar",
+        "Saved screen templates",
+    ],
+)
+```
+
+**Rules:**
+- Placeholder pages render ONLY `render_placeholder()` + auth guard — no business logic stubs.
+- `features` list MUST match the entry in `FEATURE_STATUS` (see Status Dashboard).
+- When starting to build: flip status in `FEATURE_STATUS` to `partial` BEFORE writing code.
+- When complete: flip to `done`, progress 100%, remove `render_placeholder()` import.
+
+## Status Dashboard
+Single source of truth for "what's built" lives in `components/status_dashboard.py`.
+
+**Structure:**
+```python
+FEATURE_STATUS = {
+    "Research": {
+        "Company Overview": {"status": "done", "progress": 100},
+        "DCF": {"status": "partial", "progress": 60},
+        ...
+    },
+    "Portfolio": {
+        "Watchlist": {"status": "placeholder", "progress": 0},
+        ...
+    },
+    ...
+}
+```
+
+**Status values:** `done` | `partial` | `placeholder`
+
+**Rules:**
+- Status dashboard renders on Guide page (`0_guide.py`) — always visible overall progress.
+- When starting a feature: flip to `partial` with progress estimate.
+- When shipping: flip to `done` with progress 100%.
+- Never ship without updating status — enforced via self-check.
+- Professional-tier features show regardless of current tier (user sees roadmap).
+
+## Session State Keys
+To prevent collisions, every module uses a prefix. Document new prefixes here when introduced.
+
+**Existing prefixes:**
+- `auth_*` — authentication (auth_uid, auth_email, auth_id_token, auth_refresh_token, auth_approved)
+- `dcf_*` — DCF valuation (dcf_scenarios, dcf_wacc, dcf_output, dcf_assumptions, dcf_scenarios_terminal, ...)
+- `ddm_*` — DDM valuation (ddm_ke, ddm_scenarios, ddm_output, ddm_data_{ticker}, ...)
+- `comps_*` — Comps (comps_valuation, comps_peers, ...)
+- `historical_*` — Historical multiples (historical_result)
+- `summary_*` — Summary tab (summary_weights)
+- `wacc_*` — WACC shared state
+- `bridge_*` — Equity bridge per-scenario
+- `commentary_*` — Analyst commentary (see Data Conventions for full list)
+
+**Reserved prefixes for upcoming features:**
+- `user_tier` — single key, tier flag
+- `screen_*` — Screener module (saved screens, filters)
+- `watchlist_*` — Watchlist module (lists, alerts)
+- `portfolio_*` — Portfolio module (holdings, transactions, performance, rebalance)
+- `tax_*` — Tax module (harvest state, lot selection)
+- `planning_*` — Planning module (retirement, goals)
+- `journal_*` — Journal module (notes, theses, ideas)
+- `news_*` — News feed
+- `calendar_*` — Calendars module
+- `alert_*` — Alert engine
+- `macro_*` — Macro page state
+- `ai_*` — AI assistant (chat history, context)
+- `chart_*` — Technical charts state (indicators, drawings)
+- `settings_*` — User preferences
+- `feature_flags` — Experimental feature toggles (single dict key)
+- `lbo_*`, `ma_*`, `precedents_*` — Professional tier modules
+
+**Rules:**
+- Never share keys across modules.
+- When adding a new module, add prefix to this list in the same PR.
+- Use explicit key names, not generic ones (`portfolio_holdings`, not `holdings`).
+
+## Data Freshness Display
+User trust depends on knowing how fresh the data is.
+
+**Rules:**
+- Every data display must show age: "Data as of 2026-04-18" or "Fetched 3 hours ago".
+- Stale-cache fallback (when live API fails) shows warning banner with last-successful-fetch timestamp.
+- Price data shows delay disclosure ("15-minute delay" for yfinance).
+- Critical for cached valuation data — user must know they're looking at potentially stale fundamentals.
+
+Helper: `components/freshness_indicator.py` (to be built) renders a consistent badge.
+
+## AI Context Safety (for when AI assistant is built)
+- Never pass raw user input to Claude API without context wrapping.
+- Always include system prompt specifying role, scope, and guardrails.
+- Portfolio/holdings context injection: pass ONLY the current user's data (verify via `auth_uid`).
+- Never inject another user's data, even if both users are approved.
+- Rate-limit per user (e.g., 100 queries/day) to prevent API abuse.
+- AI responses that include numerical claims (valuations, predictions) must include disclaimers.
+- Log AI queries for audit (user_uid, timestamp, query, response) — never log credentials.
+
+## Feature Flags
+For experimental or in-development features not yet ready for all users.
+
+- Stored in `st.session_state["feature_flags"]` as a dict: `{"experimental_monte_carlo": True, "new_screener_ui": False}`
+- Toggle via Settings page → Feature Flags tab
+- Optional URL param override for testing: `?flag=experimental_monte_carlo`
+- When a flag-gated feature graduates to default, remove the flag entirely — no dead flag pollution.
+
 ## Sensitivity Rules
 - Floor: Cells where g >= Ke (DDM) or implied price <= 0 (DCF) → NaN, displayed as "—" in UI.
 - Cap: Implied price > 100x current price → NaN (excludes asymptotic Gordon values near g=Ke).
@@ -290,28 +465,42 @@ tests/              → Tests for data, analysis, and cache
 ## Self-Check After Every Feature — MANDATORY
 
 **TRIGGER: Before telling the user "búið/done/endurnýrðu" or committing, ALWAYS run this checklist.**
-The pre-commit hook catches rules 1-2 automatically. Rules 3-4 require manual verification.
+The pre-commit hook catches file-size automatically. Other rules require manual verification.
 
 After completing any feature or significant change, run this checklist BEFORE committing:
 
 ### Architecture Check
 - [ ] Does any `lib/` file import streamlit? (MUST be zero)
-- [ ] Does any `pages/` or `pages/company/` file import from `lib.data.providers` directly? (MUST be zero — use middleware)
-- [ ] Are all new data fetches going through middleware with cache? (check fundamentals.py or market.py)
+- [ ] Does any `pages/` or `pages/*/` file import from `lib.data.providers` directly? (MUST be zero — use middleware)
+- [ ] Are all new data fetches going through middleware with cache? (check fundamentals.py, market.py, valuation_data.py)
 - [ ] When new fields are added to a provider, are they passed through middleware → model → page? (trace the full chain)
+- [ ] Do any new calculations use adjusted/normalized financials? If yes, did they read from `lib/data/normalization/` (not recompute inline)?
 
 ### Code Quality Check
-- [ ] Is any file over 200 lines? If so, split it.
+- [ ] Is any logic file over 300 lines? Any UI file over 400 lines? If so, split or add `# file-size-exception: <reason>` with justification.
 - [ ] Is there duplicated logic? (same dict, same function, same pattern in 2+ places)
 - [ ] Are all percentages normalized consistently? (decimal form in models, format_percentage multiplies by 100)
 - [ ] Are new data types being cached with appropriate TTL?
+- [ ] Did I use `or 0`, `or 1`, `or DEFAULT` fallbacks on critical calculations? (MUST be zero — use `None` returns with UI-layer error handling)
+
+### Tier & Placeholder Check
+- [ ] If this feature is tier-gated, does it use `require_professional()` guard (not ad-hoc if-checks)?
+- [ ] Did I update `FEATURE_STATUS` in `components/status_dashboard.py`? (placeholder → partial when starting, partial → done when shipping)
+- [ ] If I added a new session state key, did I document its prefix in CLAUDE.md Session State Keys section?
+- [ ] Does the new feature respect the tier it's intended for (personal vs professional)?
+
+### Data Freshness Check
+- [ ] Does any new data display show its age or freshness indicator?
+- [ ] Does stale-cache fallback surface a warning to the user?
 
 ### Data Chain Check (for any new data field)
 1. Provider returns it in dict ✓
 2. Middleware passes it through cache ✓
-3. Model has the field ✓
-4. Page/component displays it ✓
-If any link is missing, the data will silently disappear.
+3. Normalization applied if needed (leases, tax, cash) ✓
+4. Model has the field ✓
+5. Page/component displays it ✓
+6. Freshness timestamp surfaced ✓
+If any link is missing, the data will silently disappear OR become stale-without-warning.
 
 ## Documentation Maintenance — AUTOMATIC
 

@@ -15,8 +15,8 @@ venv/
 .venv/
 env/
 
-# Local data and cache
-data/
+# Local data and cache (anchor to repo root — do NOT match lib/data/)
+/data/
 
 # IDE
 .vscode/

@@ -42,6 +42,7 @@ saved_valuations/
 # Generated reports and test outputs
 *_test.json
 *_report.md
+codebase_reference.md
 test_results/
 scripts/industry_mapping_output.py
 scripts/industry_mapping_raw.csv
